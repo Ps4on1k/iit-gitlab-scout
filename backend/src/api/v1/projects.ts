@@ -1,0 +1,159 @@
+import type { FastifyInstance } from "fastify";
+import { getPool } from "../../db/pool.js";
+import { requireAuth, requireAdmin } from "../../utils/auth.js";
+import { encrypt, decrypt } from "../../utils/crypto.js";
+import yamlLib from "js-yaml";
+
+export async function projectsRoutes(app: FastifyInstance) {
+  app.get("/api/v1/projects", { preHandler: [requireAuth] }, async () => {
+    const pool = getPool();
+    const result = await pool.query(
+      "SELECT id, path, label, tag, base_url, created_at, updated_at FROM projects ORDER BY created_at DESC"
+    );
+    return { ok: true, data: result.rows };
+  });
+
+  app.post<{
+    Body: { path: string; label: string; token: string; base_url?: string; tag?: string };
+  }>("/api/v1/projects", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { path, label, token, base_url, tag } = request.body;
+
+    if (!path || !label || !token || token.trim().length === 0) {
+      return reply.status(400).send({ ok: false, error: "path, label, token are required" });
+    }
+
+    const encrypted = encrypt(token);
+    const pool = getPool();
+
+    try {
+      const result = await pool.query(
+        `INSERT INTO projects (path, label, token_encrypted, base_url, tag)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, path, label, tag, base_url, created_at`,
+        [path, label, encrypted, base_url || "https://gitlab.com/api/v4", tag || ""]
+      );
+      return { ok: true, data: result.rows[0] };
+    } catch (err: any) {
+      if (err.code === "23505") {
+        return reply.status(409).send({ ok: false, error: "Project path already exists" });
+      }
+      throw err;
+    }
+  });
+
+  app.put<{
+    Params: { id: string };
+    Body: { path?: string; label?: string; token?: string; base_url?: string; tag?: string };
+  }>("/api/v1/projects/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { id } = request.params;
+    const { path, label, token, base_url, tag } = request.body;
+
+    const pool = getPool();
+    const existing = await pool.query("SELECT id FROM projects WHERE id = $1", [id]);
+    if (existing.rows.length === 0) {
+      return reply.status(404).send({ ok: false, error: "Project not found" });
+    }
+
+    const updates: string[] = [];
+    const values: any[] = [];
+    let idx = 1;
+
+    if (path !== undefined) { updates.push(`path = $${idx++}`); values.push(path); }
+    if (label !== undefined) { updates.push(`label = $${idx++}`); values.push(label); }
+    if (token !== undefined && token.trim().length > 0) { updates.push(`token_encrypted = $${idx++}`); values.push(encrypt(token)); }
+    if (base_url !== undefined) { updates.push(`base_url = $${idx++}`); values.push(base_url); }
+    if (tag !== undefined) { updates.push(`tag = $${idx++}`); values.push(tag); }
+
+    updates.push(`updated_at = now()`);
+    values.push(id);
+
+    const result = await pool.query(
+      `UPDATE projects SET ${updates.join(", ")} WHERE id = $${idx}
+       RETURNING id, path, label, tag, base_url, created_at, updated_at`,
+      values
+    );
+
+    return { ok: true, data: result.rows[0] };
+  });
+
+  app.delete<{
+    Params: { id: string };
+  }>("/api/v1/projects/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { id } = request.params;
+    const pool = getPool();
+    const result = await pool.query("DELETE FROM projects WHERE id = $1 RETURNING id", [id]);
+
+    if (result.rows.length === 0) {
+      return reply.status(404).send({ ok: false, error: "Project not found" });
+    }
+
+    return { ok: true, data: { deleted: true } };
+  });
+
+  app.get<{
+    Params: { id: string };
+  }>("/api/v1/projects/:id/token", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { id } = request.params;
+    const pool = getPool();
+    const result = await pool.query(
+      "SELECT token_encrypted FROM projects WHERE id = $1",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return reply.status(404).send({ ok: false, error: "Project not found" });
+    }
+
+    const decrypted = decrypt(result.rows[0].token_encrypted);
+    return { ok: true, data: { token: decrypted } };
+  });
+
+  app.post<{
+    Body: { yaml: string };
+  }>("/api/v1/projects/import-yaml", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { yaml } = request.body;
+    if (!yaml) {
+      return reply.status(400).send({ ok: false, error: "yaml is required" });
+    }
+
+    try {
+      const parsed = yamlLib.load(yaml) as any;
+      const projects = parsed.projects || parsed;
+      if (!Array.isArray(projects)) {
+        return reply.status(400).send({ ok: false, error: "Invalid YAML: expected array of projects" });
+      }
+
+      const pool = getPool();
+      const imported: { path: string; label: string }[] = [];
+      const errors: { path: string; error: string }[] = [];
+
+      for (const proj of projects) {
+        if (!proj.path || !proj.label || !proj.token) {
+          errors.push({ path: proj.path || "unknown", error: "Missing path, label, or token" });
+          continue;
+        }
+        try {
+          const encrypted = encrypt(proj.token);
+          await pool.query(
+            `INSERT INTO projects (path, label, token_encrypted, base_url, tag)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (path) DO UPDATE SET
+               label = EXCLUDED.label,
+               token_encrypted = EXCLUDED.token_encrypted,
+               base_url = EXCLUDED.base_url,
+               tag = EXCLUDED.tag,
+               updated_at = now()`,
+            [proj.path, proj.label, encrypted, proj.base_url || "https://gitlab.com/api/v4", proj.tag || ""]
+          );
+          imported.push({ path: proj.path, label: proj.label });
+        } catch (err) {
+          errors.push({ path: proj.path, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+
+      return { ok: true, data: { imported, errors, total: projects.length } };
+    } catch (err) {
+      return reply.status(400).send({ ok: false, error: "Invalid YAML format" });
+    }
+  });
+}

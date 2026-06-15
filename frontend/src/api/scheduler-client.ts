@@ -1,0 +1,61 @@
+import type { ApiResponse } from "../types";
+import { getCached, setCache } from "../utils/cache";
+
+const BASE_URL = "/api";
+
+function getToken(): string | null {
+  return localStorage.getItem("token");
+}
+
+async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string> || {}),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(`${BASE_URL}${url}`, { ...options, headers });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return { ok: false, error: (body as any).error || `HTTP ${res.status}` };
+  }
+  return res.json() as Promise<ApiResponse<T>>;
+}
+
+async function cachedGet<T>(url: string, cacheKey: string): Promise<ApiResponse<T>> {
+  const cached = getCached<ApiResponse<T>>(cacheKey);
+  if (cached) return cached;
+  const result = await fetchJson<T>(url);
+  if (result.ok) setCache(cacheKey, result);
+  return result;
+}
+
+export interface SchedulerTask {
+  id: number;
+  task_name: string;
+  enabled: boolean;
+  interval_minutes: number;
+  last_run_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchSchedulerSettings(): Promise<ApiResponse<SchedulerTask[]>> {
+  return cachedGet<SchedulerTask[]>("/v1/scheduler", "scheduler");
+}
+
+export async function updateSchedulerTask(
+  id: number,
+  data: { enabled?: boolean; interval_minutes?: number }
+): Promise<ApiResponse<SchedulerTask>> {
+  const result = await fetchJson<SchedulerTask>(`/v1/scheduler/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+  if (result.ok) {
+    // Invalidate scheduler cache after update
+    const { clearCache } = await import("../utils/cache");
+    clearCache("scheduler");
+  }
+  return result;
+}

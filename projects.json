@@ -1,0 +1,21 @@
+{
+  "projects": [
+    {
+      "path": "gitlab-org/gitlab-runner",
+      "label": "GitLab Runner",
+      "token": "glpat-runner-token-here",
+      "baseUrl": "https://gitlab.mos-team.ru"
+    },
+    {
+      "path": "gitlab-org/gitlab",
+      "label": "GitLab CE",
+      "token": "glpat-ce-token-here"
+    },
+    {
+      "path": "my-company/my-private-project",
+      "label": "Internal Tool",
+      "token": "glpat-internal-token",
+      "baseUrl": "https://gitlab.mycompany.com/api/v4"
+    }
+  ]
+}

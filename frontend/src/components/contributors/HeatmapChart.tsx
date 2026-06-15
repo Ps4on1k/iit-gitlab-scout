@@ -1,0 +1,204 @@
+import { useMemo, useEffect, useRef } from "react";
+import { Empty, Collapse, Tag } from "antd";
+import { getTagColor } from "../../utils/tagColors";
+
+interface HeatmapItem {
+  name: string;
+  tag?: string;
+  data: number[];
+  total: number;
+}
+
+interface Props {
+  byProject: Record<string, Record<string, number>>;
+  byContributor: Record<string, Record<string, number>>;
+  loading: boolean;
+  projectTags?: Record<string, string>;
+}
+
+function getAllDates(data: Record<string, Record<string, number>>): string[] {
+  const dates = new Set<string>();
+  for (const daily of Object.values(data)) {
+    for (const d of Object.keys(daily)) dates.add(d);
+  }
+  return Array.from(dates).sort();
+}
+
+function generateFullDateRange(dates: string[]): string[] {
+  if (dates.length === 0) return [];
+  const start = new Date(dates[0]);
+  const end = new Date(dates[dates.length - 1]);
+  const all: string[] = [];
+  const cur = new Date(start);
+  while (cur <= end) {
+    all.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return all;
+}
+
+function prepareHeatmapData(
+  data: Record<string, Record<string, number>>,
+  allDates: string[],
+  tags?: Record<string, string>,
+  topN = 30
+): HeatmapItem[] {
+  const items: HeatmapItem[] = [];
+  for (const [name, daily] of Object.entries(data)) {
+    const total = Object.values(daily).reduce((s, v) => s + v, 0);
+    const arr = allDates.map((d) => daily[d] || 0);
+    items.push({ name, tag: tags?.[name], data: arr, total });
+  }
+  items.sort((a, b) => b.total - a.total);
+  return items.slice(0, topN);
+}
+
+function getActivityLevel(count: number, globalMax: number) {
+  if (count === 0 || globalMax === 0) return 0;
+  const pct = count / globalMax;
+  if (pct <= 0.25) return 1;
+  if (pct <= 0.5) return 2;
+  if (pct <= 0.75) return 3;
+  return 4;
+}
+
+const CELL_SIZE = 14;
+const CELL_GAP = 3;
+const CELLS_PER_ROW = 30;
+
+function HeatmapGrid({ items, allDates }: { items: HeatmapItem[]; allDates: string[] }) {
+  const globalMax = useMemo(() => Math.max(1, ...items.flatMap((i) => i.data)), [items]);
+
+  if (items.length === 0) return <p style={{ textAlign: "center", color: "#999" }}>Нет данных</p>;
+
+  const half = Math.ceil(items.length / 2);
+  const col1 = items.slice(0, half);
+  const col2 = items.slice(half);
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      {[col1, col2].map((col, colIdx) => (
+        <div key={colIdx}>
+          {col.map((item) => (
+            <div key={item.name} style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 4, fontWeight: 500 }} title={item.name}>
+                {item.tag && (() => { const c = getTagColor(item.tag); return <Tag style={{ marginRight: 6, fontSize: 11, background: c.bg, color: c.text, border: "none" }}>{item.tag}</Tag>; })()}
+                {item.name}
+              </div>
+              {Array.from({ length: Math.ceil(item.data.length / CELLS_PER_ROW) }, (_, rowIdx) => {
+                const start = rowIdx * CELLS_PER_ROW;
+                const rowCells = item.data.slice(start, start + CELLS_PER_ROW);
+                const rowDates = allDates.slice(start, start + CELLS_PER_ROW);
+                const rowStart = rowDates[0] || "";
+                const rowEnd = rowDates[rowDates.length - 1] || "";
+                return (
+                  <div key={rowIdx} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                    <span style={{ fontSize: 10, color: "#999", width: 65, flexShrink: 0, textAlign: "right" }}>{rowStart}</span>
+                    <div style={{ display: "flex", gap: CELL_GAP }}>
+                      {rowCells.map((count, idx) => (
+                        <div
+                          key={idx}
+                          className={`heatmap-cell level-${getActivityLevel(count, globalMax)}`}
+                          data-tooltip={`${rowDates[idx]}: ${Number(count)} commit`}
+                        />
+                      ))}
+                    </div>
+                    <span style={{ fontSize: 10, color: "#999", width: 65, flexShrink: 0 }}>{rowEnd}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function HeatmapChart({ byProject, byContributor, loading, projectTags }: Props) {
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!tooltipRef.current) {
+      const el = document.createElement("div");
+      el.id = "heatmap-tooltip";
+      document.body.appendChild(el);
+      tooltipRef.current = el;
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const tooltipText = target.getAttribute("data-tooltip");
+      const el = tooltipRef.current;
+      if (!el) return;
+
+      if (tooltipText) {
+        el.textContent = tooltipText;
+        el.style.display = "block";
+        el.style.left = `${e.clientX + 12}px`;
+        el.style.top = `${e.clientY - 30}px`;
+      } else {
+        el.style.display = "none";
+      }
+    };
+
+    const handleMouseLeave = () => {
+      if (tooltipRef.current) tooltipRef.current.style.display = "none";
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseleave", handleMouseLeave);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseleave", handleMouseLeave);
+      if (tooltipRef.current) {
+        tooltipRef.current.remove();
+        tooltipRef.current = null;
+      }
+    };
+  }, []);
+
+  const { allDates, projectItems, contributorItems } = useMemo(() => {
+    const rawDates = getAllDates({ ...byProject, ...byContributor });
+    const fullDates = generateFullDateRange(rawDates);
+    return {
+      allDates: fullDates,
+      projectItems: prepareHeatmapData(byProject, fullDates, projectTags),
+      contributorItems: prepareHeatmapData(byContributor, fullDates),
+    };
+  }, [byProject, byContributor, projectTags]);
+
+  if (!loading && projectItems.length === 0 && contributorItems.length === 0) {
+    return <Empty description="Нет данных для тепловой карты" />;
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      {/* Legend */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "0 0 12px", fontSize: 12, color: "#666" }}>
+        <span>Меньше</span>
+        {[0, 1, 2, 3, 4].map((l) => (
+          <div key={l} className={`heatmap-cell level-${l}`} style={{ width: 14, height: 14, borderRadius: 3 }} />
+        ))}
+        <span>Больше</span>
+      </div>
+
+      <Collapse
+        defaultActiveKey={["projects", "contributors"]}
+        items={[
+          {
+            key: "projects",
+            label: <span style={{ fontSize: 14 }}>Проекты ({projectItems.length})</span>,
+            children: <HeatmapGrid items={projectItems} allDates={allDates} />,
+          },
+          {
+            key: "contributors",
+            label: <span style={{ fontSize: 14 }}>Контрибьюторы ({contributorItems.length})</span>,
+            children: <HeatmapGrid items={contributorItems} allDates={allDates} />,
+          },
+        ]}
+      />
+    </div>
+  );
+}
