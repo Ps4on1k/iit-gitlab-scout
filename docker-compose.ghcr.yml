@@ -1,3 +1,7 @@
+# docker-compose.ghcr.yml
+# Использование: docker compose -f docker-compose.ghcr.yml up -d
+# Образы загружаются из GitHub Container Registry
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -13,8 +17,7 @@ services:
       retries: 5
 
   backend:
-    image: ${BACKEND_IMAGE:-gitlab-scout-backend}
-    build: ./backend
+    image: ghcr.io/YOUR_USERNAME/iit-gitlab-scout-backend:latest
     ports:
       - "3000:3000"
     env_file:
@@ -30,8 +33,7 @@ services:
       start_period: 60s
 
   frontend:
-    image: ${FRONTEND_IMAGE:-gitlab-scout-frontend}
-    build: ./frontend
+    image: ghcr.io/YOUR_USERNAME/iit-gitlab-scout-frontend:latest
     ports:
       - "8080:80"
     depends_on:

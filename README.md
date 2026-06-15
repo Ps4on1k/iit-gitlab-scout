@@ -56,26 +56,97 @@ make dev
 - Ubuntu 22.04+ / Debian 12+ / any Linux
 - Docker + Docker Compose v2
 - 2+ CPU, 2GB+ RAM
-- Порт 80 (frontend) и 5432 (PostgreSQL) доступны
 
-### 1. Установка Docker
+### Способ 1: Из GitHub Container Registry (рекомендуется)
+
+Не нужно клонировать репозиторий или собирать образы. Достаточно docker-compose и .env.
 
 ```bash
-# Ubuntu/Debian
+# 1. Установить Docker
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER
 newgrp docker
 
-# Проверка
-docker --version
-docker compose version
+# 2. Создать рабочую директорию
+mkdir -p /opt/gitlab-scout && cd /opt/gitlab-scout
+
+# 3. Скачать конфиги из репозитория
+curl -sLO https://raw.githubusercontent.com/YOUR_USERNAME/iit-gitlab-scout/main/docker-compose.ghcr.yml
+curl -sLO https://raw.githubusercontent.com/YOUR_USERNAME/iit-gitlab-scout/main/.env.example
+cp .env.example .env
+
+# 4. Сгенерировать ключи
+sed -i "s/changeme/$(openssl rand -hex 32)/" .env
+sed -i "s/00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff/$(openssl rand -hex 32)/" .env
+
+# 5. Запустить из GHCR
+docker compose -f docker-compose.ghcr.yml up -d
+
+# 6. Миграции БД
+docker compose -f docker-compose.ghcr.yml exec backend npm run migrate
+
+# 7. Проверка
+curl http://localhost:3000/health
 ```
 
-### 2. Клонирование репозитория
+### Способ 2: Из репозитория (сборка локально)
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/iit-gitlab-scout.git
 cd iit-gitlab-scout
+
+cp .env.example .env
+cp backend/.env.example backend/.env
+# Заполнить ключи
+
+docker compose up -d
+docker compose exec backend npm run migrate
+```
+
+### Настройка reverse proxy (nginx)
+
+```nginx
+server {
+    listen 80;
+    server_name gitlab-scout.your-domain.com;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /api/ {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+### Автозапуск (systemd)
+
+```bash
+sudo tee /etc/systemd/system/gitlab-scout.service <<EOF
+[Unit]
+Description=GitLab Scout
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/gitlab-scout
+ExecStart=/usr/bin/docker compose -f docker-compose.ghcr.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.ghcr.yml down
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl enable gitlab-scout
+sudo systemctl start gitlab-scout
 ```
 
 ### 3. Настройка окружения
