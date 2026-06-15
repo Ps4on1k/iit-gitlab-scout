@@ -19,7 +19,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
       - run: cd backend && npm ci
       - run: cd frontend && npm ci
       - run: cd backend && npx tsc --noEmit
@@ -53,7 +52,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
       - run: cd backend && npm ci
       - run: cd backend && npm run migrate
       - run: cd backend && npm test
@@ -106,8 +104,3 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ steps.meta.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Output image tags
-        run: |
-          echo "Backend: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-backend:${{ steps.meta.outputs.version }}"
-          echo "Frontend: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ steps.meta.outputs.version }}"
