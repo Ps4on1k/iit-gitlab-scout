@@ -100,12 +100,3 @@ jobs:
           tags: ${{ env.REGISTRY }}/${{ steps.repo.outputs.name }}-frontend:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-      - name: Build and push frontend
-        uses: docker/build-push-action@v6
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-frontend:${{ steps.meta.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
