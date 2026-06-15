@@ -28,7 +28,10 @@ dev:
 	docker compose up --build
 
 migrate:
-	cd backend && npm run migrate
+	docker compose exec backend npm run migrate
 
 migrate-down:
-	cd backend && npm run migrate:down
+	docker compose exec backend npm run migrate:down
+
+migrate:create:
+	docker compose exec backend npm run migrate:create $(name)
