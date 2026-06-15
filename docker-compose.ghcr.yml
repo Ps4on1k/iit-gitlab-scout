@@ -17,7 +17,7 @@ services:
       retries: 5
 
   backend:
-    image: ghcr.io/YOUR_USERNAME/iit-gitlab-scout-backend:latest
+    image: ghcr.io/ps4on1k/iit-gitlab-scout-backend:latest
     ports:
       - "3000:3000"
     env_file:
@@ -33,7 +33,7 @@ services:
       start_period: 60s
 
   frontend:
-    image: ghcr.io/YOUR_USERNAME/iit-gitlab-scout-frontend:latest
+    image: ghcr.io/ps4on1k/iit-gitlab-scout-frontend:latest
     ports:
       - "8080:80"
     depends_on:
