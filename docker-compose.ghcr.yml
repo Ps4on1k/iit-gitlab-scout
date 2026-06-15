@@ -19,7 +19,7 @@ services:
   backend:
     image: ghcr.io/ps4on1k/iit-gitlab-scout-backend:latest
     ports:
-      - "3000:3000"
+      - "3030:3000"
     env_file:
       - .env
     depends_on:

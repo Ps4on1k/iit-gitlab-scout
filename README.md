@@ -117,7 +117,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3030;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }
@@ -187,7 +187,7 @@ docker compose exec backend npm run migrate
 
 ```bash
 # Healthcheck
-curl http://localhost:3000/health
+curl http://localhost:3030/health
 
 # Открыть в браузере
 open http://YOUR_VM_IP
@@ -209,7 +209,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:3030;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
     }

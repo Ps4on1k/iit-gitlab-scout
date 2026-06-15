@@ -16,7 +16,7 @@ services:
     image: ${BACKEND_IMAGE:-gitlab-scout-backend}
     build: ./backend
     ports:
-      - "3000:3000"
+      - "3030:3000"
     env_file:
       - .env
     depends_on:
