@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ConfigProvider, Layout, Menu, Button, theme, Typography } from "antd";
 import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined } from "@ant-design/icons";
 import { LoginPage } from "./components/LoginPage";
+import { Dashboard } from "./pages/Dashboard";
 import { AdminPanel } from "./components/AdminPanel";
 import { ContributorDashboard } from "./components/contributors/ContributorDashboard";
 import { StackDashboard } from "./components/stack/StackDashboard";
@@ -12,6 +13,22 @@ import { getMe, clearToken } from "./api/client";
 import type { User } from "./types";
 
 const { Header, Content } = Layout;
+
+function Logo() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Git branch icon */}
+      <circle cx="12" cy="12" r="4" fill="#fff" opacity="0.9"/>
+      <circle cx="12" cy="26" r="4" fill="#fff" opacity="0.9"/>
+      <circle cx="24" cy="19" r="4" fill="#fff" opacity="0.9"/>
+      <path d="M12 16v6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
+      <path d="M12 12c0-4 6-6 12-4" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.8"/>
+      {/* Magnifying glass */}
+      <circle cx="26" cy="26" r="6" stroke="#fff" strokeWidth="2" fill="none" opacity="0.85"/>
+      <line x1="30.5" y1="30.5" x2="34" y2="34" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" opacity="0.85"/>
+    </svg>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -47,7 +64,11 @@ export default function App() {
     <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm }}>
       <Layout style={{ minHeight: "100vh" }}>
         <Header style={{ display: "flex", alignItems: "center", padding: "0 24px" }}>
-          <div style={{ color: "#fff", fontWeight: "bold", fontSize: 18, marginRight: 32 }}>GitLab Scout</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
+            <Logo />
+            <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v1.0.0</span>
+          </div>
           <Menu
             theme="dark"
             mode="horizontal"
