@@ -13,11 +13,9 @@ export function ProjectLabel({ label, tag, description, style }: ProjectLabelPro
     <span style={style}>
       {label}
       {tag && <span style={{ color: "#999", fontSize: 12, marginLeft: 6 }}>[{tag}]</span>}
-      {description && (
-        <Popover content={<div style={{ maxWidth: 300, whiteSpace: "pre-wrap" }}>{description}</div>} trigger="click">
-          <InfoCircleOutlined style={{ color: "#999", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
-        </Popover>
-      )}
+      <Popover content={<div style={{ maxWidth: 300, whiteSpace: "pre-wrap" }}>{description || "Нет описания"}</div>} trigger="click">
+        <InfoCircleOutlined style={{ color: "#999", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
+      </Popover>
     </span>
   );
 }
