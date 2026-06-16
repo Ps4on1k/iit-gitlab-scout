@@ -277,6 +277,19 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
     params
   );
 
+  // Load contributor directory for grouping
+  const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+  const emailToName: Record<string, string> = {};
+  const nameToFirstEmail: Record<string, string> = {};
+  for (const row of dirResult.rows) {
+    for (const email of row.emails) {
+      emailToName[email] = row.display_name;
+      if (!nameToFirstEmail[row.display_name]) {
+        nameToFirstEmail[row.display_name] = email;
+      }
+    }
+  }
+
   const byProject: Record<string, Record<string, number>> = {};
   const byContributor: Record<string, Record<string, number>> = {};
   const projectContributors: Record<string, Set<string>> = {};
@@ -286,12 +299,13 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
     if (!byProject[row.project_path]) byProject[row.project_path] = {};
     byProject[row.project_path][row.day] = (byProject[row.project_path][row.day] || 0) + row.cnt;
 
-    if (!projectContributors[row.project_path]) projectContributors[row.project_path] = new Set();
-    projectContributors[row.project_path].add(row.author_email);
+    const displayName = emailToName[row.author_email] || row.author_email;
+    const primaryEmail = nameToFirstEmail[displayName] || row.author_email;
 
-    const contributorLabel = row.author_name
-      ? `${row.author_email} (${row.author_name})`
-      : row.author_email;
+    if (!projectContributors[row.project_path]) projectContributors[row.project_path] = new Set();
+    projectContributors[row.project_path].add(displayName);
+
+    const contributorLabel = `${primaryEmail} (${displayName})`;
 
     if (!byProjectContributor[row.project_path]) byProjectContributor[row.project_path] = {};
     if (!byProjectContributor[row.project_path][contributorLabel]) byProjectContributor[row.project_path][contributorLabel] = {};
