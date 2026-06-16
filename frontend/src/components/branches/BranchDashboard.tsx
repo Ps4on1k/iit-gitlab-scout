@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
-import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Empty, Typography } from "antd";
+import { useState, useEffect, useMemo } from "react";
+import { Card, Row, Col, Statistic, Select, Button, Tag, message } from "antd";
 import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
+
+type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author";
 
 export function BranchDashboard() {
   const [loading, setLoading] = useState(false);
@@ -13,8 +15,10 @@ export function BranchDashboard() {
   const [summary, setSummary] = useState<BranchSummary | null>(null);
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
+  const [sortKey, setSortKey] = useState<SortKey>("last_commit_date");
+  const [sortAsc, setSortAsc] = useState(false);
 
-  useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); }); }, []);
+  useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data as ProjectConfig[]); }); }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -30,6 +34,28 @@ export function BranchDashboard() {
 
   useEffect(() => { loadData(); }, [selectedProjectIds, statusFilter]);
 
+  const sorted = useMemo(() => {
+    return [...branches].sort((a: any, b: any) => {
+      let aVal: any, bVal: any;
+      if (sortKey === "status") {
+        aVal = a.merged ? "merged" : a.default ? "default" : a.protected ? "protected" : "active";
+        bVal = b.merged ? "merged" : b.default ? "default" : b.protected ? "protected" : "active";
+      } else {
+        aVal = a[sortKey] || "";
+        bVal = b[sortKey] || "";
+      }
+      if (typeof aVal === "string") return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      return sortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
+    });
+  }, [branches, sortKey, sortAsc]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortAsc(!sortAsc);
+    else { setSortKey(key); setSortAsc(false); }
+  };
+
+  const arrow = (key: SortKey) => sortKey === key ? (sortAsc ? " ↑" : " ↓") : " ↕";
+
   const handleCollect = async () => {
     setCollecting(true);
     try {
@@ -43,24 +69,25 @@ export function BranchDashboard() {
     } finally { setCollecting(false); }
   };
 
-  const columns = [
-    { title: "Проект", dataIndex: "project_label", key: "project",
-      render: (_: string, r: Branch) => <div><span>{r.project_label}</span>{r.project_tag && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tag}</Tag>}</div> },
-    { title: "Ветка", dataIndex: "name", key: "name", render: (v: string) => <Text code>{v}</Text> },
-    { title: "Статус", key: "status", render: (_: any, r: Branch) => (
-      r.merged ? <Tag color="green">merged</Tag> : r.default ? <Tag color="blue">default</Tag> : r.protected ? <Tag color="orange">protected</Tag> : <Tag>active</Tag>
-    )},
-    { title: "Последний коммит", dataIndex: "last_commit_date", key: "last",
-      render: (v: string | null) => v ? new Date(v).toLocaleDateString() : "—" },
-    { title: "Автор", dataIndex: "last_commit_author", key: "author" },
-  ];
+  const thStyle: React.CSSProperties = {
+    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    color: "white", padding: "15px 12px", textAlign: "left",
+    fontWeight: 600, cursor: "pointer", userSelect: "none", fontSize: 13,
+  };
+
+  const tdStyle: React.CSSProperties = {
+    padding: "12px 12px", borderBottom: "1px solid #e0e0e0", fontSize: 13,
+  };
 
   return (
     <div>
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
-          style={{ minWidth: 300 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
+          style={{ minWidth: 300, maxWidth: 500 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
           options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
+          tagRender={({ label, closable, onClose }) => (
+            <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
+          )}
           maxTagCount="responsive" />
         <Select placeholder="Статус" allowClear style={{ width: 140 }} value={statusFilter} onChange={setStatusFilter}
           options={[{ value: "active", label: "Active" }, { value: "stale", label: "Stale (>90d)" }, { value: "merged", label: "Merged" }]} />
@@ -77,10 +104,32 @@ export function BranchDashboard() {
         </Row>
       )}
 
-      <Table columns={columns} dataSource={branches} rowKey="id" loading={loading} size="small"
-        pagination={{ pageSize: 20, showSizeChanger: true }} scroll={{ x: 800 }} />
+      <div style={{ overflowX: "auto", background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={thStyle} onClick={() => handleSort("project_label")}>Проект{arrow("project_label")}</th>
+              <th style={thStyle} onClick={() => handleSort("name")}>Ветка{arrow("name")}</th>
+              <th style={thStyle} onClick={() => handleSort("status")}>Статус{arrow("status")}</th>
+              <th style={thStyle} onClick={() => handleSort("last_commit_date")}>Последний коммит{arrow("last_commit_date")}</th>
+              <th style={thStyle} onClick={() => handleSort("last_commit_author")}>Автор{arrow("last_commit_author")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((r: any) => (
+              <tr key={r.id} onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
+                <td style={tdStyle}>{r.project_label}{r.project_tag && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tag}</Tag>}</td>
+                <td style={tdStyle}><code>{r.name}</code></td>
+                <td style={tdStyle}>
+                  {r.merged ? <Tag color="green">merged</Tag> : r.default ? <Tag color="blue">default</Tag> : r.protected ? <Tag color="orange">protected</Tag> : <Tag>active</Tag>}
+                </td>
+                <td style={tdStyle}>{r.last_commit_date ? new Date(r.last_commit_date).toLocaleDateString() : "—"}</td>
+                <td style={tdStyle}>{r.last_commit_author}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
-
-const { Text } = Typography;
