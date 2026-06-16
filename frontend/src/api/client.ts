@@ -1,4 +1,5 @@
 import type { ApiResponse, AuthResponse, User, ProjectConfig, BatchStatsResponse, DbContributor, CollectResult, ContributorMetrics, HeatmapData, ContributorFilters, AppUser } from "../types";
+import type { Branch, BranchSummary, Issue, IssueSummary, DependencyAudit, DependencySummary } from "../types/analytics";
 import { getCached, setCache, clearCache } from "../utils/cache";
 
 const BASE_URL = "/api";
@@ -146,4 +147,50 @@ export async function deleteUser(id: number): Promise<ApiResponse<{ deleted: boo
   const result = await fetchJson<{ deleted: boolean }>(`/v1/users/${id}`, { method: "DELETE" });
   if (result.ok) clearCache("users");
   return result;
+}
+
+function buildAnalyticsParams(projectIds?: number[], tag?: string): string {
+  const params = new URLSearchParams();
+  if (projectIds && projectIds.length > 0) params.set("project_ids", projectIds.join(","));
+  if (tag) params.set("tag", tag);
+  return params.toString();
+}
+
+export async function collectBranches(projectId: number): Promise<ApiResponse<{ total: number; active: number; stale: number; merged: number }>> {
+  return fetchJson("/v1/branches/collect", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
+}
+
+export async function fetchBranches(projectIds?: number[], tag?: string, status?: string): Promise<ApiResponse<{ branches: Branch[]; summary: BranchSummary }>> {
+  const parts: string[] = [];
+  if (projectIds && projectIds.length > 0) parts.push(`project_ids=${projectIds.join(",")}`);
+  if (tag) parts.push(`tag=${tag}`);
+  if (status) parts.push(`status=${status}`);
+  const qs = parts.length > 0 ? `?${parts.join("&")}` : "";
+  return fetchJson<{ branches: Branch[]; summary: BranchSummary }>(`/v1/branches${qs}`);
+}
+
+export async function collectIssues(projectId: number): Promise<ApiResponse<{ total: number; opened: number; closed: number }>> {
+  return fetchJson("/v1/issues/collect", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
+}
+
+export async function fetchIssues(projectIds?: number[], tag?: string, state?: string): Promise<ApiResponse<{ issues: Issue[]; summary: IssueSummary }>> {
+  const parts: string[] = [];
+  if (projectIds && projectIds.length > 0) parts.push(`project_ids=${projectIds.join(",")}`);
+  if (tag) parts.push(`tag=${tag}`);
+  if (state) parts.push(`state=${state}`);
+  const qs = parts.length > 0 ? `?${parts.join("&")}` : "";
+  return fetchJson(`/v1/issues${qs}`);
+}
+
+export async function collectDependencies(projectId: number): Promise<ApiResponse<{ total: number; outdated: number }>> {
+  return fetchJson("/v1/dependencies/collect", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
+}
+
+export async function fetchDependencies(projectIds?: number[], tag?: string, source?: string): Promise<ApiResponse<{ dependencies: DependencyAudit[]; summary: DependencySummary }>> {
+  const parts: string[] = [];
+  if (projectIds && projectIds.length > 0) parts.push(`project_ids=${projectIds.join(",")}`);
+  if (tag) parts.push(`tag=${tag}`);
+  if (source) parts.push(`source=${source}`);
+  const qs = parts.length > 0 ? `?${parts.join("&")}` : "";
+  return fetchJson(`/v1/dependencies${qs}`);
 }

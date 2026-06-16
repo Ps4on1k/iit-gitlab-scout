@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import { ConfigProvider, Layout, Menu, Button, theme, Typography } from "antd";
-import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, BugOutlined, DeploymentUnitOutlined } from "@ant-design/icons";
 import { LoginPage } from "./components/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { AdminPanel } from "./components/AdminPanel";
 import { ContributorDashboard } from "./components/contributors/ContributorDashboard";
 import { StackDashboard } from "./components/stack/StackDashboard";
 import { ActivityDashboard } from "./components/activity/ActivityDashboard";
+import { BranchDashboard } from "./components/branches/BranchDashboard";
+import { IssueDashboard } from "./components/issues/IssueDashboard";
+import { DependencyDashboard } from "./components/dependencies/DependencyDashboard";
 import { UserManagement } from "./components/UserManagement";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { getMe, clearToken } from "./api/client";
@@ -33,7 +36,7 @@ function Logo() {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"stack" | "activity" | "contributors" | "settings">("stack");
+  const [tab, setTab] = useState<"stack" | "activity" | "contributors" | "branches" | "issues" | "dependencies" | "settings">("stack");
 
   useEffect(() => {
     getMe().then((res) => {
@@ -54,6 +57,9 @@ export default function App() {
   const menuItems = [
     { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
+    { key: "branches", icon: <BranchesOutlined />, label: "Ветки" },
+    { key: "issues", icon: <BugOutlined />, label: "Задачи" },
+    { key: "dependencies", icon: <DeploymentUnitOutlined />, label: "Зависимости" },
     { key: "contributors", icon: <TeamOutlined />, label: "Контрибьюторы" },
     ...(user.role === "admin" ? [
       { key: "settings", icon: <SettingOutlined />, label: "Настройки" },
@@ -87,6 +93,9 @@ export default function App() {
         <Content style={{ padding: 24, background: "#f5f5f5" }}>
           {tab === "stack" && <StackDashboard />}
           {tab === "activity" && <ActivityDashboard />}
+          {tab === "branches" && <BranchDashboard />}
+          {tab === "issues" && <IssueDashboard />}
+          {tab === "dependencies" && <DependencyDashboard />}
           {tab === "contributors" && <ContributorDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
