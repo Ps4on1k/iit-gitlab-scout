@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { Select, Button, message, Tag, Card, Row, Col, Statistic, Table, Empty, Spin } from "antd";
 import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchProjects } from "../../api/client";
+import { ProjectLabel } from "../common/ProjectLabel";
 import { collectStack, fetchLanguageSummary, fetchLanguages } from "../../api/stack-client";
 import { getTagColor } from "../../utils/tagColors";
 import type { ProjectConfig } from "../../types";
@@ -170,6 +171,13 @@ export function StackDashboard({ userRole }: Props) {
 function ProjectLanguageDetails({ filters }: { filters: StackFilters }) {
   const [loading, setLoading] = useState(false);
   const [languages, setLanguages] = useState<any[]>([]);
+  const [projects, setProjects] = useState<ProjectConfig[]>([]);
+
+  useEffect(() => {
+    import("../../api/client").then(({ fetchProjects }) =>
+      fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); })
+    );
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -194,6 +202,12 @@ function ProjectLanguageDetails({ filters }: { filters: StackFilters }) {
     return Array.from(map.values());
   }, [languages]);
 
+  const projectMap = useMemo(() => {
+    const m = new Map<string, ProjectConfig>();
+    for (const p of projects) m.set(p.label, p);
+    return m;
+  }, [projects]);
+
   return (
     <Card title="Языки по проектам" style={{ marginTop: 16 }}>
       {loading ? <Spin /> : projectStats.length === 0 ? <Empty description="Нет данных" /> : (
@@ -202,7 +216,7 @@ function ProjectLanguageDetails({ filters }: { filters: StackFilters }) {
             <div key={proj.path} style={{ marginBottom: 16, padding: "12px 0", borderBottom: "1px solid #f0f0f0" }}>
               <div style={{ marginBottom: 6 }}>
                 {proj.tag && <Tag style={{ background: getTagColor(proj.tag).bg, color: getTagColor(proj.tag).text, border: "none", marginRight: 6 }}>{proj.tag}</Tag>}
-                <span style={{ fontWeight: 600, fontSize: 18 }}>{proj.label}</span>
+                <span style={{ fontWeight: 600, fontSize: 18 }}><ProjectLabel label={proj.label} description={projectMap.get(proj.label)?.description} /></span>
                 <span style={{ fontSize: 11, color: "#999", marginLeft: 8 }}>{proj.path}</span>
               </div>
               <div style={{ display: "flex", height: 20, borderRadius: 4, overflow: "hidden", border: "1px solid #e0e0e0" }}>

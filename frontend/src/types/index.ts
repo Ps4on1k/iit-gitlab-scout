@@ -71,6 +71,7 @@ export interface ProjectConfig {
   label: string;
   tag: string;
   base_url: string;
+  description?: string;
   created_at: string;
   updated_at: string;
 }

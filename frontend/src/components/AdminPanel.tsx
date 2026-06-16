@@ -36,7 +36,7 @@ export function AdminPanel() {
 
   const openEdit = (proj: ProjectConfig) => {
     setEditingId(proj.id);
-    form.setFieldsValue({ path: proj.path, label: proj.label, tag: proj.tag, base_url: proj.base_url });
+    form.setFieldsValue({ path: proj.path, label: proj.label, tag: proj.tag, base_url: proj.base_url, description: proj.description });
     setModalOpen(true);
   };
 
@@ -46,7 +46,7 @@ export function AdminPanel() {
 
     try {
       if (editingId) {
-        const payload: any = { path: values.path, label: values.label, tag: values.tag || "", base_url: values.base_url };
+        const payload: any = { path: values.path, label: values.label, tag: values.tag || "", base_url: values.base_url, description: values.description || "" };
         if (values.token) payload.token = values.token;
         const res = await updateProject(editingId, payload);
         if (!res.ok) { message.error(res.error!); return; }
@@ -178,6 +178,9 @@ export function AdminPanel() {
           </Form.Item>
           <Form.Item name="base_url" label="Base URL">
             <Input placeholder="https://gitlab.com/api/v4" autoComplete="off" />
+          </Form.Item>
+          <Form.Item name="description" label="Описание">
+            <Input.TextArea rows={3} placeholder="Описание проекта..." autoComplete="off" />
           </Form.Item>
         </Form>
       </Modal>

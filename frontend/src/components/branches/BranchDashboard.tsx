@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker } from "antd";
 import { DatabaseOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
+import { ProjectLabel } from "../common/ProjectLabel";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
 import type { Role } from "../../types";
@@ -60,6 +61,12 @@ export function BranchDashboard({ userRole }: Props) {
     const lower = searchText.toLowerCase();
     return branches.filter((b) => b.name.toLowerCase().includes(lower) || b.project_label.toLowerCase().includes(lower));
   }, [branches, searchText]);
+
+  const projectMap = useMemo(() => {
+    const m = new Map<string, ProjectConfig>();
+    for (const p of projects) m.set(p.label, p);
+    return m;
+  }, [projects]);
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a: any, b: any) => {
@@ -176,7 +183,7 @@ export function BranchDashboard({ userRole }: Props) {
               const daysAgo = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / 86400000) : null;
               return (
                 <tr key={r.id} onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
-                  <td style={tdStyle}>{r.project_label}{r.project_tag && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tag}</Tag>}</td>
+                  <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tag} description={projectMap.get(r.project_label)?.description} /></td>
                   <td style={tdStyle}><code>{r.name}</code></td>
                   <td style={tdStyle}>
                     {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : <Tag>активная</Tag>}
