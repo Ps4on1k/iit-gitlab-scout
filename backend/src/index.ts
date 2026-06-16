@@ -12,6 +12,7 @@ import { userManagementRoutes } from "./api/v1/users.js";
 import { stackAnalyticsRoutes } from "./api/v1/stack-analytics.js";
 import { activityRoutes } from "./api/v1/activity.js";
 import { schedulerRoutes } from "./api/v1/scheduler.js";
+import { startScheduler, stopScheduler } from "./services/scheduler.js";
 
 const env = getEnv();
 const app = Fastify({ logger: true });
@@ -33,6 +34,7 @@ await app.register(schedulerRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);
+  stopScheduler();
   await app.close();
   await closePool();
   process.exit(0);
@@ -43,6 +45,10 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 
 try {
   await app.listen({ port: env.PORT, host: env.HOST });
+  startScheduler((msg: string) => {
+    app.log.info(msg);
+    process.stderr.write(msg + "\n");
+  });
 } catch (err) {
   app.log.error(err);
   process.exit(1);

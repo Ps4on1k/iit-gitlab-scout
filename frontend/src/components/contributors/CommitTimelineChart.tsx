@@ -1,5 +1,5 @@
 import { useMemo, useRef, useEffect } from "react";
-import { Card } from "antd";
+import { Spin } from "antd";
 import Chart from "chart.js/auto";
 import type { DbContributor } from "../../types";
 
@@ -46,14 +46,14 @@ export function CommitTimelineChart({ data, loading, dateFrom, dateTo }: Props) 
   }, [dateFrom, dateTo, daysCount]);
 
   useEffect(() => {
-    if (!canvasRef.current) return;
+    if (!canvasRef.current || chartData.length === 0) return;
 
     if (chartRef.current) {
-      chartRef.current.destroy();
-      chartRef.current = null;
+      chartRef.current.data.labels = chartData.map(([d]) => d);
+      chartRef.current.data.datasets[0].data = chartData.map(([, v]) => v);
+      chartRef.current.update();
+      return;
     }
-
-    if (chartData.length === 0) return;
 
     const ctx = canvasRef.current.getContext("2d");
     if (!ctx) return;
@@ -62,46 +62,33 @@ export function CommitTimelineChart({ data, loading, dateFrom, dateTo }: Props) 
       type: "bar",
       data: {
         labels: chartData.map(([d]) => d),
-        datasets: [
-          {
-            label: "Коммиты",
-            data: chartData.map(([, v]) => v),
-            backgroundColor: "rgba(102, 126, 234, 0.8)",
-            borderColor: "rgba(102, 126, 234, 1)",
-            borderWidth: 1,
-            borderRadius: 3,
-          },
-        ],
+        datasets: [{
+          label: "Коммиты",
+          data: chartData.map(([, v]) => v),
+          backgroundColor: "rgba(102, 126, 234, 0.8)",
+          borderColor: "rgba(102, 126, 234, 1)",
+          borderWidth: 1,
+          borderRadius: 3,
+        }],
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        scales: {
-          y: { beginAtZero: true },
-          x: { ticks: { maxRotation: 45, font: { size: 10 } } },
-        },
-        plugins: {
-          legend: { position: "bottom" },
-        },
+        scales: { y: { beginAtZero: true }, x: { ticks: { maxRotation: 45, font: { size: 10 } } } },
+        plugins: { legend: { position: "bottom" } },
       },
     });
-
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy();
-        chartRef.current = null;
-      }
-    };
   }, [chartData]);
 
   return (
-    <Card loading={loading}>
+    <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
       <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>
         {chartTitle}
       </h3>
-      <div style={{ height: 300 }}>
+      <div style={{ position: "relative", height: 300 }}>
+        {loading && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, background: "rgba(255,255,255,0.7)" }}><Spin /></div>}
         <canvas ref={canvasRef} />
       </div>
-    </Card>
+    </div>
   );
 }

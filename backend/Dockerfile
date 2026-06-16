@@ -14,4 +14,6 @@ COPY --from=builder /app/dist ./dist
 COPY migrations/ ./migrations/
 ENV NODE_ENV=production
 EXPOSE 3000
-CMD ["sh", "-c", "npm run migrate && node dist/index.js"]
+COPY docker-entrypoint.sh ./
+RUN chmod +x docker-entrypoint.sh
+CMD ["./docker-entrypoint.sh"]
