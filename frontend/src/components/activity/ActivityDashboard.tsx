@@ -8,8 +8,11 @@ import { getTagColor } from "../../utils/tagColors";
 import { Line } from "@ant-design/charts";
 import type { ProjectConfig } from "../../types";
 import type { ActivityDay, ActivityFilters } from "../../types/activity";
+import type { Role } from "../../types";
 
 const { RangePicker } = DatePicker;
+
+interface Props { userRole: Role; }
 
 function getDefaultDateFrom(): string {
   const d = new Date();
@@ -17,7 +20,7 @@ function getDefaultDateFrom(): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function ActivityDashboard() {
+export function ActivityDashboard({ userRole }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -119,8 +122,8 @@ export function ActivityDashboard() {
         <Select value={groupBy} onChange={(v) => setGroupBy(v)} style={{ width: 120 }}
           options={[{ value: "day", label: "По дням" }, { value: "week", label: "По неделям" }]} />
         <Space>
-          <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
-            style={{ background: "#c47a5a", borderColor: "#c47a5a" }}>Собрать данные</Button>
+          {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
+            style={{ background: "#c47a5a", borderColor: "#c47a5a" }}>Собрать данные</Button>}
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         </Space>
       </div>

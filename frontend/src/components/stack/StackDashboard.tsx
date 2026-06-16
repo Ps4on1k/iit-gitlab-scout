@@ -6,8 +6,11 @@ import { collectStack, fetchLanguageSummary, fetchLanguages } from "../../api/st
 import { getTagColor } from "../../utils/tagColors";
 import type { ProjectConfig } from "../../types";
 import type { LanguageSummary, StackFilters } from "../../types/stack";
+import type { Role } from "../../types";
 
-const LANGUAGE_COLORS: Record<string, string> = {
+interface Props { userRole: Role; }
+
+const LANG_COLORS: Record<string, string> = {
   TypeScript: "#3178c6", JavaScript: "#f7df1e", Python: "#3572A5", Java: "#b07219",
   Go: "#00ADD8", Rust: "#dea584", Ruby: "#701516", PHP: "#4F5D95",
   Shell: "#89e051", CSS: "#563d7c", HTML: "#e34c26", Dart: "#00B4AB",
@@ -17,10 +20,10 @@ const LANGUAGE_COLORS: Record<string, string> = {
 };
 
 function getLangColor(lang: string): string {
-  return LANGUAGE_COLORS[lang] || `hsl(${(lang.charCodeAt(0) * 37) % 360}, 60%, 50%)`;
+  return LANG_COLORS[lang] || `hsl(${(lang.charCodeAt(0) * 37) % 360}, 60%, 50%)`;
 }
 
-export function StackDashboard() {
+export function StackDashboard({ userRole }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -125,8 +128,8 @@ export function StackDashboard() {
             }}
             maxTagCount="responsive" />
         )}
-        <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
-          style={{ background: "#13c2c2", borderColor: "#13c2c2" }}>Собрать стек</Button>
+        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
+          style={{ background: "#13c2c2", borderColor: "#13c2c2" }}>Собрать стек</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

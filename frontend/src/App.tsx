@@ -87,9 +87,9 @@ export default function App() {
           </Button>
         </Header>
         <Content style={{ padding: 24, background: "#f5f5f5" }}>
-          {tab === "stack" && <StackDashboard />}
-          {tab === "activity" && <ActivityDashboard />}
-          {tab === "branches" && <BranchDashboard />}
+          {tab === "stack" && <StackDashboard userRole={user.role} />}
+          {tab === "activity" && <ActivityDashboard userRole={user.role} />}
+          {tab === "branches" && user.role === "admin" && <BranchDashboard userRole={user.role} />}
           {tab === "contributors" && <ContributorDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>

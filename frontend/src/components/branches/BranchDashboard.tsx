@@ -4,10 +4,13 @@ import { DatabaseOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/ic
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
+import type { Role } from "../../types";
+
+interface Props { userRole: Role; }
 
 type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author";
 
-export function BranchDashboard() {
+export function BranchDashboard({ userRole }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -143,7 +146,7 @@ export function BranchDashboard() {
           value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
         />
-        <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>Собрать</Button>
+        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>Собрать</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 
