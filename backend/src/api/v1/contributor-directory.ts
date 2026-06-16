@@ -132,6 +132,15 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     }
   });
 
+  // Export YAML
+  app.get("/api/v1/contributor-directory/export", { preHandler: [requireAdmin] }, async () => {
+    const pool = getPool();
+    const result = await pool.query("SELECT display_name, emails FROM contributor_directory ORDER BY display_name");
+    const data = { contributors: result.rows.map((r: any) => ({ name: r.display_name, emails: r.emails })) };
+    const yaml = yamlLib.dump(data, { lineWidth: -1 });
+    return { ok: true, data: { yaml } };
+  });
+
   // Get mapping: email -> display_name
   app.get("/api/v1/contributor-directory/mapping", { preHandler: [requireAdmin] }, async () => {
     const pool = getPool();

@@ -214,3 +214,7 @@ export async function deleteContributorDirectoryEntry(id: number): Promise<ApiRe
 export async function importContributorDirectory(yaml: string): Promise<ApiResponse<{ imported: any[]; errors: any[]; total: number }>> {
   return fetchJson("/v1/contributor-directory/import", { method: "POST", body: JSON.stringify({ yaml }) });
 }
+
+export async function exportContributorDirectory(): Promise<ApiResponse<{ yaml: string }>> {
+  return fetchJson("/v1/contributor-directory/export");
+}
