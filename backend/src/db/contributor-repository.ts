@@ -140,9 +140,13 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
   // Load contributor directory for grouping
   const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
   const emailToName: Record<string, string> = {};
+  const nameToFirstEmail: Record<string, string> = {};
   for (const row of dirResult.rows) {
     for (const email of row.emails) {
       emailToName[email] = row.display_name;
+      if (!nameToFirstEmail[row.display_name]) {
+        nameToFirstEmail[row.display_name] = email;
+      }
     }
   }
 
@@ -169,6 +173,7 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     }
 
     const displayName = emailToName[row.author_email] || row.author_email;
+    const primaryEmail = nameToFirstEmail[displayName] || row.author_email;
     const existing = grouped.get(displayName);
 
     if (existing) {
@@ -176,13 +181,13 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
       existing.total_additions += Number(row.total_additions);
       existing.total_deletions += Number(row.total_deletions);
       existing.total_changes += Number(row.total_changes);
-      existing.emails.push(row.author_email);
+      if (!existing.emails.includes(row.author_email)) existing.emails.push(row.author_email);
       for (const [k, v] of Object.entries(merged)) {
         existing.frequency[k] = (existing.frequency[k] || 0) + v;
       }
     } else {
       grouped.set(displayName, {
-        author_email: row.author_email,
+        author_email: primaryEmail,
         author_name: row.author_name,
         total_commits: Number(row.total_commits),
         total_additions: Number(row.total_additions),
