@@ -178,6 +178,12 @@ export function ContributorDashboard({ userRole }: Props) {
     return map;
   }, [projects]);
 
+  const projectDescriptions = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const p of projects) { if (p.description) map[p.label] = p.description; }
+    return map;
+  }, [projects]);
+
   const handleCollect = async () => {
     if (effectiveProjectIds.length === 0) { message.warning("Выберите проект для сбора"); return; }
     setCollecting(true);
@@ -249,7 +255,7 @@ export function ContributorDashboard({ userRole }: Props) {
       </div>
 
       <div style={{ marginBottom: 30 }}>
-        <HeatmapChart byProject={filteredHeatmap.by_project} byContributor={filteredHeatmap.by_contributor} loading={loading} projectTags={projectTags} />
+        <HeatmapChart byProject={filteredHeatmap.by_project} byContributor={filteredHeatmap.by_contributor} loading={loading} projectTags={projectTags} projectDescriptions={projectDescriptions} />
       </div>
 
       <div style={{ background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: 30 }}>

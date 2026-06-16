@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useRef } from "react";
-import { Empty, Collapse, Tag } from "antd";
+import { Empty, Collapse, Tag, Popover } from "antd";
+import { InfoCircleOutlined } from "@ant-design/icons";
 import { getTagColor } from "../../utils/tagColors";
 
 interface HeatmapItem {
@@ -14,6 +15,7 @@ interface Props {
   byContributor: Record<string, Record<string, number>>;
   loading: boolean;
   projectTags?: Record<string, string>;
+  projectDescriptions?: Record<string, string>;
 }
 
 function getAllDates(data: Record<string, Record<string, number>>): string[] {
@@ -66,7 +68,7 @@ const CELL_SIZE = 14;
 const CELL_GAP = 3;
 const CELLS_PER_ROW = 30;
 
-function HeatmapGrid({ items, allDates }: { items: HeatmapItem[]; allDates: string[] }) {
+function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapItem[]; allDates: string[]; projectDescriptions?: Record<string, string> }) {
   const globalMax = useMemo(() => Math.max(1, ...items.flatMap((i) => i.data)), [items]);
 
   if (items.length === 0) return <p style={{ textAlign: "center", color: "#999" }}>Нет данных</p>;
@@ -84,6 +86,11 @@ function HeatmapGrid({ items, allDates }: { items: HeatmapItem[]; allDates: stri
               <div style={{ fontSize: 14, color: "#333", marginBottom: 4, fontWeight: 500 }} title={item.name}>
                 {item.tag && (() => { const c = getTagColor(item.tag); return <Tag style={{ marginRight: 6, fontSize: 11, background: c.bg, color: c.text, border: "none" }}>{item.tag}</Tag>; })()}
                 {item.name}
+                {projectDescriptions && (
+                  <Popover content={<div style={{ maxWidth: 300, whiteSpace: "pre-wrap" }}>{projectDescriptions[item.name] || "Нет описания"}</div>} trigger="click">
+                    <InfoCircleOutlined style={{ color: "#999", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
+                  </Popover>
+                )}
               </div>
               {Array.from({ length: Math.ceil(item.data.length / CELLS_PER_ROW) }, (_, rowIdx) => {
                 const start = rowIdx * CELLS_PER_ROW;
@@ -115,7 +122,7 @@ function HeatmapGrid({ items, allDates }: { items: HeatmapItem[]; allDates: stri
   );
 }
 
-export function HeatmapChart({ byProject, byContributor, loading, projectTags }: Props) {
+export function HeatmapChart({ byProject, byContributor, loading, projectTags, projectDescriptions }: Props) {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -190,7 +197,7 @@ export function HeatmapChart({ byProject, byContributor, loading, projectTags }:
           {
             key: "projects",
             label: <span style={{ fontSize: 14 }}>Проекты ({projectItems.length})</span>,
-            children: <HeatmapGrid items={projectItems} allDates={allDates} />,
+            children: <HeatmapGrid items={projectItems} allDates={allDates} projectDescriptions={projectDescriptions} />,
           },
           {
             key: "contributors",
