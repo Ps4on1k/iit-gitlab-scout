@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth } from "../../utils/auth.js";
+import { requireAuth, requireAdmin } from "../../utils/auth.js";
 import { collectStack } from "../../services/stack-collector.js";
 import { getLanguages, getLanguageSummary } from "../../db/stack-repository.js";
 
 export async function stackAnalyticsRoutes(app: FastifyInstance) {
   app.post<{
     Body: { project_id: number };
-  }>("/api/v1/stack/collect", { preHandler: [requireAuth] }, async (request, reply) => {
+  }>("/api/v1/stack/collect", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { project_id } = request.body;
     if (!project_id) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });

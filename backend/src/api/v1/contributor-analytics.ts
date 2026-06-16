@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth } from "../../utils/auth.js";
+import { requireAuth, requireAdmin } from "../../utils/auth.js";
 import { collectProject } from "../../services/contributor-collector.js";
 import {
   getContributors,
@@ -10,7 +10,7 @@ import {
 export async function contributorAnalyticsRoutes(app: FastifyInstance) {
   app.post<{
     Body: { project_id: number; date_from?: string; date_to?: string };
-  }>("/api/v1/contributor-analytics/collect", { preHandler: [requireAuth] }, async (request, reply) => {
+  }>("/api/v1/contributor-analytics/collect", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { project_id, date_from, date_to } = request.body;
     if (!project_id) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });

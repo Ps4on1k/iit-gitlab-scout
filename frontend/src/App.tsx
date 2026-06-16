@@ -66,7 +66,7 @@ export default function App() {
         <Content style={{ padding: 24, background: "#f5f5f5" }}>
           {tab === "stack" && <StackDashboard />}
           {tab === "activity" && <ActivityDashboard />}
-          {tab === "contributors" && <ContributorDashboard />}
+          {tab === "contributors" && <ContributorDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
       </Layout>

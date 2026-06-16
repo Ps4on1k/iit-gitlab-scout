@@ -14,7 +14,7 @@ import {
   collectContributors,
   fetchProjects,
 } from "../../api/client";
-import type { DbContributor, ContributorMetrics, HeatmapData, ProjectConfig, ContributorFilters } from "../../types";
+import type { DbContributor, ContributorMetrics, HeatmapData, ProjectConfig, ContributorFilters, Role } from "../../types";
 
 const { RangePicker } = DatePicker;
 
@@ -24,7 +24,11 @@ function getDefaultDateFrom(): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function ContributorDashboard() {
+interface Props {
+  userRole: Role;
+}
+
+export function ContributorDashboard({ userRole }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -220,7 +224,9 @@ export function ContributorDashboard() {
         )}
         <RangePicker defaultValue={[dayjs().subtract(90, "day"), dayjs()]} onChange={(dates) => { setDateFrom(dates?.[0]?.format("YYYY-MM-DD")); setDateTo(dates?.[1]?.format("YYYY-MM-DD")); }} />
         <Space>
-          <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea", borderColor: "#667eea" }}>Собрать данные</Button>
+          {userRole === "admin" && (
+            <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea", borderColor: "#667eea" }}>Собрать данные</Button>
+          )}
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         </Space>
       </div>

@@ -1,12 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth } from "../../utils/auth.js";
+import { requireAuth, requireAdmin } from "../../utils/auth.js";
 import { collectActivity } from "../../services/activity-collector.js";
 import { getActivity } from "../../db/activity-repository.js";
 
 export async function activityRoutes(app: FastifyInstance) {
   app.post<{
     Body: { project_id: number; date_from?: string; date_to?: string };
-  }>("/api/v1/activity/collect", { preHandler: [requireAuth] }, async (request, reply) => {
+  }>("/api/v1/activity/collect", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { project_id, date_from, date_to } = request.body;
     if (!project_id) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });
