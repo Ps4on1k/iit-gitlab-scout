@@ -137,9 +137,26 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     params
   );
 
+  // Load contributor directory for grouping
+  const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+  const emailToName: Record<string, string> = {};
+  for (const row of dirResult.rows) {
+    for (const email of row.emails) {
+      emailToName[email] = row.display_name;
+    }
+  }
+
+  // Group by directory display_name (or email if no mapping)
+  const grouped = new Map<string, {
+    author_email: string; author_name: string;
+    total_commits: number; total_additions: number; total_deletions: number; total_changes: number;
+    first_commit_date: string; last_commit_date: string;
+    frequency: Record<string, number>;
+    emails: string[];
+  }>();
+
   // Merge frequency from all project rows per email
-  const rows = result.rows;
-  for (const row of rows) {
+  for (const row of result.rows) {
     const freqResult = await pool.query(
       `SELECT frequency FROM contributor_profiles WHERE author_email = $1 ${filters.project_id ? "AND project_id = " + filters.project_id : ""}`,
       [row.author_email]
@@ -150,10 +167,41 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
         merged[k] = (merged[k] || 0) + Number(v);
       }
     }
-    row.frequency = merged;
+
+    const displayName = emailToName[row.author_email] || row.author_email;
+    const existing = grouped.get(displayName);
+
+    if (existing) {
+      existing.total_commits += Number(row.total_commits);
+      existing.total_additions += Number(row.total_additions);
+      existing.total_deletions += Number(row.total_deletions);
+      existing.total_changes += Number(row.total_changes);
+      existing.emails.push(row.author_email);
+      for (const [k, v] of Object.entries(merged)) {
+        existing.frequency[k] = (existing.frequency[k] || 0) + v;
+      }
+    } else {
+      grouped.set(displayName, {
+        author_email: row.author_email,
+        author_name: row.author_name,
+        total_commits: Number(row.total_commits),
+        total_additions: Number(row.total_additions),
+        total_deletions: Number(row.total_deletions),
+        total_changes: Number(row.total_changes),
+        first_commit_date: row.first_commit_date,
+        last_commit_date: row.last_commit_date,
+        frequency: merged,
+        emails: [row.author_email],
+      });
+    }
   }
 
-  return rows;
+  return Array.from(grouped.values()).map((g, i) => ({
+    id: i,
+    project_id: 0,
+    ...g,
+    updated_at: new Date().toISOString(),
+  })).sort((a, b) => b.total_changes - a.total_changes);
 }
 
 export async function getCommitsForProject(
