@@ -194,3 +194,23 @@ export async function fetchDependencies(projectIds?: number[], tag?: string, sou
   const qs = parts.length > 0 ? `?${parts.join("&")}` : "";
   return fetchJson(`/v1/dependencies${qs}`);
 }
+
+export async function fetchContributorDirectory(): Promise<ApiResponse<{ id: number; display_name: string; emails: string[] }[]>> {
+  return fetchJson("/v1/contributor-directory");
+}
+
+export async function createContributorDirectoryEntry(data: { display_name: string; emails: string[] }): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/contributor-directory", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateContributorDirectoryEntry(id: number, data: { display_name?: string; emails?: string[] }): Promise<ApiResponse<any>> {
+  return fetchJson(`/v1/contributor-directory/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function deleteContributorDirectoryEntry(id: number): Promise<ApiResponse<{ deleted: boolean }>> {
+  return fetchJson(`/v1/contributor-directory/${id}`, { method: "DELETE" });
+}
+
+export async function importContributorDirectory(yaml: string): Promise<ApiResponse<{ imported: any[]; errors: any[]; total: number }>> {
+  return fetchJson("/v1/contributor-directory/import", { method: "POST", body: JSON.stringify({ yaml }) });
+}

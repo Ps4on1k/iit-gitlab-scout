@@ -15,6 +15,7 @@ import { schedulerRoutes } from "./api/v1/scheduler.js";
 import { branchRoutes } from "./api/v1/branches.js";
 import { issueRoutes } from "./api/v1/issues.js";
 import { dependencyAuditRoutes } from "./api/v1/dependency-audit.js";
+import { contributorDirectoryRoutes } from "./api/v1/contributor-directory.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 
 const env = getEnv();
@@ -37,6 +38,7 @@ await app.register(schedulerRoutes);
 await app.register(branchRoutes);
 await app.register(issueRoutes);
 await app.register(dependencyAuditRoutes);
+await app.register(contributorDirectoryRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
 import { Tabs } from "antd";
-import { ProjectOutlined, UserOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { ProjectOutlined, UserOutlined, ClockCircleOutlined, TeamOutlined } from "@ant-design/icons";
 import { AdminPanel } from "./AdminPanel";
 import { UserManagement } from "./UserManagement";
 import { SchedulerPanel } from "./SchedulerPanel";
+import { ContributorDirectoryPanel } from "./directory/ContributorDirectoryPanel";
 
 export function SettingsPanel() {
   return (
@@ -20,6 +20,11 @@ export function SettingsPanel() {
             key: "users",
             label: <span><UserOutlined /> Пользователи</span>,
             children: <UserManagement />,
+          },
+          {
+            key: "directory",
+            label: <span><TeamOutlined /> Контрибьюторы</span>,
+            children: <ContributorDirectoryPanel />,
           },
           {
             key: "scheduler",
