@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ConfigProvider, Layout, Menu, Button, theme, Typography } from "antd";
-import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, BarChartOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined } from "@ant-design/icons";
 import { LoginPage } from "./components/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { AdminPanel } from "./components/AdminPanel";
@@ -8,7 +8,6 @@ import { ContributorDashboard } from "./components/contributors/ContributorDashb
 import { StackDashboard } from "./components/stack/StackDashboard";
 import { ActivityDashboard } from "./components/activity/ActivityDashboard";
 import { BranchDashboard } from "./components/branches/BranchDashboard";
-import { AnalyticsDashboard } from "./components/analytics/AnalyticsDashboard";
 import { UserManagement } from "./components/UserManagement";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { getMe, clearToken } from "./api/client";
@@ -35,7 +34,7 @@ function Logo() {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"stack" | "activity" | "contributors" | "branches" | "analytics" | "settings">("stack");
+  const [tab, setTab] = useState<"stack" | "activity" | "contributors" | "branches" | "settings">("stack");
 
   useEffect(() => {
     getMe().then((res) => {
@@ -57,7 +56,6 @@ export default function App() {
     { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
     { key: "contributors", icon: <TeamOutlined />, label: "Контрибьюторы" },
-    { key: "analytics", icon: <BarChartOutlined />, label: "Аналитика" },
     ...(user.role === "admin" ? [
       { key: "branches", icon: <BranchesOutlined />, label: "Ветки" },
       { key: "settings", icon: <SettingOutlined />, label: "Настройки" },
@@ -93,7 +91,7 @@ export default function App() {
           {tab === "activity" && <ActivityDashboard userRole={user.role} />}
           {tab === "branches" && user.role === "admin" && <BranchDashboard userRole={user.role} />}
           {tab === "contributors" && <ContributorDashboard userRole={user.role} />}
-          {tab === "analytics" && <AnalyticsDashboard />}
+          {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
       </Layout>
     </ConfigProvider>
