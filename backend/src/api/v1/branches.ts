@@ -20,9 +20,9 @@ export async function branchRoutes(app: FastifyInstance) {
   });
 
   app.get<{
-    Querystring: { project_id?: string; project_ids?: string; tag?: string; status?: string };
+    Querystring: { project_id?: string; project_ids?: string; tag?: string; status?: string; search?: string; date_from?: string; date_to?: string };
   }>("/api/v1/branches", { preHandler: [requireAuth] }, async (request) => {
-    const { project_id, project_ids, tag, status } = request.query;
+    const { project_id, project_ids, tag, status, search, date_from, date_to } = request.query;
     const pool = getPool();
     const conditions: string[] = [];
     const params: any[] = [];
@@ -38,6 +38,18 @@ export async function branchRoutes(app: FastifyInstance) {
     if (tag) {
       conditions.push(`p.tag = $${idx++}`);
       params.push(tag);
+    }
+    if (search) {
+      conditions.push(`pb.name ILIKE $${idx++}`);
+      params.push(`%${search}%`);
+    }
+    if (date_from) {
+      conditions.push(`pb.last_commit_date >= $${idx++}`);
+      params.push(date_from);
+    }
+    if (date_to) {
+      conditions.push(`pb.last_commit_date <= $${idx++}`);
+      params.push(date_to);
     }
     if (status === "active") {
       conditions.push(`pb.merged = false`);
