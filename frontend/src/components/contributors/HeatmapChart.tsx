@@ -73,17 +73,25 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
   const containerRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(2);
 
-  useEffect(() => {
+  const measure = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width || el.clientWidth;
+    const width = el.clientWidth;
+    if (width > 0) {
       const estColWidth = 520;
       setCols(Math.max(1, Math.floor(width / estColWidth)));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
+    }
   }, []);
+
+  useEffect(() => {
+    measure();
+    const timer = setTimeout(measure, 100);
+    window.addEventListener("resize", measure);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", measure);
+    };
+  }, [measure, items.length]);
 
   if (items.length === 0) return <p style={{ textAlign: "center", color: "#999" }}>Нет данных</p>;
 
