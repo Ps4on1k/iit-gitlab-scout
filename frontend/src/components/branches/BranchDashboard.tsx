@@ -12,7 +12,7 @@ interface Props { userRole: Role; }
 type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author" | "days_ago" | "branch_age";
 
 function formatAge(days: number): string {
-  if (days < 1) return "сегодня";
+  if (days < 1) return "1 дн.";
   if (days === 1) return "1 дн.";
   if (days < 30) return `${days} дн.`;
   if (days < 365) return `${Math.floor(days / 30)} мес.`;
@@ -274,11 +274,11 @@ export function BranchDashboard({ userRole }: Props) {
                   </td>
                   <td style={tdStyle}>
                     <span style={{ color: getAgeColor(r.daysAgo) }}>
-                      {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "—"}
+                      {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "N/A"}
                     </span>
                   </td>
                   <td style={tdStyle}>
-                    {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "—"}
+                    {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "N/A"}
                   </td>
                   <td style={tdStyle}>{r.display_author}</td>
                 </tr>
