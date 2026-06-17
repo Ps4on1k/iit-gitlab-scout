@@ -180,7 +180,7 @@ export function ContributorDashboard({ userRole }: Props) {
 
   const projectDescriptions = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of projects) { if (p.description) map[p.label] = p.description; }
+    for (const p of projects) { if (p.description) { map[p.label] = p.description; map[p.path] = p.description; } }
     return map;
   }, [projects]);
 
