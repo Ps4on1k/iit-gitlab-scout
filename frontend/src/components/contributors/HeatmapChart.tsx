@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef, useState, useCallback } from "react";
+import { useMemo, useEffect, useRef, useState } from "react";
 import { Empty, Collapse, Tag, Popover } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { getTagColor } from "../../utils/tagColors";
@@ -73,25 +73,30 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
   const containerRef = useRef<HTMLDivElement>(null);
   const [cols, setCols] = useState(2);
 
-  const measure = useCallback(() => {
+  useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const width = el.clientWidth;
-    if (width > 0) {
-      const estColWidth = 520;
-      setCols(Math.max(1, Math.floor(width / estColWidth)));
-    }
-  }, []);
 
-  useEffect(() => {
-    measure();
-    const timer = setTimeout(measure, 100);
-    window.addEventListener("resize", measure);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("resize", measure);
+    const calc = () => {
+      const w = el.clientWidth;
+      if (w > 0) setCols(Math.max(1, Math.floor(w / 520)));
     };
-  }, [measure, items.length]);
+
+    calc();
+    const t1 = setTimeout(calc, 200);
+    const t2 = setTimeout(calc, 500);
+
+    const ro = new ResizeObserver(() => calc());
+    ro.observe(el);
+    window.addEventListener("resize", calc);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      ro.disconnect();
+      window.removeEventListener("resize", calc);
+    };
+  }, [items.length]);
 
   if (items.length === 0) return <p style={{ textAlign: "center", color: "#999" }}>Нет данных</p>;
 
