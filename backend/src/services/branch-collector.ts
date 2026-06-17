@@ -9,7 +9,7 @@ interface GitLabBranch {
   protected: boolean;
   can_push?: boolean;
   commit?: {
-    committer_date: string;
+    committed_date: string;
     authored_date: string;
     author_name: string;
     author_email: string;
@@ -44,7 +44,7 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
   const staleThreshold = 90 * 24 * 60 * 60 * 1000;
 
   for (const branch of branches) {
-    const lastDate = branch.commit?.committer_date || null;
+    const lastDate = branch.commit?.committed_date || null;
     const isStale = lastDate ? (now.getTime() - new Date(lastDate).getTime()) > staleThreshold : true;
 
     if (branch.merged) merged++;
