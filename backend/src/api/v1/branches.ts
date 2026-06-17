@@ -75,12 +75,31 @@ export async function branchRoutes(app: FastifyInstance) {
     const active = result.rows.filter((r: any) => !r.merged && r.last_commit_date && new Date(r.last_commit_date).getTime() > Date.now() - 90 * 86400000).length;
     const stale = result.rows.filter((r: any) => !r.merged && (!r.last_commit_date || new Date(r.last_commit_date).getTime() <= Date.now() - 90 * 86400000)).length;
     const mergedCount = result.rows.filter((r: any) => r.merged).length;
+    const protectedCount = result.rows.filter((r: any) => r.protected).length;
+
+    const avgDaysSinceCommit = (() => {
+      const dates = result.rows.filter((r: any) => r.last_commit_date).map((r: any) => (Date.now() - new Date(r.last_commit_date).getTime()) / 86400000);
+      return dates.length > 0 ? Math.round(dates.reduce((s, v) => s + v, 0) / dates.length) : 0;
+    })();
+
+    const perProject = (() => {
+      const map = new Map<number, { label: string; tag: string; total: number; active: number; stale: number; merged: number }>();
+      for (const r of result.rows as any[]) {
+        let entry = map.get(r.project_id);
+        if (!entry) { entry = { label: r.project_label, tag: r.project_tag, total: 0, active: 0, stale: 0, merged: 0 }; map.set(r.project_id, entry); }
+        entry.total++;
+        if (r.merged) entry.merged++;
+        else if (r.last_commit_date && new Date(r.last_commit_date).getTime() > Date.now() - 90 * 86400000) entry.active++;
+        else entry.stale++;
+      }
+      return Array.from(map.entries()).map(([id, s]) => ({ project_id: id, ...s }));
+    })();
 
     return {
       ok: true,
       data: {
         branches: result.rows,
-        summary: { total, active, stale, merged: mergedCount },
+        summary: { total, active, stale, merged: mergedCount, protected: protectedCount, avgDaysSinceCommit, perProject },
       },
     };
   });

@@ -10,6 +10,20 @@ export interface Branch {
   protected: boolean;
   last_commit_date: string | null;
   last_commit_author: string;
+  last_commit_author_email: string;
+  last_commit_message: string;
+  first_commit_date: string | null;
+  can_push: boolean | null;
+}
+
+export interface BranchPerProject {
+  project_id: number;
+  label: string;
+  tag: string;
+  total: number;
+  active: number;
+  stale: number;
+  merged: number;
 }
 
 export interface BranchSummary {
@@ -17,6 +31,9 @@ export interface BranchSummary {
   active: number;
   stale: number;
   merged: number;
+  protected: number;
+  avgDaysSinceCommit: number;
+  perProject: BranchPerProject[];
 }
 
 export interface Issue {

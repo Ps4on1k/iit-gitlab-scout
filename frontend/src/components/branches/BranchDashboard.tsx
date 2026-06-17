@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker } from "antd";
-import { DatabaseOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker, Collapse } from "antd";
+import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
 import type { ProjectConfig } from "../../types";
@@ -9,7 +9,30 @@ import type { Role } from "../../types";
 
 interface Props { userRole: Role; }
 
-type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author";
+type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author" | "days_ago" | "branch_age";
+
+function formatAge(days: number): string {
+  if (days < 1) return "сегодня";
+  if (days === 1) return "1 дн.";
+  if (days < 30) return `${days} дн.`;
+  if (days < 365) return `${Math.floor(days / 30)} мес.`;
+  return `${(days / 365).toFixed(1)} г.`;
+}
+
+function getAgeColor(days: number): string {
+  if (days <= 30) return "#3f8600";
+  if (days <= 90) return "#d4b106";
+  if (days <= 180) return "#fa8c16";
+  return "#cf1322";
+}
+
+function getHealthColor(active: number, stale: number, total: number): string {
+  if (total === 0) return "#d9d9d9";
+  const staleRatio = stale / total;
+  if (staleRatio <= 0.2) return "#3f8600";
+  if (staleRatio <= 0.5) return "#d4b106";
+  return "#cf1322";
+}
 
 export function BranchDashboard({ userRole }: Props) {
   const [loading, setLoading] = useState(false);
@@ -22,8 +45,8 @@ export function BranchDashboard({ userRole }: Props) {
   const [searchText, setSearchText] = useState("");
   const [dateFrom, setDateFrom] = useState<string | undefined>();
   const [dateTo, setDateTo] = useState<string | undefined>();
-  const [sortKey, setSortKey] = useState<SortKey>("last_commit_date");
-  const [sortAsc, setSortAsc] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("days_ago");
+  const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
   const pageSize = 50;
 
@@ -32,21 +55,13 @@ export function BranchDashboard({ userRole }: Props) {
   const loadData = async () => {
     setLoading(true);
     try {
-      const params: any = {
-        project_ids: selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
-        status: statusFilter,
-        search: searchText || undefined,
-        date_from: dateFrom,
-        date_to: dateTo,
-      };
       const qs = new URLSearchParams();
-      if (params.project_ids) qs.set("project_ids", params.project_ids.join(","));
-      if (params.status) qs.set("status", params.status);
-      if (params.search) qs.set("search", params.search);
-      if (params.date_from) qs.set("date_from", params.date_from);
-      if (params.date_to) qs.set("date_to", params.date_to);
+      if (selectedProjectIds.length > 0) qs.set("project_ids", selectedProjectIds.join(","));
+      if (statusFilter) qs.set("status", statusFilter);
+      if (searchText) qs.set("search", searchText);
+      if (dateFrom) qs.set("date_from", dateFrom);
+      if (dateTo) qs.set("date_to", dateTo);
       const url = `/v1/branches${qs.toString() ? "?" + qs.toString() : ""}`;
-
       const token = localStorage.getItem("token");
       const res = await fetch(`/api${url}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
@@ -68,20 +83,28 @@ export function BranchDashboard({ userRole }: Props) {
     return m;
   }, [projects]);
 
+  const withMetrics = useMemo(() => {
+    return filtered.map((b) => {
+      const daysAgo = b.last_commit_date ? Math.floor((Date.now() - new Date(b.last_commit_date).getTime()) / 86400000) : 9999;
+      const branchAge = (b.first_commit_date && b.last_commit_date)
+        ? Math.floor((new Date(b.last_commit_date).getTime() - new Date(b.first_commit_date).getTime()) / 86400000)
+        : null;
+      const type = b.merged ? "merged" : b.default ? "default" : b.protected ? "protected" : (daysAgo > 90 ? "stale" : "active");
+      return { ...b, daysAgo, branchAge, type };
+    });
+  }, [filtered]);
+
   const sorted = useMemo(() => {
-    return [...filtered].sort((a: any, b: any) => {
+    return [...withMetrics].sort((a, b) => {
       let aVal: any, bVal: any;
-      if (sortKey === "status") {
-        aVal = a.merged ? "merged" : a.default ? "default" : a.protected ? "protected" : "active";
-        bVal = b.merged ? "merged" : b.default ? "default" : b.protected ? "protected" : "active";
-      } else {
-        aVal = a[sortKey] || "";
-        bVal = b[sortKey] || "";
-      }
+      if (sortKey === "status") { aVal = a.type; bVal = b.type; }
+      else if (sortKey === "days_ago") { aVal = a.daysAgo; bVal = b.daysAgo; }
+      else if (sortKey === "branch_age") { aVal = a.branchAge ?? -1; bVal = b.branchAge ?? -1; }
+      else { aVal = a[sortKey] || ""; bVal = b[sortKey] || ""; }
       if (typeof aVal === "string") return sortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       return sortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
     });
-  }, [filtered, sortKey, sortAsc]);
+  }, [withMetrics, sortKey, sortAsc]);
 
   const paged = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -92,7 +115,7 @@ export function BranchDashboard({ userRole }: Props) {
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(false); }
+    else { setSortKey(key); setSortAsc(key === "name" || key === "project_label" || key === "last_commit_author"); }
   };
 
   const arrow = (key: SortKey) => sortKey === key ? (sortAsc ? " ↑" : " ↓") : " ↕";
@@ -112,19 +135,19 @@ export function BranchDashboard({ userRole }: Props) {
 
   const thStyle: React.CSSProperties = {
     background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    color: "white", padding: "15px 12px", textAlign: "left",
-    fontWeight: 600, cursor: "pointer", userSelect: "none", fontSize: 13,
+    color: "white", padding: "12px 10px", textAlign: "left",
+    fontWeight: 600, cursor: "pointer", userSelect: "none", fontSize: 12, whiteSpace: "nowrap",
   };
 
   const tdStyle: React.CSSProperties = {
-    padding: "12px 12px", borderBottom: "1px solid #e0e0e0", fontSize: 13,
+    padding: "10px 10px", borderBottom: "1px solid #e0e0e0", fontSize: 13,
   };
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
       <div style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Ветки проектов <span style={{ fontSize: 14, background: "rgba(255,255,255,0.2)", padding: "2px 10px", borderRadius: 10, verticalAlign: "middle" }}>Бэта</span></h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Анализ веток: активные, заброшенные, замерженные</div>
+        <div style={{ opacity: 0.9, fontSize: 14 }}>Оценка состояния веток: активность, заброшенность, здоровье проектов</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
@@ -145,25 +168,71 @@ export function BranchDashboard({ userRole }: Props) {
           setDateFrom(dates?.[0]?.format("YYYY-MM-DD"));
           setDateTo(dates?.[1]?.format("YYYY-MM-DD"));
         }} />
-        <Input
-          placeholder="Поиск по ветке..."
-          prefix={<SearchOutlined />}
-          allowClear
-          style={{ width: 200 }}
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-        />
+        <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
         {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>Собрать</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 
       {summary && (
-        <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={6}><Card><Statistic title="Всего веток" value={summary.total} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Активные (<90д)" value={summary.active} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Заброшенные (>90д)" value={summary.stale} valueStyle={{ color: "#cf1322" }} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Замерженные" value={summary.merged} valueStyle={{ color: "#667eea" }} /></Card></Col>
-        </Row>
+        <>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={4}><Card><Statistic title="Всего" value={summary.total} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Активные" value={summary.active} valueStyle={{ color: "#3f8600" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({summary.total > 0 ? Math.round(summary.active / summary.total * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Заброшенные" value={summary.stale} valueStyle={{ color: "#cf1322" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({summary.total > 0 ? Math.round(summary.stale / summary.total * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Замерженные" value={summary.merged} valueStyle={{ color: "#667eea" }} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Защищённые" value={summary.protected} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Ср. дн. без коммита" value={summary.avgDaysSinceCommit} valueStyle={{ color: summary.avgDaysSinceCommit > 90 ? "#cf1322" : summary.avgDaysSinceCommit > 30 ? "#d4b106" : "#3f8600" }} suffix="дн." /></Card></Col>
+          </Row>
+
+          {summary.perProject.length > 0 && (
+            <Collapse
+              defaultActiveKey={[]}
+              style={{ marginBottom: 16 }}
+              items={[{
+                key: "per-project",
+                label: <span style={{ fontSize: 14 }}>Здоровье по проектам ({summary.perProject.length})</span>,
+                children: (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
+                    {summary.perProject.sort((a, b) => b.stale - a.stale).map((p) => {
+                      const healthColor = getHealthColor(p.active, p.stale, p.total - p.merged);
+                      const stalePct = (p.total - p.merged) > 0 ? Math.round(p.stale / (p.total - p.merged) * 100) : 0;
+                      return (
+                        <div key={p.project_id} style={{ padding: 12, border: `2px solid ${healthColor}`, borderRadius: 8, background: "#fafafa" }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>
+                            <ProjectLabel label={p.label} tag={p.tag} description={projectMap.get(p.label)?.description} />
+                          </div>
+                          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#666" }}>
+                            <span>Всего: <b>{p.total}</b></span>
+                            <span style={{ color: "#3f8600" }}>Актив: <b>{p.active}</b></span>
+                            <span style={{ color: "#cf1322" }}>Заброшен: <b>{p.stale}</b></span>
+                            <span style={{ color: "#667eea" }}>Замержен: <b>{p.merged}</b></span>
+                          </div>
+                          <div style={{ marginTop: 6 }}>
+                            <div style={{ height: 6, borderRadius: 3, background: "#e0e0e0", overflow: "hidden", display: "flex" }}>
+                              <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#3f8600" }} />
+                              <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#cf1322" }} />
+                              <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#667eea" }} />
+                            </div>
+                            {stalePct > 30 && (
+                              <div style={{ fontSize: 11, color: "#cf1322", marginTop: 4 }}>
+                                <WarningOutlined /> {stalePct}% веток заброшены — рекомендуется очистка
+                              </div>
+                            )}
+                            {stalePct <= 10 && (p.total - p.merged) > 0 && (
+                              <div style={{ fontSize: 11, color: "#3f8600", marginTop: 4 }}>
+                                <CheckCircleOutlined /> Хорошее состояние
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ),
+              }]}
+            />
+          )}
+        </>
       )}
 
       <div style={{ overflowX: "auto", background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
@@ -173,22 +242,30 @@ export function BranchDashboard({ userRole }: Props) {
               <th style={thStyle} onClick={() => handleSort("project_label")}>Проект{arrow("project_label")}</th>
               <th style={thStyle} onClick={() => handleSort("name")}>Ветка{arrow("name")}</th>
               <th style={thStyle} onClick={() => handleSort("status")}>Статус{arrow("status")}</th>
-              <th style={thStyle} onClick={() => handleSort("last_commit_date")}>Последний коммит{arrow("last_commit_date")}</th>
+              <th style={thStyle} onClick={() => handleSort("days_ago")}>Последний коммит{arrow("days_ago")}</th>
+              <th style={thStyle} onClick={() => handleSort("branch_age")}>Жизнь ветки{arrow("branch_age")}</th>
               <th style={thStyle} onClick={() => handleSort("last_commit_author")}>Автор{arrow("last_commit_author")}</th>
             </tr>
           </thead>
           <tbody>
-            {paged.map((r: any) => {
+            {paged.map((r) => {
               const lastDate = r.last_commit_date ? new Date(r.last_commit_date) : null;
-              const daysAgo = lastDate ? Math.floor((Date.now() - lastDate.getTime()) / 86400000) : null;
+              const rowBg = r.type === "stale" ? "#fff7e6" : r.type === "active" ? "#f6ffed" : "";
               return (
-                <tr key={r.id} onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
+                <tr key={r.id} style={{ background: rowBg }} onMouseEnter={(e) => { if (!rowBg) e.currentTarget.style.background = "#f8f9fa"; }} onMouseLeave={(e) => { if (!rowBg) e.currentTarget.style.background = rowBg; }}>
                   <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tag} description={projectMap.get(r.project_label)?.description} /></td>
-                  <td style={tdStyle}><code>{r.name}</code></td>
+                  <td style={tdStyle}><code style={{ fontSize: 12 }}>{r.name}</code></td>
                   <td style={tdStyle}>
-                    {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : <Tag>активная</Tag>}
+                    {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : r.daysAgo > 90 ? <Tag color="red">заброшена</Tag> : <Tag color="green">активная</Tag>}
                   </td>
-                  <td style={tdStyle}>{lastDate ? `${lastDate.toLocaleDateString()} (${daysAgo}д. назад)` : "—"}</td>
+                  <td style={tdStyle}>
+                    <span style={{ color: getAgeColor(r.daysAgo) }}>
+                      {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "—"}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "—"}
+                  </td>
                   <td style={tdStyle}>{r.last_commit_author}</td>
                 </tr>
               );
@@ -196,15 +273,29 @@ export function BranchDashboard({ userRole }: Props) {
           </tbody>
         </table>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid #f0f0f0" }}>
-          <span style={{ fontSize: 13, color: "#666" }}>
-            Показано {paged.length} из {filtered.length} веток
-          </span>
+          <span style={{ fontSize: 13, color: "#666" }}>Показано {paged.length} из {filtered.length} веток</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "#666" }}>Страница</span>
             <Select size="small" style={{ width: 80 }} value={page} onChange={setPage}
               options={Array.from({ length: Math.ceil(filtered.length / pageSize) }, (_, i) => ({ value: i + 1, label: `${i + 1}` }))} />
             <span style={{ fontSize: 13, color: "#666" }}>из {Math.ceil(filtered.length / pageSize)}</span>
           </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "16px 20px", marginTop: 16, background: "#fafafa", borderRadius: 12, border: "1px solid #f0f0f0" }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 10 }}>Легенда</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "#666" }}>
+          <div><b style={{ color: "#3f8600" }}>Активная</b> — ветка с коммитами за последние 90 дней, не замержена</div>
+          <div><b style={{ color: "#cf1322" }}>Заброшенная</b> — нет коммитов более 90 дней</div>
+          <div><b style={{ color: "#667eea" }}>Замержена</b> — ветка уже влита в основную</div>
+          <div><b style={{ color: "#333" }}>Основная</b> — дефолтная ветка проекта (main/master)</div>
+          <div><b style={{ color: "#fa8c16" }}>Защищена</b> — ветка с правилами защиты в GitLab</div>
+          <div><b style={{ color: "#333" }}>Последний коммит</b> — дата + сколько дней назад. Цвет: зелёный (&lt;30д), жёлтый (30-90д), красный (&gt;90д)</div>
+          <div><b style={{ color: "#333" }}>Жизнь ветки</b> — сколько дней существует ветка (от первого до последнего коммита)</div>
+          <div><b style={{ color: "#333" }}>Ср. дн. без коммита</b> — среднее количество дней с момента последнего коммита по всем веткам</div>
+          <div><b style={{ color: "#333" }}>Здоровье проекта</b> — % заброшенных веток. Зелёный (&lt;20%), жёлтый (20-50%), красный (&gt;50%)</div>
+          <div><b style={{ color: "#333" }}>Прогресс-бар</b> — показывает соотношение активных / заброшенных / замерженных веток</div>
         </div>
       </div>
     </div>

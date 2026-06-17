@@ -7,10 +7,17 @@ interface GitLabBranch {
   default: boolean;
   merged: boolean;
   protected: boolean;
-  commit?: { committer_date: string; author_name: string };
+  can_push?: boolean;
+  commit?: {
+    committer_date: string;
+    authored_date: string;
+    author_name: string;
+    author_email: string;
+    message: string;
+  };
 }
 
-export async function collectBranches(projectId: number): Promise<{ total: number; active: number; stale: number; merged: number }> {
+export async function collectBranches(projectId: number): Promise<{ total: number; active: number; stale: number; merged: number; protected: number; unprotected: number }> {
   const pool = getPool();
   const projResult = await pool.query(
     "SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1",
@@ -31,8 +38,10 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
   let active = 0;
   let stale = 0;
   let merged = 0;
+  let protectedCount = 0;
+  let unprotected = 0;
   const now = new Date();
-  const staleThreshold = 90 * 24 * 60 * 60 * 1000; // 90 days
+  const staleThreshold = 90 * 24 * 60 * 60 * 1000;
 
   for (const branch of branches) {
     const lastDate = branch.commit?.committer_date || null;
@@ -42,12 +51,22 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
     else if (isStale) stale++;
     else active++;
 
+    if (branch.protected) protectedCount++;
+    else unprotected++;
+
     await pool.query(
-      `INSERT INTO project_branches (project_id, name, "default", merged, protected, last_commit_date, last_commit_author)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [projectId, branch.name, branch.default, branch.merged, branch.protected, lastDate, branch.commit?.author_name || ""]
+      `INSERT INTO project_branches (project_id, name, "default", merged, protected, last_commit_date, last_commit_author, last_commit_author_email, last_commit_message, first_commit_date, can_push)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        projectId, branch.name, branch.default, branch.merged, branch.protected,
+        lastDate, branch.commit?.author_name || "",
+        branch.commit?.author_email || "",
+        branch.commit?.message?.slice(0, 500) || "",
+        branch.commit?.authored_date || null,
+        branch.can_push ?? null,
+      ]
     );
   }
 
-  return { total: branches.length, active, stale, merged };
+  return { total: branches.length, active, stale, merged, protected: protectedCount, unprotected };
 }
