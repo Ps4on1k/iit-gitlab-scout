@@ -82,7 +82,10 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
 
     const calc = () => {
       const w = el.clientWidth;
-      if (w > 0) setCols(Math.max(1, Math.floor(w / EST_COL_WIDTH)));
+      if (w > 0) {
+        const colWithGap = EST_COL_WIDTH + 24;
+        setCols(Math.max(1, Math.floor((w + 24) / colWithGap)));
+      }
     };
 
     calc();
@@ -107,7 +110,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
   items.forEach((item, i) => { columns[i % cols].push(item); });
 
   return (
-    <div ref={containerRef} style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 24 }}>
+    <div ref={containerRef} style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, ${EST_COL_WIDTH}px))`, gap: 24, justifyItems: "center", justifyContent: "center" }}>
       {columns.map((col, colIdx) => (
         <div key={colIdx}>
           {col.map((item) => (
