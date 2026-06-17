@@ -67,6 +67,9 @@ function getActivityLevel(count: number, globalMax: number) {
 const CELL_SIZE = 14;
 const CELL_GAP = 3;
 const CELLS_PER_ROW = 30;
+const DATE_LABEL_WIDTH = 65;
+const CELL_STRIDE = CELL_SIZE + CELL_GAP;
+const EST_COL_WIDTH = DATE_LABEL_WIDTH * 2 + CELLS_PER_ROW * CELL_STRIDE + 12;
 
 function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapItem[]; allDates: string[]; projectDescriptions?: Record<string, string> }) {
   const globalMax = useMemo(() => Math.max(1, ...items.flatMap((i) => i.data)), [items]);
@@ -79,7 +82,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
 
     const calc = () => {
       const w = el.clientWidth;
-      if (w > 0) setCols(Math.max(1, Math.floor(w / 520)));
+      if (w > 0) setCols(Math.max(1, Math.floor(w / EST_COL_WIDTH)));
     };
 
     calc();
@@ -109,7 +112,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
         <div key={colIdx}>
           {col.map((item) => (
             <div key={item.name} style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 14, color: "#333", marginBottom: 4, fontWeight: 500 }} title={item.name}>
+              <div style={{ fontSize: 14, color: "#333", marginBottom: 4, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.name}>
                 {item.tag && (() => { const c = getTagColor(item.tag); return <Tag style={{ marginRight: 6, fontSize: 11, background: c.bg, color: c.text, border: "none" }}>{item.tag}</Tag>; })()}
                 {item.name}
                 {projectDescriptions && (
