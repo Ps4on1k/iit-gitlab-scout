@@ -207,7 +207,11 @@ export function BranchDashboard({ userRole }: Props) {
                 label: <span style={{ fontSize: 14 }}>Здоровье по проектам ({summary.perProject.length})</span>,
                 children: (
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
-                    {summary.perProject.sort((a, b) => b.stale - a.stale).map((p) => {
+                    {summary.perProject.sort((a, b) => {
+                      const aNonMerged = (a.total - a.merged) || 1;
+                      const bNonMerged = (b.total - b.merged) || 1;
+                      return (b.stale / bNonMerged) - (a.stale / aNonMerged);
+                    }).map((p) => {
                       const healthColor = getHealthColor(p.active, p.stale, p.total - p.merged);
                       const stalePct = (p.total - p.merged) > 0 ? Math.round(p.stale / (p.total - p.merged) * 100) : 0;
                       return (
