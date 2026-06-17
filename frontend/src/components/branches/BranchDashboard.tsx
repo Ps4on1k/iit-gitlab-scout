@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker, Collapse, Spin, Empty } from "antd";
-import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined, RightOutlined, DownOutlined } from "@ant-design/icons";
-import { fetchBranches, collectBranches, fetchProjects, fetchBranchCommits } from "../../api/client";
+import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker, Collapse } from "antd";
+import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
@@ -49,9 +49,6 @@ export function BranchDashboard({ userRole }: Props) {
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
   const pageSize = 50;
-  const [expandedBranch, setExpandedBranch] = useState<string | null>(null);
-  const [branchCommits, setBranchCommits] = useState<any[]>([]);
-  const [loadingCommits, setLoadingCommits] = useState(false);
 
   useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data as ProjectConfig[]); }); }, []);
 
@@ -134,23 +131,6 @@ export function BranchDashboard({ userRole }: Props) {
       }
       loadData();
     } finally { setCollecting(false); }
-  };
-
-  const handleBranchClick = async (r: any) => {
-    const key = `${r.project_id}:${r.name}`;
-    if (expandedBranch === key) {
-      setExpandedBranch(null);
-      return;
-    }
-    setExpandedBranch(key);
-    setLoadingCommits(true);
-    try {
-      const res = await fetchBranchCommits(r.project_id, r.name);
-      if (res.ok) setBranchCommits(res.data!.commits);
-      else setBranchCommits([]);
-    } finally {
-      setLoadingCommits(false);
-    }
   };
 
   const thStyle: React.CSSProperties = {
@@ -271,56 +251,23 @@ export function BranchDashboard({ userRole }: Props) {
             {paged.map((r) => {
               const lastDate = r.last_commit_date ? new Date(r.last_commit_date) : null;
               const rowBg = r.type === "stale" ? "#fff7e6" : r.type === "active" ? "#f6ffed" : "";
-              const key = `${r.project_id}:${r.name}`;
-              const isExpanded = expandedBranch === key;
               return (
-                <>
-                  <tr key={r.id} style={{ background: rowBg, cursor: "pointer" }}
-                    onClick={() => handleBranchClick(r)}
-                    onMouseEnter={(e) => { if (!rowBg) e.currentTarget.style.background = "#f8f9fa"; }}
-                    onMouseLeave={(e) => { if (!rowBg) e.currentTarget.style.background = rowBg; }}>
-                    <td style={tdStyle}>
-                      <span style={{ marginRight: 6, fontSize: 10, color: "#999" }}>{isExpanded ? <DownOutlined /> : <RightOutlined />}</span>
-                      <ProjectLabel label={r.project_label} tag={r.project_tag} description={projectMap.get(r.project_label)?.description} />
-                    </td>
-                    <td style={tdStyle}><code style={{ fontSize: 12 }}>{r.name}</code></td>
-                    <td style={tdStyle}>
-                      {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : r.daysAgo > 90 ? <Tag color="red">заброшена</Tag> : <Tag color="green">активная</Tag>}
-                    </td>
-                    <td style={tdStyle}>
-                      <span style={{ color: getAgeColor(r.daysAgo) }}>
-                        {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "—"}
-                      </span>
-                    </td>
-                    <td style={tdStyle}>
-                      {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "—"}
-                    </td>
-                    <td style={tdStyle}>{r.last_commit_author}</td>
-                  </tr>
-                  {isExpanded && (
-                    <tr key={`${r.id}-commits`}>
-                      <td colSpan={6} style={{ padding: 0 }}>
-                        <div style={{ background: "#f9f9f9", padding: "12px 20px", borderBottom: "1px solid #e0e0e0" }}>
-                          <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 8 }}>
-                            Коммиты ветки <code>{r.name}</code>
-                          </div>
-                          {loadingCommits ? <Spin size="small" /> : branchCommits.length === 0 ? <Empty description="Нет коммитов" image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-                            <div style={{ fontSize: 12 }}>
-                              {branchCommits.map((c: any) => (
-                                <div key={c.id} style={{ display: "flex", gap: 12, padding: "4px 0", borderBottom: "1px solid #f0f0f0" }}>
-                                  <code style={{ color: "#667eea", flexShrink: 0, width: 70 }}>{c.short_id}</code>
-                                  <span style={{ color: "#999", flexShrink: 0, width: 140 }}>{new Date(c.committed_date).toLocaleString()}</span>
-                                  <span style={{ color: "#666", flexShrink: 0, width: 120 }}>{c.author_name}</span>
-                                  <span style={{ color: "#333", flex: 1 }}>{c.title}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </>
+                <tr key={r.id} style={{ background: rowBg }} onMouseEnter={(e) => { if (!rowBg) e.currentTarget.style.background = "#f8f9fa"; }} onMouseLeave={(e) => { if (!rowBg) e.currentTarget.style.background = rowBg; }}>
+                  <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tag} description={projectMap.get(r.project_label)?.description} /></td>
+                  <td style={tdStyle}><code style={{ fontSize: 12 }}>{r.name}</code></td>
+                  <td style={tdStyle}>
+                    {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : r.daysAgo > 90 ? <Tag color="red">заброшена</Tag> : <Tag color="green">активная</Tag>}
+                  </td>
+                  <td style={tdStyle}>
+                    <span style={{ color: getAgeColor(r.daysAgo) }}>
+                      {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "—"}
+                    </span>
+                  </td>
+                  <td style={tdStyle}>
+                    {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "—"}
+                  </td>
+                  <td style={tdStyle}>{r.last_commit_author}</td>
+                </tr>
               );
             })}
           </tbody>

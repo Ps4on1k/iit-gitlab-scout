@@ -218,9 +218,3 @@ export async function importContributorDirectory(yaml: string): Promise<ApiRespo
 export async function exportContributorDirectory(): Promise<ApiResponse<{ yaml: string }>> {
   return fetchJson("/v1/contributor-directory/export");
 }
-
-export async function fetchBranchCommits(projectId: number, branch: string, page?: number): Promise<ApiResponse<{ commits: any[]; page: number }>> {
-  const qs = new URLSearchParams({ branch });
-  if (page) qs.set("page", String(page));
-  return fetchJson(`/v1/branches/${projectId}/commits?${qs.toString()}`);
-}
