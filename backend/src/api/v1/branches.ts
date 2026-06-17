@@ -36,8 +36,14 @@ export async function branchRoutes(app: FastifyInstance) {
       params.push(Number(project_id));
     }
     if (tag) {
-      conditions.push(`p.tag = $${idx++}`);
-      params.push(tag);
+      const tags = tag.split(",").filter(Boolean);
+      if (tags.length === 1) {
+        conditions.push(`p.tag = $${idx++}`);
+        params.push(tags[0]);
+      } else if (tags.length > 1) {
+        conditions.push(`p.tag = ANY($${idx++})`);
+        params.push(tags);
+      }
     }
     if (search) {
       conditions.push(`pb.name ILIKE $${idx++}`);

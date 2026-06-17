@@ -41,6 +41,7 @@ export function BranchDashboard({ userRole }: Props) {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [summary, setSummary] = useState<BranchSummary | null>(null);
   const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [searchText, setSearchText] = useState("");
   const [dateFrom, setDateFrom] = useState<string | undefined>();
@@ -52,11 +53,18 @@ export function BranchDashboard({ userRole }: Props) {
 
   useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data as ProjectConfig[]); }); }, []);
 
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    for (const p of projects) { if (p.tag) tags.add(p.tag); }
+    return Array.from(tags).sort().map((t) => ({ value: t, label: t }));
+  }, [projects]);
+
   const loadData = async () => {
     setLoading(true);
     try {
       const qs = new URLSearchParams();
       if (selectedProjectIds.length > 0) qs.set("project_ids", selectedProjectIds.join(","));
+      if (selectedTags.length > 0) qs.set("tag", selectedTags.join(","));
       if (statusFilter) qs.set("status", statusFilter);
       if (searchText) qs.set("search", searchText);
       if (dateFrom) qs.set("date_from", dateFrom);
@@ -69,7 +77,7 @@ export function BranchDashboard({ userRole }: Props) {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [selectedProjectIds, statusFilter, dateFrom, dateTo]);
+  useEffect(() => { loadData(); }, [selectedProjectIds, selectedTags, statusFilter, dateFrom, dateTo]);
 
   const filtered = useMemo(() => {
     if (!searchText) return branches;
@@ -111,7 +119,7 @@ export function BranchDashboard({ userRole }: Props) {
     return sorted.slice(start, start + pageSize);
   }, [sorted, page]);
 
-  useEffect(() => { setPage(1); }, [searchText, selectedProjectIds, statusFilter, dateFrom, dateTo]);
+  useEffect(() => { setPage(1); }, [searchText, selectedProjectIds, selectedTags, statusFilter, dateFrom, dateTo]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -154,6 +162,12 @@ export function BranchDashboard({ userRole }: Props) {
         <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
           style={{ minWidth: 280, maxWidth: 450 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
           options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
+          tagRender={({ label, closable, onClose }) => (
+            <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
+          )}
+          maxTagCount="responsive" />
+        <Select mode="multiple" placeholder="Теги" allowClear style={{ minWidth: 160, maxWidth: 300 }} value={selectedTags} onChange={setSelectedTags}
+          options={availableTags}
           tagRender={({ label, closable, onClose }) => (
             <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
           )}
