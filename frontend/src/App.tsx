@@ -56,8 +56,8 @@ export default function App() {
     { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
     { key: "contributors", icon: <TeamOutlined />, label: "Контрибьюторы" },
+    { key: "branches", icon: <BranchesOutlined />, label: "Ветки" },
     ...(user.role === "admin" ? [
-      { key: "branches", icon: <BranchesOutlined />, label: "Ветки" },
       { key: "settings", icon: <SettingOutlined />, label: "Настройки" },
     ] : []),
   ];
@@ -89,7 +89,7 @@ export default function App() {
         <Content style={{ padding: 24, background: "#f5f5f5" }}>
           {tab === "stack" && <StackDashboard userRole={user.role} />}
           {tab === "activity" && <ActivityDashboard userRole={user.role} />}
-          {tab === "branches" && user.role === "admin" && <BranchDashboard userRole={user.role} />}
+          {tab === "branches" && <BranchDashboard userRole={user.role} />}
           {tab === "contributors" && <ContributorDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
