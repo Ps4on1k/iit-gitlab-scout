@@ -2,6 +2,7 @@ import { getPool } from "../db/pool.js";
 import { collectStack } from "./stack-collector.js";
 import { collectActivity } from "./activity-collector.js";
 import { collectProject } from "./contributor-collector.js";
+import { collectBranches } from "./branch-collector.js";
 
 interface SchedulerTask {
   id: number;
@@ -38,6 +39,9 @@ async function runTask(taskName: string): Promise<void> {
           break;
         case "collect_contributors":
           await collectProject(projectId);
+          break;
+        case "collect_branches":
+          await collectBranches(projectId);
           break;
       }
       logFn(`[scheduler] ${taskName}: project ${projectId} done`);
