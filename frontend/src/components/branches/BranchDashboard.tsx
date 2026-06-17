@@ -266,7 +266,7 @@ export function BranchDashboard({ userRole }: Props) {
                   <td style={tdStyle}>
                     {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "—"}
                   </td>
-                  <td style={tdStyle}>{r.last_commit_author}</td>
+                  <td style={tdStyle}>{r.display_author}</td>
                 </tr>
               );
             })}

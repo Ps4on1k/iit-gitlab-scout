@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from "react";
+import { useMemo, useEffect, useRef, useState, useCallback } from "react";
 import { Empty, Collapse, Tag, Popover } from "antd";
 import { InfoCircleOutlined } from "@ant-design/icons";
 import { getTagColor } from "../../utils/tagColors";
@@ -70,16 +70,29 @@ const CELLS_PER_ROW = 30;
 
 function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapItem[]; allDates: string[]; projectDescriptions?: Record<string, string> }) {
   const globalMax = useMemo(() => Math.max(1, ...items.flatMap((i) => i.data)), [items]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(2);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const width = entries[0]?.contentRect.width || el.clientWidth;
+      const estColWidth = 520;
+      setCols(Math.max(1, Math.floor(width / estColWidth)));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   if (items.length === 0) return <p style={{ textAlign: "center", color: "#999" }}>Нет данных</p>;
 
-  const half = Math.ceil(items.length / 2);
-  const col1 = items.slice(0, half);
-  const col2 = items.slice(half);
+  const columns: HeatmapItem[][] = Array.from({ length: cols }, () => []);
+  items.forEach((item, i) => { columns[i % cols].push(item); });
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-      {[col1, col2].map((col, colIdx) => (
+    <div ref={containerRef} style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 24 }}>
+      {columns.map((col, colIdx) => (
         <div key={colIdx}>
           {col.map((item) => (
             <div key={item.name} style={{ marginBottom: 12 }}>

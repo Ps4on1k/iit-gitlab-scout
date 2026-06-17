@@ -14,6 +14,7 @@ export interface Branch {
   last_commit_message: string;
   first_commit_date: string | null;
   can_push: boolean | null;
+  display_author: string;
 }
 
 export interface BranchPerProject {

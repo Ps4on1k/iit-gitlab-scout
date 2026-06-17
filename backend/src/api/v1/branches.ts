@@ -71,6 +71,27 @@ export async function branchRoutes(app: FastifyInstance) {
       params
     );
 
+    const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+    const emailToName: Record<string, string> = {};
+    const nameToFirstEmail: Record<string, string> = {};
+    for (const row of dirResult.rows) {
+      for (const email of row.emails) {
+        emailToName[email] = row.display_name;
+        if (!nameToFirstEmail[row.display_name]) {
+          nameToFirstEmail[row.display_name] = email;
+        }
+      }
+    }
+
+    for (const r of result.rows as any[]) {
+      const email = r.last_commit_author_email;
+      if (email && emailToName[email]) {
+        r.display_author = `${nameToFirstEmail[emailToName[email]]} (${emailToName[email]})`;
+      } else {
+        r.display_author = r.last_commit_author || email || "";
+      }
+    }
+
     const total = result.rows.length;
     const active = result.rows.filter((r: any) => !r.merged && r.last_commit_date && new Date(r.last_commit_date).getTime() > Date.now() - 90 * 86400000).length;
     const stale = result.rows.filter((r: any) => !r.merged && (!r.last_commit_date || new Date(r.last_commit_date).getTime() <= Date.now() - 90 * 86400000)).length;
