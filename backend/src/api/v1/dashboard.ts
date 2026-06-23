@@ -21,21 +21,23 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const projects = projectsResult.rows;
     const projectIds = projects.map((p: any) => p.id);
 
+    const empty = {
+      summary: { projects: 0, contributors: 0, branches: 0, activeBranches: 0, staleBranches: 0, mergedBranches: 0, commits: 0, activeDays: 0 },
+      topContributors: [],
+      topProjectsByCommits: [],
+      topBranchesByProject: [],
+      projectHealth: [],
+      recentActivity: [],
+      languageDistribution: [],
+      branchStatusDistribution: [],
+    };
+
     if (projectIds.length === 0) {
-      return {
-        ok: true,
-        data: {
-          summary: { projects: 0, contributors: 0, branches: 0, activeBranches: 0, staleBranches: 0, mergedBranches: 0, commits: 0, activeDays: 0 },
-          topContributors: [],
-          projectHealth: [],
-          recentActivity: [],
-          languageDistribution: [],
-        },
-      };
+      return { ok: true, data: empty };
     }
 
     const branchResult = await pool.query(
-      `SELECT pb.merged, pb.last_commit_date, p.label as project_label, p.tag as project_tag
+      `SELECT pb.merged, pb.last_commit_date, pb.project_id, p.label as project_label, p.tag as project_tag
        FROM project_branches pb
        JOIN projects p ON p.id = pb.project_id
        WHERE pb.project_id = ANY($1)`,
@@ -60,7 +62,18 @@ export async function dashboardRoutes(app: FastifyInstance) {
        WHERE project_id = ANY($1)
        GROUP BY author_email
        ORDER BY total_changes DESC
-       LIMIT 5`,
+       LIMIT 10`,
+      [projectIds]
+    );
+
+    const topProjectsResult = await pool.query(
+      `SELECT p.label, COUNT(c.id)::int as commits, SUM(c.additions + c.deletions)::int as changes
+       FROM commits c
+       JOIN projects p ON p.id = c.project_id
+       WHERE c.project_id = ANY($1)
+       GROUP BY p.label
+       ORDER BY commits DESC
+       LIMIT 10`,
       [projectIds]
     );
 
@@ -103,6 +116,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
       return { label: p.label, tag: p.tag, total, merged, active, stale, healthPct };
     });
 
+    const topBranches = projectHealth.sort((a, b) => b.total - a.total).slice(0, 10).map((p) => ({ label: p.label, total: p.total, active: p.active, stale: p.stale, merged: p.merged }));
+
     return {
       ok: true,
       data: {
@@ -122,9 +137,16 @@ export async function dashboardRoutes(app: FastifyInstance) {
           commits: c.total_commits,
           changes: c.total_changes,
         })),
+        topProjectsByCommits: topProjectsResult.rows.map((r: any) => ({ label: r.label, commits: r.commits, changes: r.changes })),
+        topBranchesByProject: topBranches,
         projectHealth,
         recentActivity: activityResult.rows.map((r: any) => ({ date: r.day, commits: r.cnt })),
         languageDistribution: langResult.rows.map((l: any) => ({ language: l.language, percentage: Number(l.total_pct) })),
+        branchStatusDistribution: [
+          { type: "Активные", value: activeBranches },
+          { type: "Заброшенные", value: staleBranches },
+          { type: "Замерженные", value: mergedBranches },
+        ],
       },
     };
   });
