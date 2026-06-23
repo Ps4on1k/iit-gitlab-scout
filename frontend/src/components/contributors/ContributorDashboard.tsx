@@ -113,13 +113,18 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
   const filteredHeatmap = useMemo(() => {
     const { by_contributor, project_contributors, by_project_contributor } = allHeatmap;
 
-    // Filter contributors
+    // Filter contributors - match by name OR email in heatmap key "email (name)"
     let filteredByContributor = by_contributor;
     if (filters.contributors.length > 0) {
       filteredByContributor = {};
       for (const [name, daily] of Object.entries(by_contributor)) {
-        const email = name.includes("(") ? name.split(" (")[0] : name;
-        if (filters.contributors.includes(email)) filteredByContributor[name] = daily;
+        const keyLower = name.toLowerCase();
+        const email = name.includes("(") ? name.split(" (")[0].trim() : name;
+        const matches = filters.contributors.some((fc) => {
+          const fcLower = fc.toLowerCase();
+          return keyLower.includes(fcLower) || email.toLowerCase() === fcLower;
+        });
+        if (matches) filteredByContributor[name] = daily;
       }
     }
 
@@ -134,8 +139,12 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
       let contribsToInclude: string[];
       if (filters.contributors.length > 0) {
         contribsToInclude = Object.keys(projContribMap).filter((name) => {
-          const email = name.includes("(") ? name.split(" (")[0] : name;
-          return filters.contributors.includes(email);
+          const keyLower = name.toLowerCase();
+          const email = name.includes("(") ? name.split(" (")[0].trim() : name;
+          return filters.contributors.some((fc) => {
+            const fcLower = fc.toLowerCase();
+            return keyLower.includes(fcLower) || email.toLowerCase() === fcLower;
+          });
         });
       } else {
         contribsToInclude = Object.keys(projContribMap);

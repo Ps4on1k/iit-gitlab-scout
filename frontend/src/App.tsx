@@ -83,7 +83,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo />
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v1.2.0</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v1.3.0</span>
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
             onClick={({ key }) => setTab(key as TabKey)}
@@ -94,14 +94,19 @@ export default function App() {
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)" }}>Выйти</Button>
         </Header>
         {tab === "analytics" && (
-          <div style={{ background: "#001529", padding: "0 24px" }}>
-            <Tabs
-              activeKey={analyticsTab}
-              onChange={(k) => setAnalyticsTab(k as AnalyticsTab)}
-              items={analyticsSubTabs}
-              style={{ marginBottom: 0 }}
-              tabBarStyle={{ marginBottom: 0, color: "rgba(255,255,255,0.65)" }}
-            />
+          <div style={{ background: "#1a1a2e", padding: "0 24px", display: "flex", gap: 0 }}>
+            {analyticsSubTabs.map((t) => (
+              <div key={t.key}
+                onClick={() => setAnalyticsTab(t.key as AnalyticsTab)}
+                style={{
+                  padding: "10px 24px", cursor: "pointer", fontSize: 14, fontWeight: 500,
+                  color: analyticsTab === t.key ? "#fff" : "rgba(255,255,255,0.55)",
+                  borderBottom: analyticsTab === t.key ? "2px solid #667eea" : "2px solid transparent",
+                  background: analyticsTab === t.key ? "rgba(102,126,234,0.15)" : "transparent",
+                  transition: "all 0.2s",
+                }}
+              >{t.label}</div>
+            ))}
           </div>
         )}
         <Content style={{ padding: "12px 24px 24px", background: "#f5f5f5" }}>
