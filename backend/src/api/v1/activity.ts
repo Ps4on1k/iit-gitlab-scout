@@ -25,9 +25,9 @@ export async function activityRoutes(app: FastifyInstance) {
   });
 
   app.get<{
-    Querystring: { project_ids?: string; tag?: string; date_from?: string; date_to?: string; group_by?: string };
+    Querystring: { project_ids?: string; tag?: string; date_from?: string; date_to?: string; group_by?: string; contributor?: string };
   }>("/api/v1/activity", { preHandler: [requireAuth] }, async (request) => {
-    const { project_ids, tag, date_from, date_to, group_by } = request.query;
+    const { project_ids, tag, date_from, date_to, group_by, contributor } = request.query;
     const user = (request as any).user as JwtPayload;
     const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
@@ -39,6 +39,7 @@ export async function activityRoutes(app: FastifyInstance) {
       date_from,
       date_to,
       group_by: group_by === "week" ? "week" : "day",
+      contributor,
     });
     return { ok: true, data };
   });

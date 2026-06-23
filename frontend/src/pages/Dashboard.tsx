@@ -24,7 +24,7 @@ function donutConfig(data: { type: string; value: number }[], colors?: string[])
   };
 }
 
-export function Dashboard() {
+export function Dashboard({ onContributorClick }: { onContributorClick?: (name: string) => void }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
 
@@ -114,9 +114,32 @@ export function Dashboard() {
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={8}>
-          <Card title="Топ-10 контрибьюторов" size="small" style={{ height: "100%" }}>
-            {contributorsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: 400 }}><Pie {...donutConfig(contributorsPie)} height={400} /></div>
+          <Card title="Топ-10 контрибьюторов (нажмите для фильтрации)" size="small" style={{ height: "100%" }}>
+            {topContributors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+              <div>
+                {topContributors.map((c: any, i: number) => {
+                  const maxChanges = topContributors[0]?.changes || 1;
+                  return (
+                    <div key={c.email} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: 13, cursor: "pointer", padding: "4px 0" }}
+                      onClick={() => onContributorClick?.(c.name || c.email)}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
+                      <span style={{ width: 20, textAlign: "center", fontWeight: 700, color: i === 0 ? "#faad14" : i === 1 ? "#8c8c8c" : i === 2 ? "#d48806" : "#999", fontSize: 12 }}>
+                        {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 500, fontSize: 12, color: "#667eea" }}>{c.name || c.email}</div>
+                        <div style={{ fontSize: 11, color: "#999" }}>{c.commits} коммитов</div>
+                      </div>
+                      <div style={{ width: 100 }}>
+                        <div style={{ height: 6, borderRadius: 3, background: "#f0f0f0", overflow: "hidden" }}>
+                          <div style={{ width: `${(c.changes / maxChanges) * 100}%`, height: "100%", background: "#667eea", borderRadius: 3 }} />
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 11, color: "#666", width: 50, textAlign: "right" }}>{c.changes.toLocaleString()}</span>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </Card>
         </Col>

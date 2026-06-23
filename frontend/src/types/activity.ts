@@ -11,4 +11,5 @@ export interface ActivityFilters {
   date_from?: string;
   date_to?: string;
   group_by?: "day" | "week";
+  contributor?: string;
 }

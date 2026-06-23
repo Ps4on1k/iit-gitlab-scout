@@ -5,6 +5,7 @@ import type { DbContributor } from "../../types";
 interface Props {
   data: DbContributor[];
   loading: boolean;
+  onContributorClick?: (name: string) => void;
 }
 
 type SortKey = "author_email" | "total_commits" | "total_additions" | "total_deletions" | "total_changes" | "cpc" | "active_days" | "commits_per_day" | "commits_per_week" | "avg_additions" | "avg_deletions" | "activity_span" | "score";
@@ -64,7 +65,7 @@ function ScoreCell({ score }: { score: ScoreResult }) {
   );
 }
 
-export function ContributorTable({ data, loading }: Props) {
+export function ContributorTable({ data, loading, onContributorClick }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -194,10 +195,12 @@ export function ContributorTable({ data, loading }: Props) {
                 <td style={{ ...tdStyle, fontWeight: 500 }}>
                   {c.author_name ? (
                     <div>
-                      <div style={{ fontWeight: 600 }}>{c.author_name}</div>
+                      <div style={{ fontWeight: 600, cursor: onContributorClick ? "pointer" : "default", color: onContributorClick ? "#667eea" : undefined }}
+                        onClick={onContributorClick ? () => onContributorClick(c.author_name) : undefined}>{c.author_name}</div>
                       <div style={{ fontSize: 11, color: "#999" }}>{c.author_email}</div>
                     </div>
-                  ) : c.author_email}
+                  ) : <span style={{ cursor: onContributorClick ? "pointer" : "default", color: onContributorClick ? "#667eea" : undefined }}
+                    onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</span>}
                 </td>
                 <td style={tdStyle}><ScoreCell score={c.score} /></td>
                 <td style={tdStyle}>{Number(c.total_commits)}</td>

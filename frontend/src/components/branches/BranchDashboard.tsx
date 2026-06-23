@@ -7,7 +7,7 @@ import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
 import type { Role } from "../../types";
 
-interface Props { userRole: Role; }
+interface Props { userRole: Role; onContributorClick?: (name: string) => void; selectedContributor?: string; }
 
 type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author" | "days_ago" | "branch_age";
 
@@ -34,7 +34,7 @@ function getHealthColor(active: number, stale: number, total: number): string {
   return "#cf1322";
 }
 
-export function BranchDashboard({ userRole }: Props) {
+export function BranchDashboard({ userRole, onContributorClick, selectedContributor }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -44,6 +44,7 @@ export function BranchDashboard({ userRole }: Props) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [searchText, setSearchText] = useState("");
+  const [contributorFilter, setContributorFilter] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string | undefined>();
   const [dateTo, setDateTo] = useState<string | undefined>();
   const [sortKey, setSortKey] = useState<SortKey>("days_ago");
@@ -79,11 +80,20 @@ export function BranchDashboard({ userRole }: Props) {
 
   useEffect(() => { loadData(); }, [selectedProjectIds, selectedTags, statusFilter, dateFrom, dateTo]);
 
+  useEffect(() => { if (selectedContributor) setContributorFilter(selectedContributor); }, [selectedContributor]);
+
   const filtered = useMemo(() => {
-    if (!searchText) return branches;
-    const lower = searchText.toLowerCase();
-    return branches.filter((b) => b.name.toLowerCase().includes(lower) || b.project_label.toLowerCase().includes(lower));
-  }, [branches, searchText]);
+    let result = branches;
+    if (searchText) {
+      const lower = searchText.toLowerCase();
+      result = result.filter((b) => b.name.toLowerCase().includes(lower) || b.project_label.toLowerCase().includes(lower));
+    }
+    if (contributorFilter) {
+      const lower = contributorFilter.toLowerCase();
+      result = result.filter((b) => (b as any).display_author?.toLowerCase().includes(lower) || b.last_commit_author?.toLowerCase().includes(lower));
+    }
+    return result;
+  }, [branches, searchText, contributorFilter]);
 
   const projectMap = useMemo(() => {
     const m = new Map<string, ProjectConfig>();
@@ -183,6 +193,7 @@ export function BranchDashboard({ userRole }: Props) {
           setDateTo(dates?.[1]?.format("YYYY-MM-DD"));
         }} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+        <Input placeholder="Фильтр по контрибьютору..." allowClear style={{ width: 220 }} value={contributorFilter} onChange={(e) => setContributorFilter(e.target.value)} />
         {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>Собрать</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
@@ -284,7 +295,11 @@ export function BranchDashboard({ userRole }: Props) {
                   <td style={tdStyle}>
                     {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "N/A"}
                   </td>
-                  <td style={tdStyle}>{r.display_author}</td>
+                  <td style={tdStyle}>
+                    <span style={{ color: "#667eea", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onContributorClick?.(r.display_author); setContributorFilter(r.display_author); }}>
+                      {r.display_author}
+                    </span>
+                  </td>
                 </tr>
               );
             })}

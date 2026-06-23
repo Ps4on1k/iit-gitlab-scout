@@ -35,6 +35,7 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"dashboard" | "stack" | "activity" | "contributors" | "branches" | "settings">("dashboard");
+  const [selectedContributor, setSelectedContributor] = useState<string | undefined>();
 
   useEffect(() => {
     getMe().then((res) => {
@@ -88,11 +89,11 @@ export default function App() {
           </Button>
         </Header>
         <Content style={{ padding: 24, background: "#f5f5f5" }}>
-          {tab === "dashboard" && <Dashboard />}
+          {tab === "dashboard" && <Dashboard onContributorClick={(name) => { setSelectedContributor(name); setTab("contributors"); }} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
-          {tab === "activity" && <ActivityDashboard userRole={user.role} />}
-          {tab === "branches" && <BranchDashboard userRole={user.role} />}
-          {tab === "contributors" && <ContributorDashboard userRole={user.role} />}
+          {tab === "activity" && <ActivityDashboard userRole={user.role} onContributorClick={(name) => { setSelectedContributor(name); }} selectedContributor={selectedContributor} />}
+          {tab === "branches" && <BranchDashboard userRole={user.role} onContributorClick={(name) => setSelectedContributor(name)} selectedContributor={selectedContributor} />}
+          {tab === "contributors" && <ContributorDashboard userRole={user.role} onContributorClick={(name) => setSelectedContributor(name)} selectedContributor={selectedContributor} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
       </Layout>

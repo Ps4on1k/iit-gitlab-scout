@@ -38,6 +38,7 @@ function buildParams(filters?: ActivityFilters): string {
   if (filters?.date_from) params.set("date_from", filters.date_from);
   if (filters?.date_to) params.set("date_to", filters.date_to);
   if (filters?.group_by) params.set("group_by", filters.group_by);
+  if (filters?.contributor) params.set("contributor", filters.contributor);
   return params.toString();
 }
 

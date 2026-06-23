@@ -6,6 +6,7 @@ export interface ActivityFilters {
   date_from?: string;
   date_to?: string;
   group_by?: "day" | "week";
+  contributor?: string;
 }
 
 export interface ActivityDay {
@@ -17,6 +18,53 @@ export interface ActivityDay {
 
 export async function getActivity(filters: ActivityFilters): Promise<ActivityDay[]> {
   const pool = getPool();
+
+  if (filters.contributor) {
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (filters.project_ids && filters.project_ids.length > 0) {
+      conditions.push(`c.project_id = ANY($${idx++})`);
+      params.push(filters.project_ids);
+    }
+    if (filters.tag && filters.tag.length > 0) {
+      conditions.push(`p.tag = ANY($${idx++})`);
+      params.push(filters.tag);
+    }
+    if (filters.date_from) {
+      conditions.push(`c.committed_date >= $${idx++}`);
+      params.push(filters.date_from);
+    }
+    if (filters.date_to) {
+      conditions.push(`c.committed_date <= $${idx++}`);
+      params.push(filters.date_to + "T23:59:59Z");
+    }
+    conditions.push(`(c.author_name ILIKE $${idx} OR c.author_email ILIKE $${idx})`);
+    params.push(`%${filters.contributor}%`);
+    idx++;
+
+    const where = `WHERE ${conditions.join(" AND ")}`;
+    const truncExpr = filters.group_by === "week" ? "DATE_TRUNC('week', c.committed_date)" : "c.committed_date::date";
+
+    const result = await pool.query(
+      `SELECT TO_CHAR(${truncExpr}, 'YYYY-MM-DD') as date, COUNT(*)::int as commits
+       FROM commits c
+       JOIN projects p ON p.id = c.project_id
+       ${where}
+       GROUP BY ${truncExpr}
+       ORDER BY date`,
+      params
+    );
+
+    return result.rows.map((r) => ({
+      date: r.date,
+      commits: r.commits,
+      merge_requests: 0,
+      pipelines: 0,
+    }));
+  }
+
   const conditions: string[] = [];
   const params: any[] = [];
   let idx = 1;

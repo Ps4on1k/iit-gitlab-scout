@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Select, DatePicker, Button, Space, message, Tag, Card, Row, Col, Statistic, Spin, Typography, Empty, Collapse } from "antd";
+import { Select, DatePicker, Button, Space, message, Tag, Card, Row, Col, Statistic, Spin, Typography, Empty, Collapse, Input } from "antd";
 import dayjs from "dayjs";
-import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
 import { collectActivity, fetchActivity } from "../../api/activity-client";
 import { getTagColor } from "../../utils/tagColors";
@@ -12,7 +12,7 @@ import type { Role } from "../../types";
 
 const { RangePicker } = DatePicker;
 
-interface Props { userRole: Role; }
+interface Props { userRole: Role; onContributorClick?: (name: string) => void; selectedContributor?: string; }
 
 function getDefaultDateFrom(): string {
   const d = new Date();
@@ -20,7 +20,7 @@ function getDefaultDateFrom(): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function ActivityDashboard({ userRole }: Props) {
+export function ActivityDashboard({ userRole, onContributorClick, selectedContributor }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -32,6 +32,9 @@ export function ActivityDashboard({ userRole }: Props) {
   const [groupBy, setGroupBy] = useState<"day" | "week">("day");
   const [mrData, setMrData] = useState<any>(null);
   const [mrLoading, setMrLoading] = useState(true);
+  const [contributorFilter, setContributorFilter] = useState<string>("");
+
+  useEffect(() => { if (selectedContributor) setContributorFilter(selectedContributor); }, [selectedContributor]);
 
   useEffect(() => {
     fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); });
@@ -43,7 +46,8 @@ export function ActivityDashboard({ userRole }: Props) {
     date_from: dateFrom,
     date_to: dateTo,
     group_by: groupBy,
-  }), [selectedProjectIds, selectedTags, dateFrom, dateTo, groupBy]);
+    contributor: contributorFilter || undefined,
+  }), [selectedProjectIds, selectedTags, dateFrom, dateTo, groupBy, contributorFilter]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -138,6 +142,7 @@ export function ActivityDashboard({ userRole }: Props) {
         <RangePicker defaultValue={[dayjs().subtract(90, "day"), dayjs()]} onChange={(dates) => { setDateFrom(dates?.[0]?.format("YYYY-MM-DD")); setDateTo(dates?.[1]?.format("YYYY-MM-DD")); }} />
         <Select value={groupBy} onChange={(v) => setGroupBy(v)} style={{ width: 120 }}
           options={[{ value: "day", label: "По дням" }, { value: "week", label: "По неделям" }]} />
+        <Input placeholder="Контрибьютор..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={contributorFilter} onChange={(e) => setContributorFilter(e.target.value)} />
         <Space>
           {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
             style={{ background: "#c47a5a", borderColor: "#c47a5a" }}>Собрать данные</Button>}
@@ -235,7 +240,8 @@ export function ActivityDashboard({ userRole }: Props) {
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13 }}>{a.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }}
+                            onClick={() => onContributorClick?.(a.name)}>{a.name}</div>
                           <div style={{ fontSize: 12, color: "#666" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>
@@ -261,7 +267,8 @@ export function ActivityDashboard({ userRole }: Props) {
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13 }}>{r.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#764ba2" }}
+                            onClick={() => onContributorClick?.(r.name)}>{r.name}</div>
                           <div style={{ fontSize: 12, color: "#666" }}>{r.reviews} одобрений MR</div>
                         </div>
                         <div style={{ width: 120 }}>

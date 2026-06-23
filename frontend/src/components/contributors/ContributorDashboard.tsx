@@ -26,9 +26,11 @@ function getDefaultDateFrom(): string {
 
 interface Props {
   userRole: Role;
+  onContributorClick?: (name: string) => void;
+  selectedContributor?: string;
 }
 
-export function ContributorDashboard({ userRole }: Props) {
+export function ContributorDashboard({ userRole, onContributorClick, selectedContributor }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -55,6 +57,12 @@ export function ContributorDashboard({ userRole }: Props) {
   useEffect(() => {
     fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); });
   }, []);
+
+  useEffect(() => {
+    if (selectedContributor && !selectedContributors.includes(selectedContributor)) {
+      setSelectedContributors([selectedContributor]);
+    }
+  }, [selectedContributor]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -263,7 +271,7 @@ export function ContributorDashboard({ userRole }: Props) {
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #f0f0f0" }}>
           <h3 style={{ margin: 0, fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
-        <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} /></div>
+        <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} onContributorClick={onContributorClick} /></div>
       </div>
       )}
 
