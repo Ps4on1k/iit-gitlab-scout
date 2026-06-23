@@ -184,7 +184,9 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(a.email)}>{a.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: a.email ? "pointer" : "default", color: a.email ? "#667eea" : "#333" }}
+                            onClick={a.email ? () => onContributorClick?.(a.email) : undefined}>{a.name}</div>
+                          {a.email && <div style={{ fontSize: 11, color: "#999" }}>{a.email}</div>}
                           <div style={{ fontSize: 12, color: "#666" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>
@@ -210,7 +212,9 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#764ba2" }} onClick={() => onContributorClick?.(r.name)}>{r.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: r.email ? "pointer" : "default", color: r.email ? "#764ba2" : "#333" }}
+                            onClick={r.email ? () => onContributorClick?.(r.email) : undefined}>{r.name}</div>
+                          {r.email && <div style={{ fontSize: 11, color: "#999" }}>{r.email}</div>}
                           <div style={{ fontSize: 12, color: "#666" }}>{r.reviews} одобрений MR</div>
                         </div>
                         <div style={{ width: 120 }}>

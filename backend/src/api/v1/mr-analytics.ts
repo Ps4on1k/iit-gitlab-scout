@@ -101,13 +101,43 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
       params
     );
 
+    // Resolve names to emails via contributor directory
+    const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+    const nameToEmail: Record<string, string> = {};
+    for (const row of dirResult.rows) {
+      for (const email of row.emails) {
+        nameToEmail[row.display_name.toLowerCase()] = email;
+      }
+    }
+
+    // Also build contributor_profiles name→email fallback
+    const profileResult = await pool.query("SELECT DISTINCT author_name, author_email FROM contributor_profiles WHERE author_name IS NOT NULL AND author_name != ''");
+    const profileNameToEmail: Record<string, string> = {};
+    for (const row of profileResult.rows) {
+      const name = row.author_name?.toLowerCase();
+      if (name && !profileNameToEmail[name]) profileNameToEmail[name] = row.author_email;
+    }
+
+    const resolveEmail = (name: string): string => {
+      const lower = name.toLowerCase();
+      return nameToEmail[lower] || profileNameToEmail[lower] || "";
+    };
+
     return {
       ok: true,
       data: {
         summary: summaryResult.rows[0],
         byWeek: byWeekResult.rows.map((r: any) => ({ week: r.week, total: r.total, merged: r.merged })),
-        topAuthors: topAuthorsResult.rows.map((r: any) => ({ name: r.author_name || r.author_email, email: r.author_email, total: r.total, merged: r.merged })),
-        topReviewers: topReviewersResult.rows.map((r: any) => ({ name: r.reviewer, reviews: r.reviews })),
+        topAuthors: topAuthorsResult.rows.map((r: any) => ({
+          name: r.author_name || r.author_email,
+          email: r.author_email || resolveEmail(r.author_name || ""),
+          total: r.total, merged: r.merged,
+        })),
+        topReviewers: topReviewersResult.rows.map((r: any) => ({
+          name: r.reviewer,
+          email: resolveEmail(r.reviewer || ""),
+          reviews: r.reviews,
+        })),
         avgMergeTime: avgMergeTimeByProject.rows.map((r: any) => ({ label: r.label, avgDays: Number(r.avg_days) })),
       },
     };
