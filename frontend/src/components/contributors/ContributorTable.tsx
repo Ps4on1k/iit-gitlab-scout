@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Empty } from "antd";
+import { Empty, Tooltip } from "antd";
 import type { DbContributor } from "../../types";
 
 interface Props {
@@ -53,15 +53,14 @@ function computeScore(c: {
 
 function ScoreCell({ score }: { score: ScoreResult }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+    <Tooltip title={<span>{score.score}/100 — {score.grade}</span>} placement="top">
       <span style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 24, height: 24, borderRadius: 12,
         background: score.color, color: "white", fontSize: 12, fontWeight: 700,
+        cursor: "default",
       }}>{score.icon}</span>
-      <span style={{ fontSize: 11, color: score.color, fontWeight: 600 }}>{score.score}</span>
-      <span style={{ fontSize: 10, color: "#999" }}>{score.grade}</span>
-    </span>
+    </Tooltip>
   );
 }
 
@@ -190,10 +189,16 @@ export function ContributorTable({ data, loading }: Props) {
         <tbody>
           {sorted.map((c) => {
             const cpc = c.total_commits > 0 ? (c.total_changes / c.total_commits).toFixed(1) : "0";
-            const displayName = c.author_name ? `${c.author_email} (${c.author_name})` : c.author_email;
             return (
               <tr key={c.id} style={{ cursor: "default" }} onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
-                <td style={{ ...tdStyle, fontWeight: 500 }}>{displayName}</td>
+                <td style={{ ...tdStyle, fontWeight: 500 }}>
+                  {c.author_name ? (
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{c.author_name}</div>
+                      <div style={{ fontSize: 11, color: "#999" }}>{c.author_email}</div>
+                    </div>
+                  ) : c.author_email}
+                </td>
                 <td style={tdStyle}><ScoreCell score={c.score} /></td>
                 <td style={tdStyle}>{Number(c.total_commits)}</td>
                 <td style={{ ...tdStyle, fontWeight: 600 }}>{Number(c.total_changes).toLocaleString()}</td>
