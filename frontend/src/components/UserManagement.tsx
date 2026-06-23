@@ -178,7 +178,7 @@ export function UserManagement() {
                   <Input.Password placeholder="password" />
                 </Form.Item>
                 <Form.Item name="role" label="Роль" initialValue="user">
-                  <Select options={[{ value: "admin", label: "Admin" }, { value: "user", label: "User" }]} />
+                  <Select options={[{ value: "admin", label: "Admin" }, { value: "user", label: "User" }, { value: "manager", label: "Manager" }]} />
                 </Form.Item>
               </Form>
             </Modal>

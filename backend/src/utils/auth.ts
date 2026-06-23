@@ -2,7 +2,7 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import { getEnv } from "../config.js";
 
-export type Role = "admin" | "user";
+export type Role = "admin" | "user" | "manager";
 
 export interface JwtPayload {
   userId: number;

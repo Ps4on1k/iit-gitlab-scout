@@ -52,7 +52,7 @@ export interface BatchStatsResponse {
   analyzed_at: string;
 }
 
-export type Role = "admin" | "user";
+export type Role = "admin" | "user" | "manager";
 
 export interface User {
   id: number;

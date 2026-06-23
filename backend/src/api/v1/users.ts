@@ -21,8 +21,8 @@ export async function userManagementRoutes(app: FastifyInstance) {
     if (!username || !password) {
       return reply.status(400).send({ ok: false, error: "username and password are required" });
     }
-    if (!["admin", "user"].includes(role || "user")) {
-      return reply.status(400).send({ ok: false, error: "role must be 'admin' or 'user'" });
+    if (!["admin", "user", "manager"].includes(role || "user")) {
+      return reply.status(400).send({ ok: false, error: "role must be 'admin', 'user' or 'manager'" });
     }
 
     const pool = getPool();
@@ -62,8 +62,8 @@ export async function userManagementRoutes(app: FastifyInstance) {
     let idx = 1;
 
     if (role !== undefined) {
-      if (!["admin", "user"].includes(role)) {
-        return reply.status(400).send({ ok: false, error: "role must be 'admin' or 'user'" });
+      if (!["admin", "user", "manager"].includes(role)) {
+      return reply.status(400).send({ ok: false, error: "role must be 'admin', 'user' or 'manager'" });
       }
       updates.push(`role = $${idx++}`);
       values.push(role);
