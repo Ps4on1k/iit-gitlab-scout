@@ -200,11 +200,11 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                       const healthColor = getHealthColor(p.active, p.stale, p.total - p.merged);
                       const stalePct = (p.total - p.merged) > 0 ? Math.round(p.stale / (p.total - p.merged) * 100) : 0;
                       return (
-                        <div key={p.project_id} style={{ padding: 12, border: `2px solid ${healthColor}`, borderRadius: 8, background: "#fafafa" }}>
+                        <div key={p.project_id} style={{ padding: 12, border: `2px solid ${healthColor}`, borderRadius: 8, background: "var(--ant-color-fill-secondary)" }}>
                           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>
                             <ProjectLabel label={p.label} tag={p.tag} description={projectMap.get(p.label)?.description} />
                           </div>
-                          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "#666" }}>
+                          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
                             <span>Всего: <b>{p.total}</b></span>
                             <span style={{ color: "#3f8600" }}>Актив: <b>{p.active}</b></span>
                             <span style={{ color: "#cf1322" }}>Заброшен: <b>{p.stale}</b></span>
@@ -238,7 +238,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
         </>
       )}
 
-      <div style={{ overflowX: "auto", background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+      <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -267,7 +267,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                     </span>
                   </td>
                   <td style={tdStyle}>
-                    {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "N/A"}
+                    {r.branchAge !== null ? <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatAge(r.branchAge)}</span> : "N/A"}
                   </td>
                   <td style={tdStyle}>
                     <span style={{ color: "#667eea", cursor: "pointer" }} onClick={() => onContributorClick?.((r as any).last_commit_author_email || r.display_author)}>{r.display_author}</span>
@@ -278,29 +278,26 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
           </tbody>
         </table>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid #f0f0f0" }}>
-          <span style={{ fontSize: 13, color: "#666" }}>Показано {paged.length} из {filtered.length} веток</span>
+          <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>Показано {paged.length} из {filtered.length} веток</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 13, color: "#666" }}>Страница</span>
+            <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>Страница</span>
             <Select size="small" style={{ width: 80 }} value={page} onChange={setPage}
               options={Array.from({ length: Math.ceil(filtered.length / pageSize) }, (_, i) => ({ value: i + 1, label: `${i + 1}` }))} />
-            <span style={{ fontSize: 13, color: "#666" }}>из {Math.ceil(filtered.length / pageSize)}</span>
+            <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>из {Math.ceil(filtered.length / pageSize)}</span>
           </div>
         </div>
       </div>
 
-      <div style={{ padding: "16px 20px", marginTop: 16, background: "#fafafa", borderRadius: 12, border: "1px solid #f0f0f0" }}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 10 }}>Легенда</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "#666" }}>
-          <div><b style={{ color: "#3f8600" }}>Активная</b> — ветка с коммитами за последние 90 дней, не замержена</div>
-          <div><b style={{ color: "#cf1322" }}>Заброшенная</b> — нет коммитов более 90 дней</div>
-          <div><b style={{ color: "#667eea" }}>Замержена</b> — ветка уже влита в основную</div>
-          <div><b style={{ color: "#333" }}>Основная</b> — дефолтная ветка проекта (main/master)</div>
+      <div style={{ padding: "16px 20px", marginTop: 16, background: "var(--ant-color-fill-secondary)", borderRadius: 12, border: "1px solid var(--ant-color-border-secondary)" }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 10 }}>Легенда</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Основная</b> — дефолтная ветка проекта (main/master)</div>
           <div><b style={{ color: "#fa8c16" }}>Защищена</b> — ветка с правилами защиты в GitLab</div>
-          <div><b style={{ color: "#333" }}>Последний коммит</b> — дата + сколько дней назад. Цвет: зелёный (&lt;30д), жёлтый (30-90д), красный (&gt;90д)</div>
-          <div><b style={{ color: "#333" }}>Жизнь ветки</b> — сколько дней существует ветка (от первого до последнего коммита)</div>
-          <div><b style={{ color: "#333" }}>Ср. дн. без коммита</b> — среднее количество дней с момента последнего коммита по всем веткам</div>
-          <div><b style={{ color: "#333" }}>Здоровье проекта</b> — % заброшенных веток. Зелёный (&lt;20%), жёлтый (20-50%), красный (&gt;50%)</div>
-          <div><b style={{ color: "#333" }}>Прогресс-бар</b> — показывает соотношение активных / заброшенных / замерженных веток</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Последний коммит</b> — дата + сколько дней назад. Цвет: зелёный (&lt;30д), жёлтый (30-90д), красный (&gt;90д)</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Жизнь ветки</b> — сколько дней существует ветка (от первого до последнего коммита)</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Ср. дн. без коммита</b> — среднее количество дней с момента последнего коммита по всем веткам</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Здоровье проекта</b> — % заброшенных веток. Зелёный (&lt;20%), жёлтый (20-50%), красный (&gt;50%)</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Прогресс-бар</b> — показывает соотношение активных / заброшенных / замерженных веток</div>
         </div>
       </div>
     </div>

@@ -126,7 +126,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
 
       {mrLoading ? <div style={{ textAlign: "center", padding: 40 }}><Spin size="large" /></div> : mrData && (
         <>
-          <h3 style={{ fontSize: 18, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Merge Requests</h3>
+          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Merge Requests</h3>
           <Row gutter={16} style={{ marginBottom: 24 }}>
             <Col span={4}><Card><Statistic title="Всего MR" value={mrData.summary.total} /></Card></Col>
             <Col span={4}><Card><Statistic title="Замержено" value={mrData.summary.merged} valueStyle={{ color: "#3f8600" }} /></Card></Col>
@@ -187,14 +187,14 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }}
                             onClick={() => onContributorClick?.(a.email || a.name)}>{a.name}</div>
                           {a.email && <div style={{ fontSize: 11, color: "#999" }}>{a.email}</div>}
-                          <div style={{ fontSize: 12, color: "#666" }}>{a.total} MR создано, {a.merged} замержено</div>
+                          <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>
                           <div style={{ height: 10, borderRadius: 5, background: "#f0f0f0", overflow: "hidden" }}>
                             <div style={{ width: `${(a.total / (mrData.topAuthors[0]?.total || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #667eea, #764ba2)", borderRadius: 5 }} />
                           </div>
                         </div>
-                        <span style={{ fontSize: 12, color: "#666", width: 30, textAlign: "right" }}>{a.total}</span>
+                        <span style={{ fontSize: 12, color: "var(--ant-color-text-secondary)", width: 30, textAlign: "right" }}>{a.total}</span>
                       </div>
                     ))}
                   </div>
@@ -215,14 +215,14 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#764ba2" }}
                             onClick={() => onContributorClick?.(r.email || r.name)}>{r.name}</div>
                           {r.email && <div style={{ fontSize: 11, color: "#999" }}>{r.email}</div>}
-                          <div style={{ fontSize: 12, color: "#666" }}>{r.reviews} одобрений MR</div>
+                          <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{r.reviews} одобрений MR</div>
                         </div>
                         <div style={{ width: 120 }}>
                           <div style={{ height: 10, borderRadius: 5, background: "#f0f0f0", overflow: "hidden" }}>
                             <div style={{ width: `${(r.reviews / (mrData.topReviewers[0]?.reviews || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #764ba2, #f093fb)", borderRadius: 5 }} />
                           </div>
                         </div>
-                        <span style={{ fontSize: 12, color: "#666", width: 30, textAlign: "right" }}>{r.reviews}</span>
+                        <span style={{ fontSize: 12, color: "var(--ant-color-text-secondary)", width: 30, textAlign: "right" }}>{r.reviews}</span>
                       </div>
                     ))}
                   </div>

@@ -115,7 +115,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
         <div key={colIdx}>
           {col.map((item) => (
             <div key={item.name} style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 14, color: "#333", marginBottom: 4, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.name}>
+              <div style={{ fontSize: 14, color: "var(--ant-color-text)", marginBottom: 4, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={item.name}>
                 {item.tag && (() => { const c = getTagColor(item.tag); return <Tag style={{ marginRight: 6, fontSize: 11, background: c.bg, color: c.text, border: "none" }}>{item.tag}</Tag>; })()}
                 {item.name}
                 {projectDescriptions && (
@@ -215,7 +215,7 @@ export function HeatmapChart({ byProject, byContributor, loading, projectTags, p
   return (
     <div style={{ position: "relative" }}>
       {/* Legend */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "0 0 12px", fontSize: 12, color: "#666" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, padding: "0 0 12px", fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
         <span>Меньше</span>
         {[0, 1, 2, 3, 4].map((l) => (
           <div key={l} className={`heatmap-cell level-${l}`} style={{ width: 14, height: 14, borderRadius: 3 }} />

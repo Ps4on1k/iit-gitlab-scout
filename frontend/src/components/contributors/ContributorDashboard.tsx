@@ -213,8 +213,8 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30, marginBottom: 30 }}>
         <CommitTimelineChart data={filteredContributors} loading={loading} dateFrom={filters.dateFrom} dateTo={filters.dateTo} />
-        <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-          <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Топ-10 контрибьюторов</h3>
+        <div style={{ borderRadius: 12, padding: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+          <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Топ-10 контрибьюторов</h3>
           {loading ? <div style={{ textAlign: "center", padding: 40 }}>Загрузка...</div> : (
             <div>{filteredContributors.slice(0, 10).map((c, i) => (
               <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #e0e0e0", fontSize: 13 }}>
@@ -231,15 +231,15 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
       </div>
 
       {userRole !== "user" && (
-      <div style={{ background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: 30 }}>
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid #f0f0f0" }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
+      <div style={{ borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: 30 }}>
+        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
+          <h3 style={{ margin: 0, fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
         <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} onContributorClick={onContributorClick} /></div>
       </div>
       )}
 
-      <div style={{ textAlign: "center", padding: 20, color: "#666", fontSize: 12 }}>GitLab Scout — Аналитика контрибьюторов</div>
+      <div style={{ textAlign: "center", padding: 20, color: "var(--ant-color-text-secondary)", fontSize: 12 }}>GitLab Scout — Аналитика контрибьюторов</div>
     </div>
   );
 }

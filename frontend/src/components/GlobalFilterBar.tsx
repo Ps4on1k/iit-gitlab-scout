@@ -72,7 +72,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
   const update = (patch: Partial<GlobalFilters>) => onChange({ ...filters, ...patch });
 
   return (
-    <div style={{ background: "white", borderRadius: 8, padding: "12px 16px", marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+    <div style={{ borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-bg-container)" }}>
       <Row gutter={[12, 8]} align="middle">
         <Col flex="auto" style={{ minWidth: 250, maxWidth: 400 }}>
           <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"

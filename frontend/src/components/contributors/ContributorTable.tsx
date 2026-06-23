@@ -168,7 +168,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
   };
 
   return (
-    <div style={{ overflowX: "auto", background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
+    <div style={{ overflowX: "auto", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
@@ -216,8 +216,8 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           })}
         </tbody>
       </table>
-      <div style={{ padding: "16px 20px", borderTop: "1px solid #f0f0f0", background: "#fafafa", borderRadius: "0 0 12px 12px" }}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 10 }}>Индикатор эффективности</div>
+      <div style={{ padding: "16px 20px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)", borderRadius: "0 0 12px 12px" }}>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 10 }}>Индикатор эффективности</div>
         <div style={{ display: "flex", gap: 20, marginBottom: 14, fontSize: 12 }}>
           <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#3f8600", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>★</span> 80–100 Превосходно</span>
           <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#1677ff", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>●</span> 60–79 Отлично</span>
@@ -225,29 +225,29 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#d4b106", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>▲</span> 20–29 Требует внимания</span>
           <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#cf1322", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>!</span> 0–19 Критично</span>
         </div>
-        <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 8 }}>Легенда метрик</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "#666" }}>
-          <div><b style={{ color: "#333" }}>Коммитов</b> — общее количество коммитов за выбранный период</div>
-          <div><b style={{ color: "#333" }}>Изменений</b> — суммарный объём (добавления + удаления строк)</div>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 8 }}>Легенда метрик</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов</b> — общее количество коммитов за выбранный период</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Изменений</b> — суммарный объём (добавления + удаления строк)</div>
           <div><b style={{ color: "#3f8600" }}>+ строк</b> — общее число добавленных строк</div>
           <div><b style={{ color: "#cf1322" }}>- строк</b> — общее число удалённых строк</div>
-          <div><b style={{ color: "#333" }}>Δ/коммит</b> — средний размер коммита: (изменений) / (коммитов). Чем выше — тем «крупнее» коммиты</div>
-          <div><b style={{ color: "#333" }}>Активных дн.</b> — количество дней, в которые автор делал хотя бы один коммит</div>
-          <div><b style={{ color: "#333" }}>Коммитов/день</b> — коммитов / активных дней. Средняя дневная интенсивность</div>
-          <div><b style={{ color: "#333" }}>Коммитов/нед.</b> — коммитов / (активных дней / 7). Недельная интенсивность</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Δ/коммит</b> — средний размер коммита: (изменений) / (коммитов). Чем выше — тем «крупнее» коммиты</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Активных дн.</b> — количество дней, в которые автор делал хотя бы один коммит</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов/день</b> — коммитов / активных дней. Средняя дневная интенсивность</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов/нед.</b> — коммитов / (активных дней / 7). Недельная интенсивность</div>
           <div><b style={{ color: "#3f8600" }}>Ср. +/коммит</b> — (всего добавлений) / (коммитов). Сколько строк добавляется в среднем за коммит</div>
           <div><b style={{ color: "#cf1322" }}>Ср. -/коммит</b> — (всего удалений) / (коммитов). Сколько строк удаляется в среднем за коммит</div>
-          <div><b style={{ color: "#333" }}>Дн. активности</b> — календарных дней от первого до последнего коммита. Общий период участия</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Дн. активности</b> — календарных дней от первого до последнего коммита. Общий период участия</div>
         </div>
-        <div style={{ marginTop: 12, fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 6 }}>Формула расчёта эффективности</div>
-        <div style={{ fontSize: 12, color: "#666", lineHeight: 1.6 }}>
+        <div style={{ marginTop: 12, fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 6 }}>Формула расчёта эффективности</div>
+        <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)", lineHeight: 1.6 }}>
           Композитная метрика от 0 до 100, рассчитывается как взвешенная сумма четырёх компонентов:
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 24px", fontSize: 12, color: "#666", marginTop: 4 }}>
-          <div><b style={{ color: "#333" }}>Последовательность (30%)</b> — отношение активных дней к общему периоду участия. Регулярный коммитер получает максимум</div>
-          <div><b style={{ color: "#333" }}>Активность (25%)</b> — коммитов в неделю (нормализовано до 15 коммитов/нед = максимум)</div>
-          <div><b style={{ color: "#333" }}>Влияние (25%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
-          <div><b style={{ color: "#333" }}>Качество коммитов (20%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)", marginTop: 4 }}>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Последовательность (30%)</b> — отношение активных дней к общему периоду участия. Регулярный коммитер получает максимум</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Активность (25%)</b> — коммитов в неделю (нормализовано до 15 коммитов/нед = максимум)</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Влияние (25%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Качество коммитов (20%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
         </div>
         <div style={{ marginTop: 10, fontSize: 11, color: "#999", fontStyle: "italic" }}>
           Все метрики вычисляются на основе коммитов за выбранный диапазон дат. Фильтры по проектам и тегам влияют на результат. Индикатор не учитывает контекст проекта, сложность задач и код-ревью.

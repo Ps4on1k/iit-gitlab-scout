@@ -143,7 +143,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
               <div key={p.label} style={{ marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
                   <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 400 }}>{p.label}</span>
-                  <span style={{ color: "#666", fontSize: 11 }}>{p.active} актив / {p.stale} заброш / {p.merged} мердж</span>
+                  <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 11 }}>{p.active} актив / {p.stale} заброш / {p.merged} мердж</span>
                 </div>
                 <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
                   <div style={{ width: `${(p.active / p.total) * 100}%`, background: "#3f8600" }} />

@@ -41,7 +41,7 @@ export function MetricsCards({ data, loading }: Props) {
             }}
           >
             <div style={{ fontSize: 28, fontWeight: "bold", color: "#667eea" }}>{card.value}</div>
-            <div style={{ color: "#666", marginTop: 8, fontSize: 13 }}>{card.label}</div>
+            <div style={{ color: "var(--ant-color-text-secondary)", marginTop: 8, fontSize: 13 }}>{card.label}</div>
           </div>
         </Col>
       ))}
