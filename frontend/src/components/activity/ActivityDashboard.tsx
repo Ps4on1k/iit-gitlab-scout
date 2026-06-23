@@ -4,6 +4,7 @@ import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
 import { collectActivity, fetchActivity } from "../../api/activity-client";
 import { Line } from "@ant-design/charts";
+import { chartColors } from "../../utils/chartTheme";
 import type { ProjectConfig } from "../../types";
 import type { ActivityDay, ActivityFilters } from "../../types/activity";
 import type { Role } from "../../types";
@@ -112,6 +113,8 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
     { date: d.date, count: d.pipelines, type: "Пайплайны" },
   ]), [activity]);
 
+  const cc = chartColors();
+
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
       <div style={{ background: "linear-gradient(135deg, #e8956a 0%, #d4a574 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
@@ -142,8 +145,8 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
             <Line data={chartData} xField="date" yField="count" colorField="type"
               point={{ size: 3 }} style={{ lineWidth: 2 }}
               axis={{
-                x: { labelAutoRotate: true, labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
-                y: { labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
+                x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
+                y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
               }}
               scale={{ color: { range: ["#7eb0d5", "#b3cde3", "#ccebc5"] } }}
               tooltip={{ title: "date", items: [{ field: "count", name: "count" }] }}
@@ -171,8 +174,8 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                   <Line data={mrChartData} xField="date" yField="count" colorField="type"
                     point={{ size: 3 }} style={{ lineWidth: 2 }}
                     axis={{
-                      x: { labelAutoRotate: true, labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
-                      y: { labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
+                      x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
+                      y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                     }}
                     scale={{ color: { range: ["#7eb0d5", "#3f8600"] } }}
                     tooltip={{ title: "date", items: [{ field: "count", name: "Количество" }] }}
