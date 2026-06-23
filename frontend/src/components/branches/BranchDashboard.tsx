@@ -253,9 +253,9 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
           <tbody>
             {paged.map((r) => {
               const lastDate = r.last_commit_date ? new Date(r.last_commit_date) : null;
-              const rowBg = r.type === "stale" ? "#fff7e6" : r.type === "active" ? "#f6ffed" : "";
+              const rowBg = r.type === "stale" ? "rgba(207,19,34,0.08)" : r.type === "active" ? "rgba(63,134,0,0.08)" : "";
               return (
-                <tr key={r.id} style={{ background: rowBg }} onMouseEnter={(e) => { if (!rowBg) e.currentTarget.style.background = "#f8f9fa"; }} onMouseLeave={(e) => { if (!rowBg) e.currentTarget.style.background = rowBg; }}>
+                <tr key={r.id} style={{ background: rowBg }} onMouseEnter={(e) => { if (!rowBg) e.currentTarget.style.background = "var(--ant-color-fill-secondary)"; }} onMouseLeave={(e) => { if (!rowBg) e.currentTarget.style.background = rowBg; }}>
                   <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tag} description={projectMap.get(r.project_label)?.description} /></td>
                   <td style={tdStyle}><code style={{ fontSize: 12 }}>{r.name}</code></td>
                   <td style={tdStyle}>
@@ -277,7 +277,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
             })}
           </tbody>
         </table>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid #f0f0f0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid var(--ant-color-border-secondary)" }}>
           <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>Показано {paged.length} из {filtered.length} веток</span>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>Страница</span>

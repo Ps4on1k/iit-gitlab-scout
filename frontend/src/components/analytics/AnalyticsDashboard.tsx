@@ -139,7 +139,7 @@ export function AnalyticsDashboard() {
                           {Object.entries(daily).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => (
                             <div key={date} title={`${date}: ${count}`} style={{
                               width: 14, height: 14, borderRadius: 3,
-                              background: count === 0 ? "#ebedf0" :
+                              background: count === 0 ? "var(--ant-color-fill-secondary)" :
                                 count <= 2 ? "#9be9a8" : count <= 5 ? "#40c463" : count <= 10 ? "#30a14e" : "#216e39"
                             }} />
                           ))}
@@ -159,7 +159,7 @@ export function AnalyticsDashboard() {
                           {Object.entries(daily).sort(([a], [b]) => a.localeCompare(b)).map(([date, count]) => (
                             <div key={date} title={`${date}: ${count}`} style={{
                               width: 14, height: 14, borderRadius: 3,
-                              background: count === 0 ? "#ebedf0" :
+                              background: count === 0 ? "var(--ant-color-fill-secondary)" :
                                 count <= 2 ? "#9be9a8" : count <= 5 ? "#40c463" : count <= 10 ? "#30a14e" : "#216e39"
                             }} />
                           ))}

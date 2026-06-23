@@ -86,7 +86,7 @@ export function CommitTimelineChart({ data, loading, dateFrom, dateTo }: Props) 
         {chartTitle}
       </h3>
       <div style={{ position: "relative", height: 300 }}>
-        {loading && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, background: "rgba(255,255,255,0.7)" }}><Spin /></div>}
+        {loading && <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, background: "rgba(0,0,0,0.5)" }}><Spin /></div>}
         <canvas ref={canvasRef} />
       </div>
     </div>

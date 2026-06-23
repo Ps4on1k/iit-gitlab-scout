@@ -161,7 +161,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}</span>
                           <span style={{ color: Number(p.avgDays) <= 2 ? "#3f8600" : Number(p.avgDays) <= 7 ? "#d4b106" : "#cf1322", fontWeight: 600 }}>{p.avgDays} дн.</span>
                         </div>
-                        <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "#f0f0f0" }}>
+                        <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>
                           <div style={{ width: `${Math.min(100, (Number(p.avgDays) / 30) * 100)}%`, background: Number(p.avgDays) <= 2 ? "#3f8600" : Number(p.avgDays) <= 7 ? "#d4b106" : "#cf1322" }} />
                         </div>
                       </div>
@@ -190,7 +190,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>
-                          <div style={{ height: 10, borderRadius: 5, background: "#f0f0f0", overflow: "hidden" }}>
+                          <div style={{ height: 10, borderRadius: 5, background: "var(--ant-color-fill-secondary)", overflow: "hidden" }}>
                             <div style={{ width: `${(a.total / (mrData.topAuthors[0]?.total || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #667eea, #764ba2)", borderRadius: 5 }} />
                           </div>
                         </div>
@@ -218,7 +218,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{r.reviews} одобрений MR</div>
                         </div>
                         <div style={{ width: 120 }}>
-                          <div style={{ height: 10, borderRadius: 5, background: "#f0f0f0", overflow: "hidden" }}>
+                          <div style={{ height: 10, borderRadius: 5, background: "var(--ant-color-fill-secondary)", overflow: "hidden" }}>
                             <div style={{ width: `${(r.reviews / (mrData.topReviewers[0]?.reviews || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #764ba2, #f093fb)", borderRadius: 5 }} />
                           </div>
                         </div>

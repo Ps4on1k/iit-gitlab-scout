@@ -191,7 +191,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           {sorted.map((c) => {
             const cpc = c.total_commits > 0 ? (c.total_changes / c.total_commits).toFixed(1) : "0";
             return (
-              <tr key={c.id} style={{ cursor: "default" }} onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
+              <tr key={c.id} style={{ cursor: "default" }} onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ant-color-fill-secondary)")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
                 <td style={{ ...tdStyle, fontWeight: 500 }}>
                   <div>
                     {c.author_name && <div style={{ fontWeight: 600 }}>{c.author_name}</div>}

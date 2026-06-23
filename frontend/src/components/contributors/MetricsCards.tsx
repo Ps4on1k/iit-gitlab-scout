@@ -24,7 +24,7 @@ export function MetricsCards({ data, loading }: Props) {
         <Col key={card.label} xs={12} sm={8} md={4}>
           <div
             style={{
-              background: "#f8f9fa",
+              background: "var(--ant-color-fill-secondary)",
               padding: 20,
               borderRadius: 15,
               textAlign: "center",
