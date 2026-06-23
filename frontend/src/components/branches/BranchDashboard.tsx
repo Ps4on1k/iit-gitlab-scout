@@ -150,7 +150,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
   };
 
   const tdStyle: React.CSSProperties = {
-    padding: "10px 10px", borderBottom: "1px solid #e0e0e0", fontSize: 13,
+    padding: "10px 10px", borderBottom: "1px solid var(--ant-color-border-secondary)", fontSize: 13,
   };
 
   return (
@@ -176,8 +176,8 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
         <>
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={4}><Card><Statistic title="Всего" value={summary.total} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Активные" value={summary.active} valueStyle={{ color: "#3f8600" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({summary.total > 0 ? Math.round(summary.active / summary.total * 100) : 0}%)</span>} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Заброшенные" value={summary.stale} valueStyle={{ color: "#cf1322" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({summary.total > 0 ? Math.round(summary.stale / summary.total * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Активные" value={summary.active} valueStyle={{ color: "#3f8600" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({summary.total > 0 ? Math.round(summary.active / summary.total * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Заброшенные" value={summary.stale} valueStyle={{ color: "#cf1322" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({summary.total > 0 ? Math.round(summary.stale / summary.total * 100) : 0}%)</span>} /></Card></Col>
             <Col span={4}><Card><Statistic title="Замерженные" value={summary.merged} valueStyle={{ color: "#667eea" }} /></Card></Col>
             <Col span={4}><Card><Statistic title="Защищённые" value={summary.protected} /></Card></Col>
             <Col span={4}><Card><Statistic title="Ср. дн. без коммита" value={summary.avgDaysSinceCommit} valueStyle={{ color: summary.avgDaysSinceCommit > 90 ? "#cf1322" : summary.avgDaysSinceCommit > 30 ? "#d4b106" : "#3f8600" }} suffix="дн." /></Card></Col>
@@ -211,7 +211,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                             <span style={{ color: "#667eea" }}>Замержен: <b>{p.merged}</b></span>
                           </div>
                           <div style={{ marginTop: 6 }}>
-                            <div style={{ height: 6, borderRadius: 3, background: "#e0e0e0", overflow: "hidden", display: "flex" }}>
+                            <div style={{ height: 6, borderRadius: 3, background: "var(--ant-color-border-secondary)", overflow: "hidden", display: "flex" }}>
                               <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#3f8600" }} />
                               <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#cf1322" }} />
                               <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#667eea" }} />

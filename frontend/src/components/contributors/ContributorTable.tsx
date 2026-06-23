@@ -163,7 +163,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
 
   const tdStyle: React.CSSProperties = {
     padding: "10px 10px",
-    borderBottom: "1px solid #e0e0e0",
+    borderBottom: "1px solid var(--ant-color-border-secondary)",
     fontSize: 13,
   };
 
@@ -249,7 +249,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           <div><b style={{ color: "var(--ant-color-text)" }}>Влияние (25%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Качество коммитов (20%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
         </div>
-        <div style={{ marginTop: 10, fontSize: 11, color: "#999", fontStyle: "italic" }}>
+        <div style={{ marginTop: 10, fontSize: 11, color: "var(--ant-color-textTertiary)", fontStyle: "italic" }}>
           Все метрики вычисляются на основе коммитов за выбранный диапазон дат. Фильтры по проектам и тегам влияют на результат. Индикатор не учитывает контекст проекта, сложность задач и код-ревью.
         </div>
       </div>

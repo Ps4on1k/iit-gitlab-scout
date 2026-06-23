@@ -132,7 +132,7 @@ export default function App() {
             ))}
           </div>
         )}
-        <Content style={{ padding: "12px 24px 24px", background: contentBg }}>
+        <Content style={{ padding: "12px 24px 24px", background: contentBg, border: "none" }}>
           {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} />}
           {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}

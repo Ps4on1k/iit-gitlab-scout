@@ -12,9 +12,9 @@ export function ProjectLabel({ label, tag, description, style }: ProjectLabelPro
   return (
     <span style={style}>
       {label}
-      {tag && <span style={{ color: "#999", fontSize: 12, marginLeft: 6 }}>[{tag}]</span>}
+      {tag && <span style={{ color: "var(--ant-color-textTertiary)", fontSize: 12, marginLeft: 6 }}>[{tag}]</span>}
       <Popover content={<div style={{ maxWidth: 300, whiteSpace: "pre-wrap" }}>{description || "Нет описания"}</div>} trigger="click">
-        <InfoCircleOutlined style={{ color: "#999", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
+        <InfoCircleOutlined style={{ color: "var(--ant-color-textTertiary)", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
       </Popover>
     </span>
   );

@@ -19,8 +19,9 @@ export function clearToken() {
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const token = getToken();
+  const isDelete = options?.method === "DELETE";
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(!isDelete ? { "Content-Type": "application/json" } : {}),
     ...(options?.headers as Record<string, string> || {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;

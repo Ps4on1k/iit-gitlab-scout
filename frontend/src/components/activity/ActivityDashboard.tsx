@@ -175,7 +175,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={12}>
               <Card title="Топ авторов MR (top 10)" size="small"
-                extra={<span style={{ fontSize: 11, color: "#999" }}>Длина бара — относительно макс. кол-ва MR</span>}>
+                extra={<span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>Длина бара — относительно макс. кол-ва MR</span>}>
                 {mrData.topAuthors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
                     {mrData.topAuthors.map((a: any, i: number) => (
@@ -186,7 +186,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }}
                             onClick={() => onContributorClick?.(a.email || a.name)}>{a.name}</div>
-                          {a.email && <div style={{ fontSize: 11, color: "#999" }}>{a.email}</div>}
+                          {a.email && <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>{a.email}</div>}
                           <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>
@@ -203,7 +203,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
             </Col>
             <Col span={12}>
               <Card title="Топ ревьюеров (top 10)" size="small"
-                extra={<span style={{ fontSize: 11, color: "#999" }}>Кол-во одобрений MR (approvals)</span>}>
+                extra={<span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>Кол-во одобрений MR (approvals)</span>}>
                 {mrData.topReviewers.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о ревью" /> : (
                   <div>
                     {mrData.topReviewers.map((r: any, i: number) => (
@@ -214,7 +214,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#764ba2" }}
                             onClick={() => onContributorClick?.(r.email || r.name)}>{r.name}</div>
-                          {r.email && <div style={{ fontSize: 11, color: "#999" }}>{r.email}</div>}
+                          {r.email && <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>{r.email}</div>}
                           <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{r.reviews} одобрений MR</div>
                         </div>
                         <div style={{ width: 120 }}>

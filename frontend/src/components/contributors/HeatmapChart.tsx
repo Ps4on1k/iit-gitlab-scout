@@ -104,7 +104,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
     };
   }, [items.length]);
 
-  if (items.length === 0) return <p style={{ textAlign: "center", color: "#999" }}>Нет данных</p>;
+  if (items.length === 0) return <p style={{ textAlign: "center", color: "var(--ant-color-textTertiary)" }}>Нет данных</p>;
 
   const columns: HeatmapItem[][] = Array.from({ length: cols }, () => []);
   items.forEach((item, i) => { columns[i % cols].push(item); });
@@ -120,7 +120,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
                 {item.name}
                 {projectDescriptions && (
                   <Popover content={<div style={{ maxWidth: 300, whiteSpace: "pre-wrap" }}>{projectDescriptions[item.name] || "Нет описания"}</div>} trigger="click">
-                    <InfoCircleOutlined style={{ color: "#999", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
+                    <InfoCircleOutlined style={{ color: "var(--ant-color-textTertiary)", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
                   </Popover>
                 )}
               </div>
@@ -132,7 +132,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
                 const rowEnd = rowDates[rowDates.length - 1] || "";
                 return (
                   <div key={rowIdx} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                    <span style={{ fontSize: 10, color: "#999", width: 65, flexShrink: 0, textAlign: "right" }}>{rowStart}</span>
+                    <span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)", width: 65, flexShrink: 0, textAlign: "right" }}>{rowStart}</span>
                     <div style={{ display: "flex", gap: CELL_GAP }}>
                       {rowCells.map((count, idx) => (
                         <div
@@ -142,7 +142,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
                         />
                       ))}
                     </div>
-                    <span style={{ fontSize: 10, color: "#999", width: 65, flexShrink: 0 }}>{rowEnd}</span>
+                    <span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)", width: 65, flexShrink: 0 }}>{rowEnd}</span>
                   </div>
                 );
               })}

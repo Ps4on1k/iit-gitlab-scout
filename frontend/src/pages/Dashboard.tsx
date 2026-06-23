@@ -54,7 +54,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         <Col span={4}><Card><Statistic title="Коммитов" value={summary.commits} prefix={<FireOutlined />} /></Card></Col>
         <Col span={4}><Card><Statistic title="Дней активности" value={summary.activeDays} /></Card></Col>
         <Col span={4}><Card><Statistic title="Активные ветки" value={summary.activeBranches} valueStyle={{ color: "#3f8600" }} prefix={<CheckCircleOutlined />} /></Card></Col>
-        <Col span={4}><Card><Statistic title="Заброшенные" value={summary.staleBranches} valueStyle={{ color: stalePct > 50 ? "#cf1322" : "#d4b106" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({stalePct}%)</span>} /></Card></Col>
+        <Col span={4}><Card><Statistic title="Заброшенные" value={summary.staleBranches} valueStyle={{ color: stalePct > 50 ? "#cf1322" : "#d4b106" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({stalePct}%)</span>} /></Card></Col>
       </Row>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -62,7 +62,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           <Card title="Активность за 90 дней" size="small" style={{ height: "100%" }}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 200, borderBottom: "1px solid #e0e0e0" }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 200, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
                   {recentActivity.map((a: any) => {
                     const day = new Date(a.date).getDay();
                     const isWeekend = day === 0 || day === 6;
@@ -80,10 +80,10 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                     if (!show) return null;
                     const leftPct = (i / Math.max(1, recentActivity.length - 1)) * 100;
                     const [y, m, d] = a.date.split("-");
-                    return <span key={a.date} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "#999", whiteSpace: "nowrap" }}>{d}.{m}</span>;
+                    return <span key={a.date} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "var(--ant-color-textTertiary)", whiteSpace: "nowrap" }}>{d}.{m}</span>;
                   })}
                 </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "#999" }}>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "var(--ant-color-textTertiary)" }}>
                   <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #667eea, #764ba2)", marginRight: 4, verticalAlign: "middle" }} />Рабочие дни</span>
                   <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #f093fb, #f5576c)", marginRight: 4, verticalAlign: "middle" }} />Выходные</span>
                 </div>

@@ -217,7 +217,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
           <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Топ-10 контрибьюторов</h3>
           {loading ? <div style={{ textAlign: "center", padding: 40 }}>Загрузка...</div> : (
             <div>{filteredContributors.slice(0, 10).map((c, i) => (
-              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #e0e0e0", fontSize: 13 }}>
+              <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--ant-color-border-secondary)", fontSize: 13 }}>
                 <span style={{ cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(c.author_email)}>{i + 1}. {c.author_name ? `${c.author_name} (${c.author_email})` : c.author_email}</span>
                 <span style={{ fontWeight: 600, color: "#667eea" }}>{c.total_changes.toLocaleString()}</span>
               </div>

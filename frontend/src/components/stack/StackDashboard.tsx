@@ -144,7 +144,7 @@ export function StackDashboard({ userRole }: Props) {
         {loading ? <div style={{ textAlign: "center", padding: 40 }}><Spin size="large" /></div> : (
           languages.length > 0 ? (
             <div>
-              <div style={{ display: "flex", height: 48, borderRadius: 4, overflow: "hidden", border: "1px solid #e0e0e0" }}>
+              <div style={{ display: "flex", height: 48, borderRadius: 4, overflow: "hidden", border: "1px solid var(--ant-color-border-secondary)" }}>
                 {languages.map((l) => (
                   <div key={l.language} title={`${l.language}: ${l.percentage}%`}
                     style={{ width: `${l.percentage}%`, background: getLangColor(l.language), minWidth: l.percentage > 0 ? 2 : 0 }} />
@@ -217,9 +217,9 @@ function ProjectLanguageDetails({ filters }: { filters: StackFilters }) {
               <div style={{ marginBottom: 6 }}>
                 {proj.tag && <Tag style={{ background: getTagColor(proj.tag).bg, color: getTagColor(proj.tag).text, border: "none", marginRight: 6 }}>{proj.tag}</Tag>}
                 <span style={{ fontWeight: 600, fontSize: 18 }}><ProjectLabel label={proj.label} description={projectMap.get(proj.label)?.description} /></span>
-                <span style={{ fontSize: 11, color: "#999", marginLeft: 8 }}>{proj.path}</span>
+                <span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)", marginLeft: 8 }}>{proj.path}</span>
               </div>
-              <div style={{ display: "flex", height: 20, borderRadius: 4, overflow: "hidden", border: "1px solid #e0e0e0" }}>
+              <div style={{ display: "flex", height: 20, borderRadius: 4, overflow: "hidden", border: "1px solid var(--ant-color-border-secondary)" }}>
                 {proj.languages.map((l: any) => (
                   <div key={l.language} title={`${l.language}: ${l.percentage}%`}
                     style={{ width: `${l.percentage}%`, background: getLangColor(l.language), minWidth: l.percentage > 0 ? 2 : 0 }} />
