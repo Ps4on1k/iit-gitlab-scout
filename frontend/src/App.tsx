@@ -54,9 +54,9 @@ export default function App() {
 
   const menuItems = [
     { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
-    { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
-    { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
     { key: "contributors", icon: <TeamOutlined />, label: "Контрибьюторы" },
+    { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
+    { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     { key: "branches", icon: <BranchesOutlined />, label: "Ветки" },
     ...(user.role === "admin" ? [
       { key: "settings", icon: <SettingOutlined />, label: "Настройки" },
