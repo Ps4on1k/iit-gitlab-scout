@@ -64,22 +64,37 @@ export function Dashboard() {
           <Card title="Активность за 90 дней" size="small" style={{ height: "100%" }}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 200 }}>
-                  {recentActivity.map((a: any) => (
-                    <div key={a.date} title={`${a.date}: ${a.commits}`}
-                      style={{ flex: 1, background: "linear-gradient(180deg, #667eea, #764ba2)", borderRadius: "2px 2px 0 0", height: `${(a.commits / maxActivity) * 100}%`, minHeight: a.commits > 0 ? 2 : 0, minWidth: 1 }} />
-                  ))}
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 200, borderBottom: "1px solid #e0e0e0" }}>
+                  {recentActivity.map((a: any) => {
+                    const day = new Date(a.date).getDay();
+                    const isWeekend = day === 0 || day === 6;
+                    return (
+                      <div key={a.date} title={`${a.date}: ${a.commits} коммитов`}
+                        style={{ flex: 1, background: isWeekend
+                          ? "linear-gradient(180deg, #f093fb, #f5576c)"
+                          : "linear-gradient(180deg, #667eea, #764ba2)",
+                          borderRadius: "2px 2px 0 0",
+                          height: `${(a.commits / maxActivity) * 100}%`,
+                          minHeight: a.commits > 0 ? 2 : 0,
+                          minWidth: 1,
+                          opacity: a.commits > 0 ? 1 : 0.3 }} />
+                    );
+                  })}
                 </div>
-                <div style={{ display: "flex", gap: 1, marginTop: 4 }}>
+                <div style={{ display: "flex", gap: 0, marginTop: 4 }}>
                   {recentActivity.map((a: any, i: number) => {
                     const step = Math.max(1, Math.floor(recentActivity.length / 10));
                     const show = i === 0 || i % step === 0 || i === recentActivity.length - 1;
                     return show ? (
                       <span key={a.date} style={{ flex: 1, fontSize: 9, color: "#999", textAlign: i === 0 ? "left" : i === recentActivity.length - 1 ? "right" : "center", overflow: "hidden", whiteSpace: "nowrap" }}>
-                        {a.date.slice(5)}
+                        {a.date}
                       </span>
                     ) : <span key={a.date} style={{ flex: 1 }} />;
                   })}
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "#999" }}>
+                  <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #667eea, #764ba2)", marginRight: 4, verticalAlign: "middle" }} />Рабочие дни</span>
+                  <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #f093fb, #f5576c)", marginRight: 4, verticalAlign: "middle" }} />Выходные</span>
                 </div>
               </div>
             )}
