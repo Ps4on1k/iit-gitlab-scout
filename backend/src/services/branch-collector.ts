@@ -1,6 +1,7 @@
 import { getPool } from "../db/pool.js";
 import { decrypt } from "../utils/crypto.js";
 import { GitLabClient } from "./gitlab-client.js";
+import { upsertCommit, refreshContributors } from "../db/contributor-repository.js";
 
 interface GitLabBranch {
   name: string;
@@ -84,7 +85,26 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
         additions, deletions,
       ]
     );
+
+    // Also upsert commit into commits table so contributor_profiles stay in sync
+    if (branch.commit?.id && lastDate) {
+      await upsertCommit({
+        project_id: projectId,
+        commit_sha: branch.commit.id,
+        author_name: branch.commit.author_name || "",
+        author_email: branch.commit.author_email || "",
+        committed_date: lastDate,
+        additions,
+        deletions,
+        total_changes: additions + deletions,
+        branch: branch.name,
+        raw_json: branch.commit,
+      });
+    }
   }
+
+  // Refresh contributor_profiles to include any new authors from branches
+  await refreshContributors(projectId);
 
   return { total: branches.length, active, stale, merged, protected: protectedCount, unprotected };
 }
