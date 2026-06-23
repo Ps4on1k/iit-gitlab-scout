@@ -9,8 +9,9 @@ function getToken(): string | null {
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const token = getToken();
+  const hasBody = !!options?.body;
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(hasBody ? { "Content-Type": "application/json" } : {}),
     ...(options?.headers as Record<string, string> || {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
