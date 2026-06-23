@@ -14,9 +14,9 @@ function donutConfig(data: { type: string; value: number }[], colors?: string[])
     radius: 0.9,
     innerRadius: 0.55,
     color: colors || PIE_COLORS,
-    label: { display: false },
+    label: false as const,
     legend: { color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11 } },
-    statistic: { title: { content: "", style: { fontSize: 0 } }, content: { content: "", style: { fontSize: 0 } } },
+    statistic: false,
     interaction: { tooltip: { marker: {} } },
   };
 }
@@ -61,15 +61,16 @@ export function Dashboard() {
           <Card title="Активность за 90 дней" size="small" style={{ height: "100%" }}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 80 }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 1, height: 200 }}>
                   {recentActivity.map((a: any) => (
                     <div key={a.date} title={`${a.date}: ${a.commits}`}
-                      style={{ flex: 1, background: "linear-gradient(180deg, #667eea, #764ba2)", borderRadius: "2px 2px 0 0", height: `${(a.commits / maxActivity) * 100}%`, minWidth: 2 }} />
+                      style={{ flex: 1, background: "linear-gradient(180deg, #667eea, #764ba2)", borderRadius: "2px 2px 0 0", height: `${(a.commits / maxActivity) * 100}%`, minHeight: a.commits > 0 ? 2 : 0, minWidth: 1 }} />
                   ))}
                 </div>
                 <div style={{ display: "flex", gap: 1, marginTop: 4 }}>
                   {recentActivity.map((a: any, i: number) => {
-                    const show = recentActivity.length <= 15 || i === 0 || i === Math.floor(recentActivity.length / 3) || i === Math.floor(recentActivity.length * 2 / 3) || i === recentActivity.length - 1;
+                    const step = Math.max(1, Math.floor(recentActivity.length / 10));
+                    const show = i === 0 || i % step === 0 || i === recentActivity.length - 1;
                     return show ? (
                       <span key={a.date} style={{ flex: 1, fontSize: 9, color: "#999", textAlign: i === 0 ? "left" : i === recentActivity.length - 1 ? "right" : "center", overflow: "hidden", whiteSpace: "nowrap" }}>
                         {a.date.slice(5)}
