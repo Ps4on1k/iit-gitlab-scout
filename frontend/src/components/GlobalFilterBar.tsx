@@ -1,10 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { Select, DatePicker, Input, Tag, Row, Col } from "antd";
-import { SearchOutlined } from "@ant-design/icons";
+import { Select, DatePicker, Tag, Row, Col, Button } from "antd";
+import { ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fetchProjects, fetchContributorsList } from "../api/client";
 import type { ProjectConfig, DbContributor, ContributorFilters } from "../types";
-import type { Role } from "../types";
 
 const { RangePicker } = DatePicker;
 
@@ -17,13 +16,19 @@ export interface GlobalFilters {
 }
 
 interface Props {
-  userRole: Role;
-  activeTab: string;
   filters: GlobalFilters;
   onChange: (filters: GlobalFilters) => void;
 }
 
-export function GlobalFilterBar({ userRole, activeTab, filters, onChange }: Props) {
+const defaultFilters: GlobalFilters = {
+  projectIds: [],
+  tags: [],
+  dateFrom: dayjs().subtract(90, "day").format("YYYY-MM-DD"),
+  dateTo: dayjs().format("YYYY-MM-DD"),
+  contributors: [],
+};
+
+export function GlobalFilterBar({ filters, onChange }: Props) {
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [allContributorNames, setAllContributorNames] = useState<string[]>([]);
 
@@ -53,56 +58,53 @@ export function GlobalFilterBar({ userRole, activeTab, filters, onChange }: Prop
 
   const update = (patch: Partial<GlobalFilters>) => onChange({ ...filters, ...patch });
 
-  if (activeTab === "settings") return null;
-
   return (
     <div style={{ background: "white", borderRadius: 8, padding: "12px 16px", marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
       <Row gutter={[12, 8]} align="middle">
-        {activeTab !== "dashboard" && (
-          <>
-            <Col flex="auto" style={{ minWidth: 250, maxWidth: 400 }}>
-              <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
-                style={{ width: "100%" }} value={filters.projectIds} onChange={(v) => update({ projectIds: v })}
-                options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
-                tagRender={({ label, closable, onClose }) => (
-                  <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
-                )}
-                maxTagCount="responsive" />
-            </Col>
-            <Col flex="auto" style={{ minWidth: 160, maxWidth: 250 }}>
-              <Select mode="multiple" placeholder="Теги" allowClear style={{ width: "100%" }}
-                value={filters.tags} onChange={(v) => update({ tags: v })}
-                options={availableTags}
-                tagRender={({ label, closable, onClose }) => (
-                  <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#1677ff", color: "white", border: "none" }}>{label}</Tag>
-                )}
-                maxTagCount="responsive" />
-            </Col>
-            <Col flex="auto" style={{ minWidth: 220, maxWidth: 300 }}>
-              <RangePicker
-                value={[dayjs(filters.dateFrom), dayjs(filters.dateTo)]}
-                onChange={(dates) => update({
-                  dateFrom: dates?.[0]?.format("YYYY-MM-DD") || dayjs().subtract(90, "day").format("YYYY-MM-DD"),
-                  dateTo: dates?.[1]?.format("YYYY-MM-DD") || dayjs().format("YYYY-MM-DD"),
-                })}
-                style={{ width: "100%" }}
-              />
-            </Col>
-            {(activeTab === "contributors" || activeTab === "activity" || activeTab === "branches") && (
-              <Col flex="auto" style={{ minWidth: 220, maxWidth: 350 }}>
-                <Select mode="multiple" placeholder="Контрибьюторы" allowClear showSearch optionFilterProp="label"
-                  style={{ width: "100%" }} value={filters.contributors} onChange={(v) => update({ contributors: v })}
-                  options={allContributorNames.map((n) => ({ value: n, label: n }))}
-                  tagRender={({ label, closable, onClose }) => (
-                    <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
-                  )}
-                  maxTagCount="responsive"
-                  filterOption={(input, option) => (option?.label as string)?.toLowerCase().includes(input.toLowerCase())}
-                />
-              </Col>
+        <Col flex="auto" style={{ minWidth: 250, maxWidth: 400 }}>
+          <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
+            style={{ width: "100%" }} value={filters.projectIds} onChange={(v) => update({ projectIds: v })}
+            options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
+            tagRender={({ label, closable, onClose }) => (
+              <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
             )}
-          </>
-        )}
+            maxTagCount="responsive" />
+        </Col>
+        <Col flex="auto" style={{ minWidth: 160, maxWidth: 250 }}>
+          <Select mode="multiple" placeholder="Теги" allowClear style={{ width: "100%" }}
+            value={filters.tags} onChange={(v) => update({ tags: v })}
+            options={availableTags}
+            tagRender={({ label, closable, onClose }) => (
+              <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#1677ff", color: "white", border: "none" }}>{label}</Tag>
+            )}
+            maxTagCount="responsive" />
+        </Col>
+        <Col flex="auto" style={{ minWidth: 220, maxWidth: 300 }}>
+          <RangePicker
+            value={[dayjs(filters.dateFrom), dayjs(filters.dateTo)]}
+            onChange={(dates) => update({
+              dateFrom: dates?.[0]?.format("YYYY-MM-DD") || dayjs().subtract(90, "day").format("YYYY-MM-DD"),
+              dateTo: dates?.[1]?.format("YYYY-MM-DD") || dayjs().format("YYYY-MM-DD"),
+            })}
+            style={{ width: "100%" }}
+          />
+        </Col>
+        <Col flex="auto" style={{ minWidth: 220, maxWidth: 350 }}>
+          <Select mode="multiple" placeholder="Контрибьюторы" allowClear showSearch optionFilterProp="label"
+            style={{ width: "100%" }} value={filters.contributors} onChange={(v) => update({ contributors: v })}
+            options={allContributorNames.map((n) => ({ value: n, label: n }))}
+            tagRender={({ label, closable, onClose }) => (
+              <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
+            )}
+            maxTagCount="responsive"
+            filterOption={(input, option) => (option?.label as string)?.toLowerCase().includes(input.toLowerCase())}
+          />
+        </Col>
+        <Col>
+          <Button icon={<ReloadOutlined />} onClick={() => onChange({ ...defaultFilters, dateFrom: dayjs().subtract(90, "day").format("YYYY-MM-DD"), dateTo: dayjs().format("YYYY-MM-DD") })}>
+            Сбросить
+          </Button>
+        </Col>
       </Row>
     </div>
   );

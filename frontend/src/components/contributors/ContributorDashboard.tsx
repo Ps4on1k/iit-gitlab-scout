@@ -27,9 +27,10 @@ function getDefaultDateFrom(): string {
 interface Props {
   userRole: Role;
   filters: { projectIds: number[]; tags: string[]; dateFrom: string; dateTo: string; contributors: string[] };
+  onContributorClick?: (name: string) => void;
 }
 
-export function ContributorDashboard({ userRole, filters }: Props) {
+export function ContributorDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [allContributors, setAllContributors] = useState<DbContributor[]>([]);
@@ -209,7 +210,7 @@ export function ContributorDashboard({ userRole, filters }: Props) {
           {loading ? <div style={{ textAlign: "center", padding: 40 }}>Загрузка...</div> : (
             <div>{filteredContributors.slice(0, 10).map((c, i) => (
               <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #e0e0e0", fontSize: 13 }}>
-                <span>{i + 1}. {c.author_name ? `${c.author_email} (${c.author_name})` : c.author_email}</span>
+                <span style={{ cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(c.author_name || c.author_email)}>{i + 1}. {c.author_name ? `${c.author_name} (${c.author_email})` : c.author_email}</span>
                 <span style={{ fontWeight: 600, color: "#667eea" }}>{c.total_changes.toLocaleString()}</span>
               </div>
             ))}</div>
@@ -226,7 +227,7 @@ export function ContributorDashboard({ userRole, filters }: Props) {
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #f0f0f0" }}>
           <h3 style={{ margin: 0, fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
-        <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} /></div>
+        <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} onContributorClick={onContributorClick} /></div>
       </div>
       )}
 

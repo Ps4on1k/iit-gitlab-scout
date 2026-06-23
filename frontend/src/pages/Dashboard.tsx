@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
-import { Card, Row, Col, Statistic, Spin, Empty } from "antd";
+import { useState, useEffect, useMemo } from "react";
+import { Card, Row, Col, Statistic, Spin, Tag, Empty } from "antd";
 import { ProjectOutlined, TeamOutlined, BranchesOutlined, FireOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Pie } from "@ant-design/charts";
 import { fetchDashboard } from "../api/client";
+import { formatContributorName } from "../utils/contributor";
 
 const PIE_COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#fa709a", "#fee140", "#30cfd0"];
 
@@ -17,10 +18,7 @@ function donutConfig(data: { type: string; value: number }[], colors?: string[])
     label: false as const,
     legend: { color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11 } },
     statistic: false,
-    tooltip: {
-      title: "type",
-      items: [{ field: "value", name: "Значение" }],
-    },
+    tooltip: { title: "type", items: [{ field: "value", name: "Значение" }] },
   };
 }
 
@@ -60,7 +58,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       </Row>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={14}>
+        <Col span={12}>
           <Card title="Активность за 90 дней" size="small" style={{ height: "100%" }}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
@@ -70,14 +68,8 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                     const isWeekend = day === 0 || day === 6;
                     return (
                       <div key={a.date} title={`${a.date}: ${a.commits} коммитов`}
-                        style={{ flex: 1, background: isWeekend
-                          ? "linear-gradient(180deg, #f093fb, #f5576c)"
-                          : "linear-gradient(180deg, #667eea, #764ba2)",
-                          borderRadius: "2px 2px 0 0",
-                          height: `${(a.commits / maxActivity) * 100}%`,
-                          minHeight: a.commits > 0 ? 2 : 0,
-                          minWidth: 1,
-                          opacity: a.commits > 0 ? 1 : 0.3 }} />
+                        style={{ flex: 1, background: isWeekend ? "linear-gradient(180deg, #f093fb, #f5576c)" : "linear-gradient(180deg, #667eea, #764ba2)",
+                          borderRadius: "2px 2px 0 0", height: `${(a.commits / maxActivity) * 100}%`, minHeight: a.commits > 0 ? 2 : 0, minWidth: 1, opacity: a.commits > 0 ? 1 : 0.3 }} />
                     );
                   })}
                 </div>
@@ -88,11 +80,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                     if (!show) return null;
                     const leftPct = (i / Math.max(1, recentActivity.length - 1)) * 100;
                     const [y, m, d] = a.date.split("-");
-                    return (
-                      <span key={a.date} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "#999", whiteSpace: "nowrap" }}>
-                        {d}.{m}
-                      </span>
-                    );
+                    return <span key={a.date} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "#999", whiteSpace: "nowrap" }}>{d}.{m}</span>;
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "#999" }}>
@@ -103,61 +91,14 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
             )}
           </Card>
         </Col>
-        <Col span={10}>
-          <Card title="Статус веток" size="small" style={{ height: "100%" }}>
-            {summary.branches === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: 320 }}><Pie {...donutConfig(branchesPie, ["#3f8600", "#cf1322", "#667eea"])} height={320} /></div>
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={8}>
-          <Card title="Топ-10 контрибьюторов (нажмите для фильтрации)" size="small" style={{ height: "100%" }}>
-            {topContributors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div>
-                {topContributors.map((c: any, i: number) => {
-                  const maxChanges = topContributors[0]?.changes || 1;
-                  return (
-                    <div key={c.email} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: 13, cursor: "pointer", padding: "4px 0" }}
-                      onClick={() => onContributorClick?.(c.name || c.email)}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f5f5f5")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
-                      <span style={{ width: 20, textAlign: "center", fontWeight: 700, color: i === 0 ? "#faad14" : i === 1 ? "#8c8c8c" : i === 2 ? "#d48806" : "#999", fontSize: 12 }}>
-                        {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
-                      </span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 500, fontSize: 12, color: "#667eea" }}>{c.name || c.email}</div>
-                        <div style={{ fontSize: 11, color: "#999" }}>{c.commits} коммитов</div>
-                      </div>
-                      <div style={{ width: 100 }}>
-                        <div style={{ height: 6, borderRadius: 3, background: "#f0f0f0", overflow: "hidden" }}>
-                          <div style={{ width: `${(c.changes / maxChanges) * 100}%`, height: "100%", background: "#667eea", borderRadius: 3 }} />
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 11, color: "#666", width: 50, textAlign: "right" }}>{c.changes.toLocaleString()}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
-        </Col>
-        <Col span={8}>
-          <Card title="Языки (top 10)" size="small" style={{ height: "100%" }}>
-            {langsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: 400 }}><Pie {...donutConfig(langsPie)} height={400} /></div>
-            )}
-          </Card>
-        </Col>
-        <Col span={8}>
+        <Col span={12}>
           <Card title="Здоровье проектов (top 10)" size="small" style={{ height: "100%" }}>
             {projectHealth.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
-                {projectHealth.map((p: any) => (
+                {projectHealth.sort((a: any, b: any) => a.healthPct - b.healthPct).map((p: any) => (
                   <div key={p.label} style={{ marginBottom: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{p.label}</span>
+                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{p.label}</span>
                       <span style={{ color: p.healthPct >= 70 ? "#3f8600" : p.healthPct >= 40 ? "#d4b106" : "#cf1322", fontWeight: 600 }}>{p.healthPct}%</span>
                     </div>
                     <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "#f0f0f0" }}>
@@ -166,6 +107,30 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                   </div>
                 ))}
               </div>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={8}>
+          <Card title="Топ-10 контрибьюторов" size="small" style={{ height: "100%" }}>
+            {contributorsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+              <div style={{ height: 360 }}><Pie {...donutConfig(contributorsPie)} height={360} /></div>
+            )}
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card title="Языки (top 10)" size="small" style={{ height: "100%" }}>
+            {langsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+              <div style={{ height: 360 }}><Pie {...donutConfig(langsPie)} height={360} /></div>
+            )}
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card title="Статус веток" size="small" style={{ height: "100%" }}>
+            {summary.branches === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+              <div style={{ height: 360 }}><Pie {...donutConfig(branchesPie, ["#3f8600", "#cf1322", "#667eea"])} height={360} /></div>
             )}
           </Card>
         </Col>

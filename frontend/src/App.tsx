@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ConfigProvider, Layout, Menu, Button, theme, Typography } from "antd";
 import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -49,6 +49,13 @@ export default function App() {
 
   const handleLogout = () => { clearToken(); setUser(null); };
 
+  const handleContributorClick = useCallback((name: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      contributors: prev.contributors.includes(name) ? prev.contributors : [...prev.contributors, name],
+    }));
+  }, []);
+
   if (loading) return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}><Typography.Text>Загрузка...</Typography.Text></div>;
   if (!user) return <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm }}><LoginPage onLogin={setUser} /></ConfigProvider>;
 
@@ -71,7 +78,7 @@ export default function App() {
             <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v1.2.0</span>
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
-            onClick={({ key }) => { setTab(key as any); }}
+            onClick={({ key }) => setTab(key as any)}
             items={menuItems} style={{ flex: 1 }} />
           <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 16, fontSize: 14 }}>
             {user.username} ({user.role})
@@ -79,12 +86,14 @@ export default function App() {
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)" }}>Выйти</Button>
         </Header>
         <Content style={{ padding: "12px 24px 24px", background: "#f5f5f5" }}>
-          <GlobalFilterBar userRole={user.role} activeTab={tab} filters={filters} onChange={setFilters} />
-          {tab === "dashboard" && <Dashboard />}
+          {tab !== "dashboard" && tab !== "settings" && (
+            <GlobalFilterBar filters={filters} onChange={setFilters} />
+          )}
+          {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
-          {tab === "activity" && <ActivityDashboard userRole={user.role} filters={filters} />}
-          {tab === "branches" && <BranchDashboard userRole={user.role} filters={filters} />}
-          {tab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} />}
+          {tab === "activity" && <ActivityDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "branches" && <BranchDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
       </Layout>

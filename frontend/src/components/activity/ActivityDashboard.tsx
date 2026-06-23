@@ -9,9 +9,9 @@ import type { ActivityDay, ActivityFilters } from "../../types/activity";
 import type { Role } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
 
-interface Props { userRole: Role; filters: GlobalFilters; }
+interface Props { userRole: Role; filters: GlobalFilters; onContributorClick?: (name: string) => void; }
 
-export function ActivityDashboard({ userRole, filters }: Props) {
+export function ActivityDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -183,7 +183,7 @@ export function ActivityDashboard({ userRole, filters }: Props) {
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13 }}>{a.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(a.name)}>{a.name}</div>
                           <div style={{ fontSize: 12, color: "#666" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>
@@ -209,7 +209,7 @@ export function ActivityDashboard({ userRole, filters }: Props) {
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13 }}>{r.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#764ba2" }} onClick={() => onContributorClick?.(r.name)}>{r.name}</div>
                           <div style={{ fontSize: 12, color: "#666" }}>{r.reviews} одобрений MR</div>
                         </div>
                         <div style={{ width: 120 }}>

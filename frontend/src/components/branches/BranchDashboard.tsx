@@ -8,7 +8,7 @@ import type { Branch, BranchSummary } from "../../types/analytics";
 import type { Role } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
 
-interface Props { userRole: Role; filters: GlobalFilters; }
+interface Props { userRole: Role; filters: GlobalFilters; onContributorClick?: (name: string) => void; }
 
 type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author" | "days_ago" | "branch_age";
 
@@ -35,7 +35,7 @@ function getHealthColor(active: number, stale: number, total: number): string {
   return "#cf1322";
 }
 
-export function BranchDashboard({ userRole, filters }: Props) {
+export function BranchDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
@@ -274,7 +274,7 @@ export function BranchDashboard({ userRole, filters }: Props) {
                     {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "N/A"}
                   </td>
                   <td style={tdStyle}>
-                    {r.display_author}
+                    <span style={{ color: "#667eea", cursor: "pointer" }} onClick={() => onContributorClick?.(r.display_author)}>{r.display_author}</span>
                   </td>
                 </tr>
               );
