@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Empty, Tooltip } from "antd";
+import { useMemo, useState, useEffect } from "react";
+import { Empty, Tooltip, Select } from "antd";
 import type { DbContributor } from "../../types";
 
 interface Props {
@@ -68,6 +68,8 @@ function ScoreCell({ score }: { score: ScoreResult }) {
 export function ContributorTable({ data, loading, onContributorClick }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortAsc, setSortAsc] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 50;
 
   const withMetrics = useMemo(() => {
     return data.map((c) => {
@@ -140,6 +142,13 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
     });
   }, [withMetrics, sortKey, sortAsc]);
 
+  const paged = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return sorted.slice(start, start + pageSize);
+  }, [sorted, page]);
+
+  useEffect(() => { setPage(1); }, [data.length, sortKey]);
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
     else { setSortKey(key); setSortAsc(key === "author_email"); }
@@ -188,7 +197,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           </tr>
         </thead>
         <tbody>
-          {sorted.map((c) => {
+          {paged.map((c) => {
             const cpc = c.total_commits > 0 ? (c.total_changes / c.total_commits).toFixed(1) : "0";
             return (
               <tr key={c.id} style={{ cursor: "default" }} onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ant-color-fill-secondary)")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
@@ -216,6 +225,19 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           })}
         </tbody>
       </table>
+      {sorted.length > pageSize && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)" }}>
+          <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>
+            Показано {paged.length} из {sorted.length}
+          </span>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>Страница</span>
+            <Select size="small" style={{ width: 80 }} value={page} onChange={setPage}
+              options={Array.from({ length: Math.ceil(sorted.length / pageSize) }, (_, i) => ({ value: i + 1, label: `${i + 1}` }))} />
+            <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>из {Math.ceil(sorted.length / pageSize)}</span>
+          </div>
+        </div>
+      )}
       <div style={{ padding: "16px 20px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)", borderRadius: "0 0 12px 12px" }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 10 }}>Индикатор эффективности</div>
         <div style={{ display: "flex", gap: 20, marginBottom: 14, fontSize: 12 }}>

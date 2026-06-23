@@ -265,6 +265,15 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                     <span style={{ color: getAgeColor(r.daysAgo) }}>
                       {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "N/A"}
                     </span>
+                    {(r as any).last_commit_additions > 0 || (r as any).last_commit_deletions > 0 ? (
+                      <span style={{ marginLeft: 6, fontSize: 11, color: "var(--ant-color-textSecondary)" }}>
+                        <span style={{ color: "#3f8600" }}>+{(r as any).last_commit_additions}</span>
+                        {" "}
+                        <span style={{ color: "#cf1322" }}>-{(r as any).last_commit_deletions}</span>
+                      </span>
+                    ) : lastDate ? (
+                      <span style={{ marginLeft: 6, fontSize: 11, color: "var(--ant-color-textTertiary)" }}>N/A</span>
+                    ) : null}
                   </td>
                   <td style={tdStyle}>
                     {r.branchAge !== null ? <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatAge(r.branchAge)}</span> : "N/A"}

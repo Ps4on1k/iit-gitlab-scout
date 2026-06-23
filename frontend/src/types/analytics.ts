@@ -14,6 +14,8 @@ export interface Branch {
   last_commit_message: string;
   first_commit_date: string | null;
   can_push: boolean | null;
+  last_commit_additions: number;
+  last_commit_deletions: number;
   display_author: string;
 }
 

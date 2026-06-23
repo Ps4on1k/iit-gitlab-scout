@@ -9,12 +9,17 @@ interface GitLabBranch {
   protected: boolean;
   can_push?: boolean;
   commit?: {
+    id: string;
     committed_date: string;
     authored_date: string;
     author_name: string;
     author_email: string;
     message: string;
   };
+}
+
+interface GitLabCommitDetail {
+  stats?: { additions: number; deletions: number; total: number };
 }
 
 export async function collectBranches(projectId: number): Promise<{ total: number; active: number; stale: number; merged: number; protected: number; unprotected: number }> {
@@ -54,9 +59,21 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
     if (branch.protected) protectedCount++;
     else unprotected++;
 
+    let additions = 0;
+    let deletions = 0;
+    if (branch.commit?.id) {
+      try {
+        const detail = await client.request<GitLabCommitDetail>(
+          `/projects/${encodeURIComponent(proj.path)}/repository/commits/${branch.commit.id}`
+        );
+        additions = detail.stats?.additions || 0;
+        deletions = detail.stats?.deletions || 0;
+      } catch { /* stats unavailable */ }
+    }
+
     await pool.query(
-      `INSERT INTO project_branches (project_id, name, "default", merged, protected, last_commit_date, last_commit_author, last_commit_author_email, last_commit_message, first_commit_date, can_push)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      `INSERT INTO project_branches (project_id, name, "default", merged, protected, last_commit_date, last_commit_author, last_commit_author_email, last_commit_message, first_commit_date, can_push, last_commit_additions, last_commit_deletions)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         projectId, branch.name, branch.default, branch.merged, branch.protected,
         lastDate, branch.commit?.author_name || "",
@@ -64,6 +81,7 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
         branch.commit?.message?.slice(0, 500) || "",
         branch.commit?.authored_date || null,
         branch.can_push ?? null,
+        additions, deletions,
       ]
     );
   }
