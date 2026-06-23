@@ -201,6 +201,58 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     }
   }
 
+  // Also include authors from project_branches who are NOT in contributor_profiles
+  const existingEmails = new Set<string>();
+  for (const g of grouped.values()) {
+    for (const e of g.emails) existingEmails.add(e);
+  }
+
+  const branchWhere: string[] = [];
+  const branchParams: any[] = [];
+  let bIdx = 1;
+  if (filters.project_ids && filters.project_ids.length > 0) {
+    branchWhere.push(`pb.project_id = ANY($${bIdx++})`);
+    branchParams.push(filters.project_ids);
+  } else if (filters.project_id) {
+    branchWhere.push(`pb.project_id = $${bIdx++}`);
+    branchParams.push(filters.project_id);
+  }
+
+  const branchResult = await pool.query(
+    `SELECT DISTINCT pb.last_commit_author_email, pb.last_commit_author
+     FROM project_branches pb
+     ${branchWhere.length > 0 ? "WHERE " + branchWhere.join(" AND ") : ""}
+     ${branchWhere.length > 0 ? "AND" : "WHERE"} pb.last_commit_author_email IS NOT NULL AND pb.last_commit_author_email != ''`,
+    branchParams
+  );
+
+  for (const brow of branchResult.rows) {
+    if (existingEmails.has(brow.last_commit_author_email)) continue;
+
+    const email = brow.last_commit_author_email;
+    const name = brow.last_commit_author || email;
+    const displayName = emailToName[email] || name;
+    const primaryEmail = nameToFirstEmail[displayName] || email;
+
+    if (grouped.has(displayName)) {
+      const existing = grouped.get(displayName)!;
+      if (!existing.emails.includes(email)) existing.emails.push(email);
+    } else {
+      grouped.set(displayName, {
+        author_email: primaryEmail,
+        author_name: name,
+        total_commits: 0,
+        total_additions: 0,
+        total_deletions: 0,
+        total_changes: 0,
+        first_commit_date: "",
+        last_commit_date: "",
+        frequency: {},
+        emails: [email],
+      });
+    }
+  }
+
   return Array.from(grouped.values()).map((g, i) => ({
     id: i,
     project_id: 0,
