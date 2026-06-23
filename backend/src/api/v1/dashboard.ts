@@ -63,14 +63,20 @@ export async function dashboardRoutes(app: FastifyInstance) {
     }
 
     const contributorResult = await pool.query(
-      `SELECT author_email, MAX(author_name) as author_name,
-              SUM(total_commits)::int as total_commits,
-              SUM(total_changes)::int as total_changes
-       FROM contributor_profiles
-       WHERE project_id = ANY($1)
-       GROUP BY author_email
-       ORDER BY total_changes DESC`,
-      [projectIds]
+      `SELECT c.author_email, MAX(cn.author_name) as author_name,
+              COUNT(*)::int as total_commits,
+              SUM(c.additions + c.deletions)::int as total_changes
+       FROM commits c
+       JOIN (
+         SELECT author_email, MAX(author_name) as author_name
+         FROM commits WHERE project_id = ANY($1) AND committed_date >= $2
+         GROUP BY author_email
+       ) cn ON cn.author_email = c.author_email
+       WHERE c.project_id = ANY($1) AND c.committed_date >= $2
+       GROUP BY c.author_email
+       ORDER BY total_changes DESC
+       LIMIT 10`,
+      [projectIds, date90]
     );
 
     const contribMap = new Map<string, { name: string; email: string; commits: number; changes: number }>();
