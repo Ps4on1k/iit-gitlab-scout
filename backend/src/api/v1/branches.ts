@@ -21,9 +21,9 @@ export async function branchRoutes(app: FastifyInstance) {
   });
 
   app.get<{
-    Querystring: { project_id?: string; project_ids?: string; tag?: string; status?: string; search?: string; date_from?: string; date_to?: string };
+    Querystring: { project_id?: string; project_ids?: string; tag?: string; status?: string; search?: string; date_from?: string; date_to?: string; contributor?: string };
   }>("/api/v1/branches", { preHandler: [requireAuth] }, async (request) => {
-    const { project_id, project_ids, tag, status, search, date_from, date_to } = request.query;
+    const { project_id, project_ids, tag, status, search, date_from, date_to, contributor } = request.query;
     const user = (request as any).user as JwtPayload;
     const pool = getPool();
     const conditions: string[] = [];
@@ -76,6 +76,17 @@ export async function branchRoutes(app: FastifyInstance) {
       conditions.push(`(pb.last_commit_date IS NULL OR pb.last_commit_date <= now() - interval '90 days')`);
     } else if (status === "merged") {
       conditions.push(`pb.merged = true`);
+    }
+    if (contributor) {
+      // Resolve contributor email/name from directory
+      const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+      let nameForFilter = contributor;
+      for (const row of dirResult.rows) {
+        if (row.emails.includes(contributor)) { nameForFilter = row.display_name; break; }
+      }
+      conditions.push(`(pb.last_commit_author_email ILIKE $${idx} OR pb.last_commit_author ILIKE $${idx})`);
+      params.push(`%${nameForFilter}%`);
+      idx++;
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

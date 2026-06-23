@@ -10,7 +10,7 @@ import { ActivityDashboard } from "./components/activity/ActivityDashboard";
 import { BranchDashboard } from "./components/branches/BranchDashboard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
-import { getMe, clearToken } from "./api/client";
+import { getMe, clearToken, resolveContributor } from "./api/client";
 import type { User } from "./types";
 
 const { Header, Content } = Layout;
@@ -53,10 +53,13 @@ export default function App() {
 
   const handleLogout = () => { clearToken(); setUser(null); };
 
-  const handleContributorClick = useCallback((name: string) => {
+  const handleContributorClick = useCallback(async (emailOrName: string) => {
+    if (!emailOrName) return;
+    const res = await resolveContributor(emailOrName);
+    const resolved = res.ok ? res.data!.email : emailOrName;
     setFilters((prev) => ({
       ...prev,
-      contributors: prev.contributors.includes(name) ? prev.contributors : [...prev.contributors, name],
+      contributors: prev.contributors.includes(resolved) ? prev.contributors : [...prev.contributors, resolved],
     }));
   }, []);
 
@@ -110,7 +113,7 @@ export default function App() {
           </div>
         )}
         <Content style={{ padding: "12px 24px 24px", background: "#f5f5f5" }}>
-          {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} />}
+          {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} />}
           {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}

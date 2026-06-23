@@ -18,6 +18,8 @@ export interface GlobalFilters {
 interface Props {
   filters: GlobalFilters;
   onChange: (filters: GlobalFilters) => void;
+  userRole?: string;
+  userAllowedTags?: string[];
 }
 
 const defaultFilters: GlobalFilters = {
@@ -28,12 +30,17 @@ const defaultFilters: GlobalFilters = {
   contributors: [],
 };
 
-export function GlobalFilterBar({ filters, onChange }: Props) {
-  const [projects, setProjects] = useState<ProjectConfig[]>([]);
+export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }: Props) {
+  const [allProjects, setAllProjects] = useState<ProjectConfig[]>([]);
   const [allContributors, setAllContributors] = useState<DbContributor[]>([]);
 
+  const projects = useMemo(() => {
+    if (userRole === "admin" || !userAllowedTags || userAllowedTags.length === 0) return allProjects;
+    return allProjects.filter((p) => !p.tag || userAllowedTags.includes(p.tag));
+  }, [allProjects, userRole, userAllowedTags]);
+
   useEffect(() => {
-    fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); });
+    fetchProjects().then((r) => { if (r.ok) setAllProjects(r.data!); });
   }, []);
 
   useEffect(() => {

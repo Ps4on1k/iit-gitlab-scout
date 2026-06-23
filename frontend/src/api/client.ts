@@ -242,3 +242,7 @@ export async function fetchMRAnalytics(projectIds?: number[], dateFrom?: string,
 export async function collectMR(projectId: number): Promise<ApiResponse<any>> {
   return fetchJson("/v1/mr-analytics/collect", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
 }
+
+export async function resolveContributor(email: string): Promise<ApiResponse<{ email: string; name: string }>> {
+  return fetchJson(`/v1/contributors/resolve?email=${encodeURIComponent(email)}`);
+}

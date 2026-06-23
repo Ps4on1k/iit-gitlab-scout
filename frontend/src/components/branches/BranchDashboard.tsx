@@ -66,6 +66,8 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
       if (searchText) qs.set("search", searchText);
       if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
       if (filters.dateTo) qs.set("date_to", filters.dateTo);
+      if (filters.contributors.length > 0) qs.set("contributor", filters.contributors[0]);
+      if (filters.contributors.length > 0) qs.set("contributor", filters.contributors[0]);
       const url = `/v1/branches${qs.toString() ? "?" + qs.toString() : ""}`;
       const token = localStorage.getItem("token");
       const res = await fetch(`/api${url}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -74,7 +76,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [filters.projectIds, filters.tags, filters.dateFrom, filters.dateTo, statusFilter]);
+  useEffect(() => { loadData(); }, [filters.projectIds, filters.tags, filters.dateFrom, filters.dateTo, statusFilter, filters.contributors]);
 
   const filtered = useMemo(() => {
     let result = branches;
@@ -82,19 +84,8 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
       const lower = searchText.toLowerCase();
       result = result.filter((b) => b.name.toLowerCase().includes(lower) || b.project_label.toLowerCase().includes(lower));
     }
-    if (filters.contributors.length > 0) {
-      result = result.filter((b) => {
-        const author = (b as any).display_author || b.last_commit_author || "";
-        const authorEmail = author.includes("(") ? author.split("(")[0].trim() : author;
-        const authorEmailDirect = (b as any).last_commit_author_email || "";
-        return filters.contributors.some((f) => {
-          const fLower = f.toLowerCase();
-          return authorEmail.toLowerCase() === fLower || authorEmailDirect.toLowerCase() === fLower || author.toLowerCase().includes(fLower);
-        });
-      });
-    }
     return result;
-  }, [branches, searchText, filters.contributors]);
+  }, [branches, searchText]);
 
   const projectMap = useMemo(() => {
     const m = new Map<string, ProjectConfig>();
