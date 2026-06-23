@@ -16,6 +16,7 @@ import { branchRoutes } from "./api/v1/branches.js";
 import { issueRoutes } from "./api/v1/issues.js";
 import { dependencyAuditRoutes } from "./api/v1/dependency-audit.js";
 import { contributorDirectoryRoutes } from "./api/v1/contributor-directory.js";
+import { dashboardRoutes } from "./api/v1/dashboard.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 
 const env = getEnv();
@@ -39,6 +40,7 @@ await app.register(branchRoutes);
 await app.register(issueRoutes);
 await app.register(dependencyAuditRoutes);
 await app.register(contributorDirectoryRoutes);
+await app.register(dashboardRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

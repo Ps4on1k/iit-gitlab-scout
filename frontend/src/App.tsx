@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ConfigProvider, Layout, Menu, Button, theme, Typography } from "antd";
-import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined } from "@ant-design/icons";
 import { LoginPage } from "./components/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
 import { AdminPanel } from "./components/AdminPanel";
@@ -34,7 +34,7 @@ function Logo() {
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"stack" | "activity" | "contributors" | "branches" | "settings">("stack");
+  const [tab, setTab] = useState<"dashboard" | "stack" | "activity" | "contributors" | "branches" | "settings">("dashboard");
 
   useEffect(() => {
     getMe().then((res) => {
@@ -53,6 +53,7 @@ export default function App() {
   if (!user) return <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm }}><LoginPage onLogin={setUser} /></ConfigProvider>;
 
   const menuItems = [
+    { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
     { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
     { key: "contributors", icon: <TeamOutlined />, label: "Контрибьюторы" },
@@ -87,6 +88,7 @@ export default function App() {
           </Button>
         </Header>
         <Content style={{ padding: 24, background: "#f5f5f5" }}>
+          {tab === "dashboard" && <Dashboard />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
           {tab === "activity" && <ActivityDashboard userRole={user.role} />}
           {tab === "branches" && <BranchDashboard userRole={user.role} />}

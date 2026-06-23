@@ -218,3 +218,13 @@ export async function importContributorDirectory(yaml: string): Promise<ApiRespo
 export async function exportContributorDirectory(): Promise<ApiResponse<{ yaml: string }>> {
   return fetchJson("/v1/contributor-directory/export");
 }
+
+export async function fetchDashboard(): Promise<ApiResponse<{
+  summary: { projects: number; contributors: number; branches: number; activeBranches: number; staleBranches: number; mergedBranches: number; commits: number; activeDays: number };
+  topContributors: { email: string; name: string; commits: number; changes: number }[];
+  projectHealth: { label: string; tag: string; total: number; merged: number; active: number; stale: number; healthPct: number }[];
+  recentActivity: { date: string; commits: number }[];
+  languageDistribution: { language: string; percentage: number }[];
+}>> {
+  return fetchJson("/v1/dashboard");
+}
