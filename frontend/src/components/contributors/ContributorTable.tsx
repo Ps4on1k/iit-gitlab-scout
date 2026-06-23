@@ -151,13 +151,25 @@ export function ContributorTable({ data, loading }: Props) {
   const thStyle: React.CSSProperties = {
     background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     color: "white",
-    padding: "15px 10px",
-    textAlign: "left",
+    padding: "15px 6px",
+    textAlign: "center",
     fontWeight: 600,
     cursor: "pointer",
     userSelect: "none",
-    fontSize: 12,
+    fontSize: 11,
     whiteSpace: "nowrap",
+    writingMode: "vertical-rl",
+    textOrientation: "mixed",
+    height: 120,
+  };
+
+  const thStyleH: React.CSSProperties = {
+    ...thStyle,
+    writingMode: "horizontal-tb",
+    textOrientation: "initial",
+    height: "auto",
+    textAlign: "left",
+    padding: "15px 10px",
   };
 
   const tdStyle: React.CSSProperties = {
@@ -171,8 +183,8 @@ export function ContributorTable({ data, loading }: Props) {
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
-            <th style={thStyle} onClick={() => handleSort("author_email")}>Контрибьютор{arrow("author_email")}</th>
-            <th style={thStyle} onClick={() => handleSort("score")}>Эффективность{arrow("score")}</th>
+            <th style={thStyleH} onClick={() => handleSort("author_email")}>Контрибьютор{arrow("author_email")}</th>
+            <th style={thStyleH} onClick={() => handleSort("score")}><span style={{ writingMode: "horizontal-tb" }}>★</span>{arrow("score")}</th>
             <th style={thStyle} onClick={() => handleSort("total_commits")}>Коммитов{arrow("total_commits")}</th>
             <th style={thStyle} onClick={() => handleSort("total_changes")}>Изменений{arrow("total_changes")}</th>
             <th style={thStyle} onClick={() => handleSort("total_additions")}>+ строк{arrow("total_additions")}</th>
