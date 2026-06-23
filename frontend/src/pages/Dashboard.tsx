@@ -17,7 +17,10 @@ function donutConfig(data: { type: string; value: number }[], colors?: string[])
     label: false as const,
     legend: { color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11 } },
     statistic: false,
-    interaction: { tooltip: { marker: {} } },
+    tooltip: {
+      title: "type",
+      items: [{ field: "value", name: "Значение" }],
+    },
   };
 }
 
