@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ConfigProvider, Layout, Menu, Button, theme, Typography } from "antd";
+import { ConfigProvider, Layout, Menu, Button, theme, Typography, Tabs } from "antd";
 import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
@@ -37,10 +37,14 @@ const defaultFilters: GlobalFilters = {
   contributors: [],
 };
 
+type TabKey = "dashboard" | "analytics" | "stack" | "settings";
+type AnalyticsTab = "contributors" | "activity" | "branches";
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"dashboard" | "stack" | "activity" | "contributors" | "branches" | "settings">("dashboard");
+  const [tab, setTab] = useState<TabKey>("dashboard");
+  const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>("contributors");
   const [filters, setFilters] = useState<GlobalFilters>(defaultFilters);
 
   useEffect(() => {
@@ -61,11 +65,15 @@ export default function App() {
 
   const menuItems = [
     { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
-    { key: "contributors", icon: <TeamOutlined />, label: "Контрибьюторы" },
-    { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
-    { key: "branches", icon: <BranchesOutlined />, label: "Ветки" },
+    { key: "analytics", icon: <TeamOutlined />, label: "Аналитика" },
     { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     ...(user.role === "admin" ? [{ key: "settings", icon: <SettingOutlined />, label: "Настройки" }] : []),
+  ];
+
+  const analyticsSubTabs = [
+    { key: "contributors", label: "Контрибьюторы" },
+    { key: "activity", label: "Активность" },
+    { key: "branches", label: "Ветки" },
   ];
 
   return (
@@ -78,22 +86,31 @@ export default function App() {
             <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v1.2.0</span>
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
-            onClick={({ key }) => setTab(key as any)}
+            onClick={({ key }) => setTab(key as TabKey)}
             items={menuItems} style={{ flex: 1 }} />
           <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 16, fontSize: 14 }}>
             {user.username} ({user.role})
           </div>
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)" }}>Выйти</Button>
         </Header>
+        {tab === "analytics" && (
+          <div style={{ background: "#001529", padding: "0 24px" }}>
+            <Tabs
+              activeKey={analyticsTab}
+              onChange={(k) => setAnalyticsTab(k as AnalyticsTab)}
+              items={analyticsSubTabs}
+              style={{ marginBottom: 0 }}
+              tabBarStyle={{ marginBottom: 0, color: "rgba(255,255,255,0.65)" }}
+            />
+          </div>
+        )}
         <Content style={{ padding: "12px 24px 24px", background: "#f5f5f5" }}>
-          {tab !== "dashboard" && tab !== "settings" && (
-            <GlobalFilterBar filters={filters} onChange={setFilters} />
-          )}
+          {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} />}
           {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
+          {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
-          {tab === "activity" && <ActivityDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "branches" && <BranchDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
       </Layout>
