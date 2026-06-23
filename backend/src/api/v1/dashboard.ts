@@ -15,7 +15,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const projectParams = allowedIds !== null ? [allowedIds] : [];
 
     const projectsResult = await pool.query(
-      `SELECT p.id, p.label, p.tag, p.description FROM projects p ${projectWhere} ORDER BY p.label`,
+      `SELECT p.id, p.label, p.tag FROM projects p ${projectWhere} ORDER BY p.label`,
       projectParams
     );
     const projects = projectsResult.rows;
@@ -24,22 +24,20 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const empty = {
       summary: { projects: 0, contributors: 0, branches: 0, activeBranches: 0, staleBranches: 0, mergedBranches: 0, commits: 0, activeDays: 0 },
       topContributors: [],
-      topProjectsByCommits: [],
-      topBranchesByProject: [],
       projectHealth: [],
       recentActivity: [],
       languageDistribution: [],
       branchStatusDistribution: [],
+      branchesByProject: [],
     };
 
-    if (projectIds.length === 0) {
-      return { ok: true, data: empty };
-    }
+    if (projectIds.length === 0) return { ok: true, data: empty };
+
+    const date90 = new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
 
     const branchResult = await pool.query(
-      `SELECT pb.merged, pb.last_commit_date, pb.project_id, p.label as project_label, p.tag as project_tag
-       FROM project_branches pb
-       JOIN projects p ON p.id = pb.project_id
+      `SELECT pb.merged, pb.last_commit_date, p.label as project_label
+       FROM project_branches pb JOIN projects p ON p.id = pb.project_id
        WHERE pb.project_id = ANY($1)`,
       [projectIds]
     );
@@ -54,6 +52,16 @@ export async function dashboardRoutes(app: FastifyInstance) {
       else staleBranches++;
     }
 
+    const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+    const emailToName: Record<string, string> = {};
+    const nameToFirstEmail: Record<string, string> = {};
+    for (const row of dirResult.rows) {
+      for (const email of row.emails) {
+        emailToName[email] = row.display_name;
+        if (!nameToFirstEmail[row.display_name]) nameToFirstEmail[row.display_name] = email;
+      }
+    }
+
     const contributorResult = await pool.query(
       `SELECT author_email, MAX(author_name) as author_name,
               SUM(total_commits)::int as total_commits,
@@ -61,85 +69,71 @@ export async function dashboardRoutes(app: FastifyInstance) {
        FROM contributor_profiles
        WHERE project_id = ANY($1)
        GROUP BY author_email
-       ORDER BY total_changes DESC
-       LIMIT 10`,
+       ORDER BY total_changes DESC`,
       [projectIds]
     );
 
-    const topProjectsResult = await pool.query(
-      `SELECT p.label, COUNT(c.id)::int as commits, SUM(c.additions + c.deletions)::int as changes
-       FROM commits c
-       JOIN projects p ON p.id = c.project_id
-       WHERE c.project_id = ANY($1)
-       GROUP BY p.label
-       ORDER BY commits DESC
-       LIMIT 10`,
-      [projectIds]
-    );
-
-    const commitsResult = await pool.query(
-      `SELECT COUNT(*)::int as total_commits,
-              COUNT(DISTINCT TO_CHAR(committed_date, 'YYYY-MM-DD'))::int as active_days
-       FROM commits
-       WHERE project_id = ANY($1)`,
-      [projectIds]
-    );
+    const contribMap = new Map<string, { name: string; email: string; commits: number; changes: number }>();
+    for (const c of contributorResult.rows as any[]) {
+      const dn = emailToName[c.author_email] || null;
+      const key = dn || c.author_email;
+      const existing = contribMap.get(key);
+      if (existing) {
+        existing.commits += c.total_commits;
+        existing.changes += c.total_changes;
+      } else {
+        contribMap.set(key, {
+          name: dn ? `${nameToFirstEmail[dn]} (${dn})` : (c.author_name || c.author_email),
+          email: c.author_email,
+          commits: c.total_commits,
+          changes: c.total_changes,
+        });
+      }
+    }
+    const topContributors = Array.from(contribMap.values()).sort((a, b) => b.changes - a.changes).slice(0, 10);
 
     const langResult = await pool.query(
       `SELECT language, SUM(percentage)::numeric(5,2) as total_pct
-       FROM project_languages
-       WHERE project_id = ANY($1)
-       GROUP BY language
-       ORDER BY total_pct DESC
-       LIMIT 10`,
+       FROM project_languages WHERE project_id = ANY($1)
+       GROUP BY language ORDER BY total_pct DESC LIMIT 10`,
       [projectIds]
     );
 
     const activityResult = await pool.query(
       `SELECT TO_CHAR(committed_date, 'YYYY-MM-DD') as day, COUNT(*)::int as cnt
-       FROM commits
-       WHERE project_id = ANY($1)
-         AND committed_date >= now() - interval '30 days'
-       GROUP BY day
-       ORDER BY day`,
-      [projectIds]
+       FROM commits WHERE project_id = ANY($1) AND committed_date >= $2
+       GROUP BY day ORDER BY day`,
+      [projectIds, date90]
     );
 
     const projectHealth = projects.map((p: any) => {
-      const pBranches = branchResult.rows.filter((b: any) => b.project_label === p.label);
-      const total = pBranches.length;
-      const merged = pBranches.filter((b: any) => b.merged).length;
-      const active = pBranches.filter((b: any) => !b.merged && b.last_commit_date && (now - new Date(b.last_commit_date).getTime()) <= stale90).length;
+      const pb = branchResult.rows.filter((b: any) => b.project_label === p.label);
+      const total = pb.length;
+      const merged = pb.filter((b: any) => b.merged).length;
+      const active = pb.filter((b: any) => !b.merged && b.last_commit_date && (now - new Date(b.last_commit_date).getTime()) <= stale90).length;
       const stale = total - merged - active;
       const nonMerged = total - merged || 1;
-      const healthPct = Math.round((active / nonMerged) * 100);
-      return { label: p.label, tag: p.tag, total, merged, active, stale, healthPct };
+      return { label: p.label, tag: p.tag, total, merged, active, stale, healthPct: Math.round((active / nonMerged) * 100) };
     });
 
-    const topBranches = projectHealth.sort((a, b) => b.total - a.total).slice(0, 10).map((p) => ({ label: p.label, total: p.total, active: p.active, stale: p.stale, merged: p.merged }));
+    const topHealth = projectHealth.sort((a, b) => a.healthPct - b.healthPct).slice(0, 10);
+    const topBranches = projectHealth.sort((a, b) => b.total - a.total).slice(0, 10);
 
     return {
       ok: true,
       data: {
         summary: {
           projects: projects.length,
-          contributors: contributorResult.rows.length,
+          contributors: topContributors.length,
           branches: totalBranches,
           activeBranches,
           staleBranches,
           mergedBranches,
-          commits: commitsResult.rows[0]?.total_commits || 0,
-          activeDays: commitsResult.rows[0]?.active_days || 0,
+          commits: activityResult.rows.reduce((s: number, r: any) => s + r.cnt, 0),
+          activeDays: activityResult.rows.length,
         },
-        topContributors: contributorResult.rows.map((c: any) => ({
-          email: c.author_email,
-          name: c.author_name,
-          commits: c.total_commits,
-          changes: c.total_changes,
-        })),
-        topProjectsByCommits: topProjectsResult.rows.map((r: any) => ({ label: r.label, commits: r.commits, changes: r.changes })),
-        topBranchesByProject: topBranches,
-        projectHealth,
+        topContributors,
+        projectHealth: topHealth,
         recentActivity: activityResult.rows.map((r: any) => ({ date: r.day, commits: r.cnt })),
         languageDistribution: langResult.rows.map((l: any) => ({ language: l.language, percentage: Number(l.total_pct) })),
         branchStatusDistribution: [
@@ -147,6 +141,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
           { type: "Заброшенные", value: staleBranches },
           { type: "Замерженные", value: mergedBranches },
         ],
+        branchesByProject: topBranches.map((p) => ({ label: p.label, total: p.total, active: p.active, stale: p.stale, merged: p.merged })),
       },
     };
   });
