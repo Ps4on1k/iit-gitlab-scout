@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useCallback } from "react";
-import { Empty, Tooltip, Select, Popover, Button, Spin, Tag } from "antd";
+import { useMemo, useState, useEffect } from "react";
+import { Empty, Tooltip, Select, Modal, Button, Spin, Tag } from "antd";
 import { SearchOutlined, DownloadOutlined } from "@ant-design/icons";
 import type { DbContributor } from "../../types";
 import { fetchContributorCommits } from "../../api/client";
@@ -139,6 +139,9 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 50;
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalEmail, setModalEmail] = useState("");
+  const [modalName, setModalName] = useState("");
 
   const withMetrics = useMemo(() => {
     return data.map((c) => {
@@ -274,14 +277,10 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
                   <div>
                     <div style={{ fontWeight: 600 }}>
                       {c.author_name}
-                      <Popover
-                        trigger="click"
-                        content={<CommitPopup email={c.author_email} />}
-                        placement="right"
-                        overlayStyle={{ maxWidth: 520 }}
-                      >
-                        <SearchOutlined style={{ color: "#667eea", marginLeft: 6, cursor: "pointer", fontSize: 12 }} />
-                      </Popover>
+                      <SearchOutlined
+                        style={{ color: "#667eea", marginLeft: 6, cursor: "pointer", fontSize: 12 }}
+                        onClick={(e) => { e.stopPropagation(); setModalEmail(c.author_email); setModalName(c.author_name || c.author_email); setModalOpen(true); }}
+                      />
                     </div>
                     <div style={{ fontSize: 11, color: onContributorClick ? "#667eea" : "var(--ant-color-textTertiary)", cursor: onContributorClick ? "pointer" : "default", fontWeight: c.author_name ? 400 : 500 }}
                       onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</div>
@@ -304,33 +303,43 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           })}
         </tbody>
       </table>
-      {sorted.length > pageSize && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>
-              Показано {paged.length} из {sorted.length}
-            </span>
-            <Button size="small" icon={<DownloadOutlined />} onClick={() => {
-              const headers = ["Контрибьютор", "Email", "Коммитов", "Изменений", "+ строк", "- строк", "Δ/коммит", "Активных дн.", "Коммитов/день", "Коммитов/нед.", "Ср.+/коммит", "Ср.-/коммит", "Дн. активности", "Оценка"];
-              const rows = sorted.map((c: any) => [
-                c.author_name || "", c.author_email, c.total_commits, c.total_changes,
-                c.total_additions, c.total_deletions,
-                c.total_commits > 0 ? (c.total_changes / c.total_commits).toFixed(1) : "0",
-                c.activeDays, c.commitsPerDay.toFixed(1), c.commitsPerWeek.toFixed(1),
-                c.avgAdditions.toFixed(1), c.avgDeletions.toFixed(1), c.activitySpan,
-                `${c.score.score} (${c.score.grade})`,
-              ]);
-              downloadCsv("contributors.csv", headers, rows);
-            }}>CSV</Button>
-          </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>
+            {sorted.length > pageSize ? `Показано ${paged.length} из ${sorted.length}` : `${sorted.length} записей`}
+          </span>
+          <Button size="small" icon={<DownloadOutlined />} onClick={() => {
+            const headers = ["Контрибьютор", "Email", "Коммитов", "Изменений", "+ строк", "- строк", "Δ/коммит", "Активных дн.", "Коммитов/день", "Коммитов/нед.", "Ср.+/коммит", "Ср.-/коммит", "Дн. активности", "Оценка"];
+            const rows = sorted.map((c: any) => [
+              c.author_name || "", c.author_email, c.total_commits, c.total_changes,
+              c.total_additions, c.total_deletions,
+              c.total_commits > 0 ? (c.total_changes / c.total_commits).toFixed(1) : "0",
+              c.activeDays, c.commitsPerDay.toFixed(1), c.commitsPerWeek.toFixed(1),
+              c.avgAdditions.toFixed(1), c.avgDeletions.toFixed(1), c.activitySpan,
+              `${c.score.score} (${c.score.grade})`,
+            ]);
+            downloadCsv("contributors.csv", headers, rows);
+          }}>CSV</Button>
+        </div>
+        {sorted.length > pageSize && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>Страница</span>
             <Select size="small" style={{ width: 80 }} value={page} onChange={setPage}
               options={Array.from({ length: Math.ceil(sorted.length / pageSize) }, (_, i) => ({ value: i + 1, label: `${i + 1}` }))} />
             <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>из {Math.ceil(sorted.length / pageSize)}</span>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      <Modal
+        title={`Коммиты — ${modalName}`}
+        open={modalOpen}
+        onCancel={() => setModalOpen(false)}
+        footer={null}
+        width={700}
+        destroyOnClose
+      >
+        <CommitPopup email={modalEmail} />
+      </Modal>
       <div style={{ padding: "16px 20px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)", borderRadius: "0 0 12px 12px" }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 10 }}>Индикатор эффективности</div>
         <div style={{ display: "flex", gap: 20, marginBottom: 14, fontSize: 12 }}>
