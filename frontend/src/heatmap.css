@@ -6,11 +6,11 @@
   transition: box-shadow 0.15s;
   flex-shrink: 0;
 }
-.level-0 { background: #ebedf0; }
-.level-1 { background: #9be9a8; }
-.level-2 { background: #40c463; }
-.level-3 { background: #30a14e; }
-.level-4 { background: #216e39; }
+.level-0 { background: var(--ant-color-fill-secondary, #ebedf0); }
+.level-1 { background: #4caf50; }
+.level-2 { background: #66bb6a; }
+.level-3 { background: #43a047; }
+.level-4 { background: #2e7d32; }
 
 .heatmap-cell:hover {
   box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.7);
@@ -18,8 +18,8 @@
 
 #heatmap-tooltip {
   position: fixed;
-  background: #1a1a2e;
-  color: #fff;
+  background: var(--ant-color-bg-elevated, #1a1a2e);
+  color: var(--ant-color-text, #fff);
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 12px;
@@ -28,5 +28,6 @@
   pointer-events: none;
   z-index: 999999;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  border: 1px solid var(--ant-color-border-secondary, #333);
   display: none;
 }

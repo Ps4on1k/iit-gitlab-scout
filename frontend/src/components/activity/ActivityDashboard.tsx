@@ -57,6 +57,31 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
 
   useEffect(() => { loadMRData(); }, [loadMRData]);
 
+  const mrChartData = useMemo(() => {
+    if (!mrData?.byDay) return [];
+    const byDay = mrData.byDay;
+    if (groupBy === "week") {
+      const weekMap = new Map<string, { total: number; merged: number }>();
+      for (const d of byDay) {
+        const weekStart = new Date(d.date);
+        weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+        const key = weekStart.toISOString().slice(0, 10);
+        const existing = weekMap.get(key) || { total: 0, merged: 0 };
+        existing.total += d.total;
+        existing.merged += d.merged;
+        weekMap.set(key, existing);
+      }
+      return Array.from(weekMap.entries()).flatMap(([date, v]) => [
+        { date, count: v.total, type: "Всего" },
+        { date, count: v.merged, type: "Замержено" },
+      ]);
+    }
+    return byDay.flatMap((d: any) => [
+      { date: d.date, count: d.total, type: "Всего" },
+      { date: d.date, count: d.merged, type: "Замержено" },
+    ]);
+  }, [mrData, groupBy]);
+
   const handleCollect = async () => {
     setCollecting(true);
     try {
@@ -116,7 +141,10 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
           chartData.length > 0 ? (
             <Line data={chartData} xField="date" yField="count" colorField="type"
               point={{ size: 3 }} style={{ lineWidth: 2 }}
-              axis={{ x: { labelAutoRotate: true } }}
+              axis={{
+                x: { labelAutoRotate: true, labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
+                y: { labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
+              }}
               scale={{ color: { range: ["#7eb0d5", "#b3cde3", "#ccebc5"] } }}
               tooltip={{ title: "date", items: [{ field: "count", name: "count" }] }}
             />
@@ -138,13 +166,14 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={12}>
-              <Card title="MR по неделям" size="small">
-                {mrData.byWeek.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-                  <Line data={mrData.byWeek.flatMap((w: any) => [
-                    { date: w.week, count: w.total, type: "Всего" },
-                    { date: w.week, count: w.merged, type: "Замержено" },
-                  ])} xField="date" yField="count" colorField="type"
+              <Card title={groupBy === "day" ? "MR по дням" : "MR по неделям"} size="small">
+                {mrChartData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+                  <Line data={mrChartData} xField="date" yField="count" colorField="type"
                     point={{ size: 3 }} style={{ lineWidth: 2 }}
+                    axis={{
+                      x: { labelAutoRotate: true, labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
+                      y: { labelFill: "var(--ant-color-textSecondary)", titleFill: "var(--ant-color-textSecondary)" },
+                    }}
                     scale={{ color: { range: ["#7eb0d5", "#3f8600"] } }}
                     tooltip={{ title: "date", items: [{ field: "count", name: "Количество" }] }}
                   />

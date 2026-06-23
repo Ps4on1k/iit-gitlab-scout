@@ -64,11 +64,11 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
       params
     );
 
-    const byWeekResult = await pool.query(
-      `SELECT TO_CHAR(date_trunc('week', created_at), 'YYYY-MM-DD') as week, COUNT(*)::int as total,
+    const byDayResult = await pool.query(
+      `SELECT TO_CHAR(created_at::date, 'YYYY-MM-DD') as day, COUNT(*)::int as total,
               COUNT(*) FILTER (WHERE state = 'merged')::int as merged
        FROM project_merge_requests mr ${where}
-       GROUP BY week ORDER BY week`,
+       GROUP BY day ORDER BY day`,
       params
     );
 
@@ -127,7 +127,7 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
       ok: true,
       data: {
         summary: summaryResult.rows[0],
-        byWeek: byWeekResult.rows.map((r: any) => ({ week: r.week, total: r.total, merged: r.merged })),
+        byDay: byDayResult.rows.map((r: any) => ({ date: r.day, total: r.total, merged: r.merged })),
         topAuthors: topAuthorsResult.rows.map((r: any) => ({
           name: r.author_name || r.author_email,
           email: r.author_email || resolveEmail(r.author_name || ""),

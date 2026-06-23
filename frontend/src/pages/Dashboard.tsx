@@ -8,6 +8,12 @@ import { formatContributorName } from "../utils/contributor";
 const PIE_COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#fa709a", "#fee140", "#30cfd0"];
 
 function donutConfig(data: { type: string; value: number }[], colors?: string[]) {
+  const isDark = document.documentElement.classList.contains("dark") ||
+    getComputedStyle(document.body).backgroundColor === "rgb(17, 17, 27)" ||
+    localStorage.getItem("darkMode") === "true";
+  const textColor = isDark ? "#e0e0e8" : "#333";
+  const secondaryColor = isDark ? "#a0a0b4" : "#666";
+
   return {
     data,
     angleField: "value",
@@ -16,9 +22,21 @@ function donutConfig(data: { type: string; value: number }[], colors?: string[])
     innerRadius: 0.55,
     color: colors || PIE_COLORS,
     label: false as const,
-    legend: { color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11 } },
+    legend: {
+      color: {
+        position: "bottom",
+        layout: { justifyContent: "center" },
+        itemLabelFontSize: 11,
+        itemLabelFill: secondaryColor,
+      },
+    },
     statistic: false,
-    tooltip: { title: "type", items: [{ field: "value", name: "Значение" }] },
+    tooltip: {
+      title: "type",
+      items: [{ field: "value", name: "Значение" }],
+      titleStyle: { color: textColor },
+      contentStyle: { color: textColor },
+    },
   };
 }
 
