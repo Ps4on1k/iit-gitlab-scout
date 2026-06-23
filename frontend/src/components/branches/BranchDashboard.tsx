@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker, Collapse } from "antd";
-import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
 import type { ProjectConfig } from "../../types";
@@ -33,6 +33,15 @@ function getHealthColor(active: number, stale: number, total: number): string {
   if (staleRatio <= 0.2) return "#3f8600";
   if (staleRatio <= 0.5) return "#d4b106";
   return "#cf1322";
+}
+
+function downloadCsv(filename: string, headers: string[], rows: any[][]) {
+  const bom = "\uFEFF";
+  const csv = [headers.join(";"), ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"))].join("\n");
+  const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function BranchDashboard({ userRole, filters, onContributorClick }: Props) {
@@ -287,7 +296,21 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
           </tbody>
         </table>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", borderTop: "1px solid var(--ant-color-border-secondary)" }}>
-          <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>Показано {paged.length} из {filtered.length} веток</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>Показано {paged.length} из {filtered.length} веток</span>
+            <Button size="small" icon={<DownloadOutlined />} onClick={() => {
+              const headers = ["Проект", "Ветка", "Статус", "Последний коммит", "Дней назад", "Дифф", "Автор", "Защищена"];
+              const rows = filtered.map((r: any) => {
+                const d = r.last_commit_date ? new Date(r.last_commit_date) : null;
+                const daysAgo = r.daysAgo ?? 0;
+                const diff = (r.last_commit_additions || 0) > 0 || (r.last_commit_deletions || 0) > 0
+                  ? `+${r.last_commit_additions || 0} -${r.last_commit_deletions || 0}` : "N/A";
+                const status = r.merged ? "замержена" : r.default ? "основная" : r.protected ? "защищена" : daysAgo > 90 ? "заброшена" : "активная";
+                return [r.project_label, r.name, status, d ? d.toLocaleDateString() : "N/A", daysAgo, diff, r.display_author, r.protected ? "да" : "нет"];
+              });
+              downloadCsv("branches.csv", headers, rows);
+            }}>CSV</Button>
+          </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "var(--ant-color-text-secondary)" }}>Страница</span>
             <Select size="small" style={{ width: 80 }} value={page} onChange={setPage}

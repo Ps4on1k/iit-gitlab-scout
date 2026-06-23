@@ -1,6 +1,8 @@
-import { useMemo, useState, useEffect } from "react";
-import { Empty, Tooltip, Select } from "antd";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { Empty, Tooltip, Select, Popover, Button, Spin, Tag } from "antd";
+import { SearchOutlined, DownloadOutlined } from "@ant-design/icons";
 import type { DbContributor } from "../../types";
+import { fetchContributorCommits } from "../../api/client";
 
 interface Props {
   data: DbContributor[];
@@ -62,6 +64,73 @@ function ScoreCell({ score }: { score: ScoreResult }) {
         cursor: "default",
       }}>{score.icon}</span>
     </Tooltip>
+  );
+}
+
+function downloadCsv(filename: string, headers: string[], rows: any[][]) {
+  const bom = "\uFEFF";
+  const csv = [headers.join(";"), ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"))].join("\n");
+  const blob = new Blob([bom + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function CommitPopup({ email, dateFrom, dateTo }: { email: string; dateFrom?: string; dateTo?: string }) {
+  const [commits, setCommits] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchContributorCommits(email, undefined, dateFrom, dateTo).then((r) => {
+      if (r.ok) { setCommits(r.data!.commits); setTotal(r.data!.total); }
+      setLoading(false);
+    });
+  }, [email, dateFrom, dateTo]);
+
+  const handleExport = () => {
+    const headers = ["Дата", "Проект", "SHA", "Автор", "Вставка", "Удаление", "Итого", "Сообщение"];
+    const rows = commits.map((c: any) => [
+      c.committed_date, c.project_label, c.commit_sha?.slice(0, 8),
+      c.author_name || c.author_email, c.additions, c.deletions,
+      c.total_changes, (c.message || c.raw_json?.message || "").slice(0, 80),
+    ]);
+    downloadCsv(`commits_${email.replace(/[^a-zA-Z0-9]/g, "_")}.csv`, headers, rows);
+  };
+
+  return (
+    <div style={{ width: 500, maxHeight: 400, overflowY: "auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+        <span style={{ fontWeight: 600 }}>Последние коммиты ({total})</span>
+        <Button size="small" icon={<DownloadOutlined />} onClick={handleExport}>CSV</Button>
+      </div>
+      {loading ? <Spin size="small" /> : commits.length === 0 ? <Empty description="Нет коммитов" image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+        <div>
+          {commits.map((c: any) => {
+            const d = c.committed_date ? new Date(c.committed_date) : null;
+            return (
+              <div key={c.id || c.commit_sha} style={{ padding: "4px 0", borderBottom: "1px solid var(--ant-color-border-secondary)", fontSize: 12 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <code style={{ color: "#667eea", fontSize: 11 }}>{c.commit_sha?.slice(0, 7)}</code>
+                  <span style={{ color: "var(--ant-color-textSecondary)" }}>{d ? d.toLocaleDateString() : "—"}</span>
+                  {c.project_label && <Tag style={{ fontSize: 10 }}>{c.project_label}</Tag>}
+                </div>
+                <div style={{ color: "var(--ant-color-textSecondary)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {(c.message || c.raw_json?.message || "").split("\n")[0].slice(0, 100)}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>
+                  <span style={{ color: "#3f8600" }}>+{c.additions}</span> <span style={{ color: "#cf1322" }}>-{c.deletions}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -203,8 +272,18 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
               <tr key={c.id} style={{ cursor: "default" }} onMouseEnter={(e) => (e.currentTarget.style.background = "var(--ant-color-fill-secondary)")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
                 <td style={{ ...tdStyle, fontWeight: 500 }}>
                   <div>
-                    {c.author_name && <div style={{ fontWeight: 600 }}>{c.author_name}</div>}
-                    <div style={{ fontSize: 11, color: onContributorClick ? "#667eea" : "#999", cursor: onContributorClick ? "pointer" : "default", fontWeight: c.author_name ? 400 : 500 }}
+                    <div style={{ fontWeight: 600 }}>
+                      {c.author_name}
+                      <Popover
+                        trigger="click"
+                        content={<CommitPopup email={c.author_email} />}
+                        placement="right"
+                        overlayStyle={{ maxWidth: 520 }}
+                      >
+                        <SearchOutlined style={{ color: "#667eea", marginLeft: 6, cursor: "pointer", fontSize: 12 }} />
+                      </Popover>
+                    </div>
+                    <div style={{ fontSize: 11, color: onContributorClick ? "#667eea" : "var(--ant-color-textTertiary)", cursor: onContributorClick ? "pointer" : "default", fontWeight: c.author_name ? 400 : 500 }}
                       onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</div>
                   </div>
                 </td>
@@ -227,9 +306,23 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
       </table>
       {sorted.length > pageSize && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)" }}>
-          <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>
-            Показано {paged.length} из {sorted.length}
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>
+              Показано {paged.length} из {sorted.length}
+            </span>
+            <Button size="small" icon={<DownloadOutlined />} onClick={() => {
+              const headers = ["Контрибьютор", "Email", "Коммитов", "Изменений", "+ строк", "- строк", "Δ/коммит", "Активных дн.", "Коммитов/день", "Коммитов/нед.", "Ср.+/коммит", "Ср.-/коммит", "Дн. активности", "Оценка"];
+              const rows = sorted.map((c: any) => [
+                c.author_name || "", c.author_email, c.total_commits, c.total_changes,
+                c.total_additions, c.total_deletions,
+                c.total_commits > 0 ? (c.total_changes / c.total_commits).toFixed(1) : "0",
+                c.activeDays, c.commitsPerDay.toFixed(1), c.commitsPerWeek.toFixed(1),
+                c.avgAdditions.toFixed(1), c.avgDeletions.toFixed(1), c.activitySpan,
+                `${c.score.score} (${c.score.grade})`,
+              ]);
+              downloadCsv("contributors.csv", headers, rows);
+            }}>CSV</Button>
+          </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <span style={{ fontSize: 13, color: "var(--ant-color-textSecondary)" }}>Страница</span>
             <Select size="small" style={{ width: 80 }} value={page} onChange={setPage}

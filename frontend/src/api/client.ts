@@ -247,3 +247,11 @@ export async function collectMR(projectId: number): Promise<ApiResponse<any>> {
 export async function resolveContributor(email: string): Promise<ApiResponse<{ email: string; name: string }>> {
   return fetchJson(`/v1/contributors/resolve?email=${encodeURIComponent(email)}`);
 }
+
+export async function fetchContributorCommits(email: string, projectIds?: number[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<{ commits: any[]; total: number }>> {
+  const qs = new URLSearchParams({ email });
+  if (projectIds && projectIds.length > 0) qs.set("project_ids", projectIds.join(","));
+  if (dateFrom) qs.set("date_from", dateFrom);
+  if (dateTo) qs.set("date_to", dateTo);
+  return fetchJson(`/v1/contributor-commits?${qs.toString()}`);
+}
