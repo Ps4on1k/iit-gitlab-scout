@@ -47,10 +47,6 @@ export function LoginPage({ onLogin }: Props) {
             </Button>
           </Form.Item>
         </Form>
-        <div style={{ fontSize: 12, color: "#999", textAlign: "center" }}>
-          admin/admin — полный доступ<br />
-          user/user — только просмотр
-        </div>
       </Card>
     </div>
   );
