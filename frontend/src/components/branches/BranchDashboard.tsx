@@ -87,7 +87,10 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
         const author = (b as any).display_author || b.last_commit_author || "";
         const authorEmail = author.includes("(") ? author.split("(")[0].trim() : author;
         const authorEmailDirect = (b as any).last_commit_author_email || "";
-        return filters.contributors.includes(authorEmail) || filters.contributors.includes(authorEmailDirect);
+        return filters.contributors.some((f) => {
+          const fLower = f.toLowerCase();
+          return authorEmail.toLowerCase() === fLower || authorEmailDirect.toLowerCase() === fLower || author.toLowerCase().includes(fLower);
+        });
       });
     }
     return result;

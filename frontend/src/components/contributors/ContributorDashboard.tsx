@@ -72,10 +72,17 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Contributor filter
+  // Contributor filter — match by email or by name
   const filteredContributors = useMemo(() => {
     if (filters.contributors.length === 0) return allContributors;
-    return allContributors.filter((c) => filters.contributors.includes(c.author_email));
+    return allContributors.filter((c) => {
+      return filters.contributors.some((f) =>
+        c.author_email === f ||
+        c.author_name === f ||
+        c.author_email.toLowerCase().includes(f.toLowerCase()) ||
+        (c.author_name && c.author_name.toLowerCase().includes(f.toLowerCase()))
+      );
+    });
   }, [allContributors, filters.contributors]);
 
   // Metrics from filtered contributors
@@ -113,7 +120,12 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
       filteredByContributor = {};
       for (const [name, daily] of Object.entries(by_contributor)) {
         const email = extractEmail(name);
-        if (filters.contributors.includes(email)) filteredByContributor[name] = daily;
+        const keyLower = name.toLowerCase();
+        const matches = filters.contributors.some((f) => {
+          const fLower = f.toLowerCase();
+          return email === f || keyLower.includes(fLower);
+        });
+        if (matches) filteredByContributor[name] = daily;
       }
     }
 
@@ -127,7 +139,11 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
       if (filters.contributors.length > 0) {
         contribsToInclude = Object.keys(projContribMap).filter((name) => {
           const email = extractEmail(name);
-          return filters.contributors.includes(email);
+          const keyLower = name.toLowerCase();
+          return filters.contributors.some((f) => {
+            const fLower = f.toLowerCase();
+            return email === f || keyLower.includes(fLower);
+          });
         });
       } else {
         contribsToInclude = Object.keys(projContribMap);
