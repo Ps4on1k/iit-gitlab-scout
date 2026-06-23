@@ -7,10 +7,66 @@ interface Props {
   loading: boolean;
 }
 
-type SortKey = "author_email" | "total_commits" | "total_additions" | "total_deletions" | "total_changes" | "cpc" | "active_days" | "commits_per_day" | "commits_per_week" | "avg_additions" | "avg_deletions" | "activity_span";
+type SortKey = "author_email" | "total_commits" | "total_additions" | "total_deletions" | "total_changes" | "cpc" | "active_days" | "commits_per_day" | "commits_per_week" | "avg_additions" | "avg_deletions" | "activity_span" | "score";
+
+interface ScoreResult {
+  score: number;
+  grade: string;
+  color: string;
+  icon: string;
+}
+
+function computeScore(c: {
+  total_commits: number;
+  total_changes: number;
+  activeDays: number;
+  activitySpan: number;
+  commitsPerWeek: number;
+  avgChangesPerCommit: number;
+}): ScoreResult {
+  const { total_commits, total_changes, activeDays, activitySpan, commitsPerWeek, avgChangesPerCommit } = c;
+
+  if (total_commits === 0) return { score: 0, grade: "Нет данных", color: "#d9d9d9", icon: "—" };
+
+  const consistency = activitySpan > 0 ? Math.min(activeDays / activitySpan, 1) : 0;
+
+  const activity = Math.min(commitsPerWeek / 15, 1);
+
+  const changesPerDay = activeDays > 0 ? total_changes / activeDays : 0;
+  const impact = Math.min(changesPerDay / 200, 1);
+
+  const sizeQuality = avgChangesPerCommit <= 10 ? 0.3
+    : avgChangesPerCommit <= 50 ? 1
+    : avgChangesPerCommit <= 200 ? 0.8
+    : avgChangesPerCommit <= 500 ? 0.5
+    : 0.2;
+
+  const raw = (consistency * 30) + (activity * 25) + (impact * 25) + (sizeQuality * 20);
+  const score = Math.round(Math.min(100, Math.max(0, raw)));
+
+  if (score >= 80) return { score, grade: "Превосходно", color: "#3f8600", icon: "★" };
+  if (score >= 60) return { score, grade: "Отлично", color: "#1677ff", icon: "●" };
+  if (score >= 40) return { score, grade: "Хорошо", color: "#fa8c16", icon: "◆" };
+  if (score >= 20) return { score, grade: "Требует внимания", color: "#d4b106", icon: "▲" };
+  return { score, grade: "Критично", color: "#cf1322", icon: "!" };
+}
+
+function ScoreCell({ score }: { score: ScoreResult }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span style={{
+        display: "inline-flex", alignItems: "center", justifyContent: "center",
+        width: 24, height: 24, borderRadius: 12,
+        background: score.color, color: "white", fontSize: 12, fontWeight: 700,
+      }}>{score.icon}</span>
+      <span style={{ fontSize: 11, color: score.color, fontWeight: 600 }}>{score.score}</span>
+      <span style={{ fontSize: 10, color: "#999" }}>{score.grade}</span>
+    </span>
+  );
+}
 
 export function ContributorTable({ data, loading }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>("total_changes");
+  const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortAsc, setSortAsc] = useState(false);
 
   const withMetrics = useMemo(() => {
@@ -21,6 +77,7 @@ export function ContributorTable({ data, loading }: Props) {
       const commitsPerWeek = activeDays > 0 ? c.total_commits / (activeDays / 7) : 0;
       const avgAdditions = c.total_commits > 0 ? c.total_additions / c.total_commits : 0;
       const avgDeletions = c.total_commits > 0 ? c.total_deletions / c.total_commits : 0;
+      const avgChangesPerCommit = c.total_commits > 0 ? c.total_changes / c.total_commits : 0;
 
       let activitySpan = 0;
       if (c.first_commit_date && c.last_commit_date) {
@@ -29,7 +86,16 @@ export function ContributorTable({ data, loading }: Props) {
         activitySpan = Math.ceil((last - first) / 86400000);
       }
 
-      return { ...c, activeDays, commitsPerDay, commitsPerWeek, avgAdditions, avgDeletions, activitySpan };
+      const score = computeScore({
+        total_commits: c.total_commits,
+        total_changes: c.total_changes,
+        activeDays,
+        activitySpan,
+        commitsPerWeek,
+        avgChangesPerCommit,
+      });
+
+      return { ...c, activeDays, commitsPerDay, commitsPerWeek, avgAdditions, avgDeletions, activitySpan, score };
     });
   }, [data]);
 
@@ -60,6 +126,9 @@ export function ContributorTable({ data, loading }: Props) {
       } else if (sortKey === "activity_span") {
         aVal = a.activitySpan;
         bVal = b.activitySpan;
+      } else if (sortKey === "score") {
+        aVal = a.score.score;
+        bVal = b.score.score;
       } else {
         aVal = Number(a[sortKey]) || 0;
         bVal = Number(b[sortKey]) || 0;
@@ -73,7 +142,7 @@ export function ContributorTable({ data, loading }: Props) {
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
-    else { setSortKey(key); setSortAsc(false); }
+    else { setSortKey(key); setSortAsc(key === "author_email"); }
   };
 
   const arrow = (key: SortKey) => sortKey === key ? (sortAsc ? " ↑" : " ↓") : " ↕";
@@ -104,6 +173,7 @@ export function ContributorTable({ data, loading }: Props) {
         <thead>
           <tr>
             <th style={thStyle} onClick={() => handleSort("author_email")}>Контрибьютор{arrow("author_email")}</th>
+            <th style={thStyle} onClick={() => handleSort("score")}>Эффективность{arrow("score")}</th>
             <th style={thStyle} onClick={() => handleSort("total_commits")}>Коммитов{arrow("total_commits")}</th>
             <th style={thStyle} onClick={() => handleSort("total_changes")}>Изменений{arrow("total_changes")}</th>
             <th style={thStyle} onClick={() => handleSort("total_additions")}>+ строк{arrow("total_additions")}</th>
@@ -124,6 +194,7 @@ export function ContributorTable({ data, loading }: Props) {
             return (
               <tr key={c.id} style={{ cursor: "default" }} onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
                 <td style={{ ...tdStyle, fontWeight: 500 }}>{displayName}</td>
+                <td style={tdStyle}><ScoreCell score={c.score} /></td>
                 <td style={tdStyle}>{Number(c.total_commits)}</td>
                 <td style={{ ...tdStyle, fontWeight: 600 }}>{Number(c.total_changes).toLocaleString()}</td>
                 <td style={{ ...tdStyle, color: "#3f8600" }}>+{Number(c.total_additions).toLocaleString()}</td>
@@ -141,7 +212,15 @@ export function ContributorTable({ data, loading }: Props) {
         </tbody>
       </table>
       <div style={{ padding: "16px 20px", borderTop: "1px solid #f0f0f0", background: "#fafafa", borderRadius: "0 0 12px 12px" }}>
-        <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 10 }}>Легенда метрик</div>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 10 }}>Индикатор эффективности</div>
+        <div style={{ display: "flex", gap: 20, marginBottom: 14, fontSize: 12 }}>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#3f8600", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>★</span> 80–100 Превосходно</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#1677ff", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>●</span> 60–79 Отлично</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#fa8c16", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>◆</span> 40–59 Хорошо</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#d4b106", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>▲</span> 20–29 Требует внимания</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#cf1322", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>!</span> 0–19 Критично</span>
+        </div>
+        <div style={{ fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 8 }}>Легенда метрик</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "#666" }}>
           <div><b style={{ color: "#333" }}>Коммитов</b> — общее количество коммитов за выбранный период</div>
           <div><b style={{ color: "#333" }}>Изменений</b> — суммарный объём (добавления + удаления строк)</div>
@@ -155,8 +234,18 @@ export function ContributorTable({ data, loading }: Props) {
           <div><b style={{ color: "#cf1322" }}>Ср. -/коммит</b> — (всего удалений) / (коммитов). Сколько строк удаляется в среднем за коммит</div>
           <div><b style={{ color: "#333" }}>Дн. активности</b> — календарных дней от первого до последнего коммита. Общий период участия</div>
         </div>
+        <div style={{ marginTop: 12, fontWeight: 600, fontSize: 13, color: "#333", marginBottom: 6 }}>Формула расчёта эффективности</div>
+        <div style={{ fontSize: 12, color: "#666", lineHeight: 1.6 }}>
+          Композитная метрика от 0 до 100, рассчитывается как взвешенная сумма четырёх компонентов:
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 24px", fontSize: 12, color: "#666", marginTop: 4 }}>
+          <div><b style={{ color: "#333" }}>Последовательность (30%)</b> — отношение активных дней к общему периоду участия. Регулярный коммитер получает максимум</div>
+          <div><b style={{ color: "#333" }}>Активность (25%)</b> — коммитов в неделю (нормализовано до 15 коммитов/нед = максимум)</div>
+          <div><b style={{ color: "#333" }}>Влияние (25%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
+          <div><b style={{ color: "#333" }}>Качество коммитов (20%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
+        </div>
         <div style={{ marginTop: 10, fontSize: 11, color: "#999", fontStyle: "italic" }}>
-          Все метрики вычисляются на основе коммитов за выбранный диапазон дат. Фильтры по проектам и тегам влияют на результат.
+          Все метрики вычисляются на основе коммитов за выбранный диапазон дат. Фильтры по проектам и тегам влияют на результат. Индикатор не учитывает контекст проекта, сложность задач и код-ревью.
         </div>
       </div>
     </div>
