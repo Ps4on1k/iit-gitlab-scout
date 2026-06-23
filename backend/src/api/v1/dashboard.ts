@@ -112,6 +112,17 @@ export async function dashboardRoutes(app: FastifyInstance) {
       [projectIds, date90]
     );
 
+    const activityMap = new Map<string, number>();
+    for (const r of activityResult.rows as any[]) activityMap.set(r.day, r.cnt);
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const fullActivity: { date: string; commits: number }[] = [];
+    const startDate = new Date(date90);
+    const endDate = new Date(todayStr);
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const ds = d.toISOString().slice(0, 10);
+      fullActivity.push({ date: ds, commits: activityMap.get(ds) || 0 });
+    }
+
     const projectHealth = projects.map((p: any) => {
       const pb = branchResult.rows.filter((b: any) => b.project_label === p.label);
       const total = pb.length;
@@ -140,7 +151,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         },
         topContributors,
         projectHealth: topHealth,
-        recentActivity: activityResult.rows.map((r: any) => ({ date: r.day, commits: r.cnt })),
+        recentActivity: fullActivity,
         languageDistribution: langResult.rows.map((l: any) => ({ language: l.language, percentage: Number(l.total_pct) })),
         branchStatusDistribution: [
           { type: "Активные", value: activeBranches },
