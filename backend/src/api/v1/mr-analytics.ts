@@ -95,7 +95,7 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
       data: {
         summary: summaryResult.rows[0],
         byWeek: byWeekResult.rows.map((r: any) => ({ week: r.week, total: r.total, merged: r.merged })),
-        topAuthors: topAuthorsResult.rows.map((r: any) => ({ name: r.author_name || r.author_email, total: r.total, merged: r.merged })),
+        topAuthors: topAuthorsResult.rows.map((r: any) => ({ name: r.author_name || r.author_email, email: r.author_email, total: r.total, merged: r.merged })),
         topReviewers: topReviewersResult.rows.map((r: any) => ({ name: r.reviewer, reviews: r.reviews })),
         avgMergeTime: avgMergeTimeByProject.rows.map((r: any) => ({ label: r.label, avgDays: Number(r.avg_days) })),
       },

@@ -85,7 +85,9 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
     if (filters.contributors.length > 0) {
       result = result.filter((b) => {
         const author = (b as any).display_author || b.last_commit_author || "";
-        return filters.contributors.some((fc) => author.toLowerCase().includes(fc.toLowerCase()));
+        const authorEmail = author.includes("(") ? author.split("(")[0].trim() : author;
+        const authorEmailDirect = (b as any).last_commit_author_email || "";
+        return filters.contributors.includes(authorEmail) || filters.contributors.includes(authorEmailDirect);
       });
     }
     return result;
@@ -274,7 +276,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                     {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "N/A"}
                   </td>
                   <td style={tdStyle}>
-                    <span style={{ color: "#667eea", cursor: "pointer" }} onClick={() => onContributorClick?.(r.display_author)}>{r.display_author}</span>
+                    <span style={{ color: "#667eea", cursor: "pointer" }} onClick={() => onContributorClick?.((r as any).last_commit_author_email || r.display_author)}>{r.display_author}</span>
                   </td>
                 </tr>
               );

@@ -75,14 +75,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
   // Contributor filter
   const filteredContributors = useMemo(() => {
     if (filters.contributors.length === 0) return allContributors;
-    return allContributors.filter((c) => {
-      const displayName = c.author_name || c.author_email;
-      return filters.contributors.some((f) =>
-        displayName.toLowerCase().includes(f.toLowerCase()) ||
-        c.author_email.toLowerCase().includes(f.toLowerCase()) ||
-        c.author_name?.toLowerCase().includes(f.toLowerCase())
-      );
-    });
+    return allContributors.filter((c) => filters.contributors.includes(c.author_email));
   }, [allContributors, filters.contributors]);
 
   // Metrics from filtered contributors
@@ -109,42 +102,32 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
     };
   }, [allMetrics, allContributors, filteredContributors, filters.contributors]);
 
-  // Heatmap filter
+  // Heatmap filter - keys are "email (name)" format, match by email
   const filteredHeatmap = useMemo(() => {
     const { by_contributor, project_contributors, by_project_contributor } = allHeatmap;
 
-    // Filter contributors - match by name OR email in heatmap key "email (name)"
+    const extractEmail = (key: string) => key.includes("(") ? key.split("(")[0].trim() : key;
+
     let filteredByContributor = by_contributor;
     if (filters.contributors.length > 0) {
       filteredByContributor = {};
       for (const [name, daily] of Object.entries(by_contributor)) {
-        const keyLower = name.toLowerCase();
-        const email = name.includes("(") ? name.split(" (")[0].trim() : name;
-        const matches = filters.contributors.some((fc) => {
-          const fcLower = fc.toLowerCase();
-          return keyLower.includes(fcLower) || email.toLowerCase() === fcLower;
-        });
-        if (matches) filteredByContributor[name] = daily;
+        const email = extractEmail(name);
+        if (filters.contributors.includes(email)) filteredByContributor[name] = daily;
       }
     }
 
-    // Build filtered projects: use by_project_contributor when contributor filter is active
     const filteredByProject: Record<string, Record<string, number>> = {};
     const allProjectPaths = Object.keys(by_project_contributor);
 
     for (const projPath of allProjectPaths) {
       const projContribMap = by_project_contributor[projPath] || {};
 
-      // If contributor filter: only keep selected contributors' data
       let contribsToInclude: string[];
       if (filters.contributors.length > 0) {
         contribsToInclude = Object.keys(projContribMap).filter((name) => {
-          const keyLower = name.toLowerCase();
-          const email = name.includes("(") ? name.split(" (")[0].trim() : name;
-          return filters.contributors.some((fc) => {
-            const fcLower = fc.toLowerCase();
-            return keyLower.includes(fcLower) || email.toLowerCase() === fcLower;
-          });
+          const email = extractEmail(name);
+          return filters.contributors.includes(email);
         });
       } else {
         contribsToInclude = Object.keys(projContribMap);
@@ -219,7 +202,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
           {loading ? <div style={{ textAlign: "center", padding: 40 }}>Загрузка...</div> : (
             <div>{filteredContributors.slice(0, 10).map((c, i) => (
               <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid #e0e0e0", fontSize: 13 }}>
-                <span style={{ cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(c.author_name || c.author_email)}>{i + 1}. {c.author_name ? `${c.author_name} (${c.author_email})` : c.author_email}</span>
+                <span style={{ cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(c.author_email)}>{i + 1}. {c.author_name ? `${c.author_name} (${c.author_email})` : c.author_email}</span>
                 <span style={{ fontWeight: 600, color: "#667eea" }}>{c.total_changes.toLocaleString()}</span>
               </div>
             ))}</div>

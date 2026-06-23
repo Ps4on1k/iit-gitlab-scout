@@ -30,7 +30,7 @@ const defaultFilters: GlobalFilters = {
 
 export function GlobalFilterBar({ filters, onChange }: Props) {
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
-  const [allContributorNames, setAllContributorNames] = useState<string[]>([]);
+  const [allContributors, setAllContributors] = useState<DbContributor[]>([]);
 
   useEffect(() => {
     fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); });
@@ -43,10 +43,7 @@ export function GlobalFilterBar({ filters, onChange }: Props) {
       date_to: filters.dateTo,
     };
     fetchContributorsList(fc).then((r) => {
-      if (r.ok) {
-        const names = [...new Set(r.data!.map((c: DbContributor) => c.author_name || c.author_email).filter(Boolean))].sort();
-        setAllContributorNames(names);
-      }
+      if (r.ok) setAllContributors(r.data!);
     });
   }, [filters.projectIds, filters.dateFrom, filters.dateTo]);
 
@@ -55,6 +52,15 @@ export function GlobalFilterBar({ filters, onChange }: Props) {
     for (const p of projects) { if (p.tag) tags.add(p.tag); }
     return Array.from(tags).sort().map((t) => ({ value: t, label: t }));
   }, [projects]);
+
+  const contributorOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const c of allContributors) {
+      const name = c.author_name || c.author_email;
+      seen.set(c.author_email, name !== c.author_email ? `${name} (${c.author_email})` : c.author_email);
+    }
+    return Array.from(seen.entries()).map(([email, label]) => ({ value: email, label }));
+  }, [allContributors]);
 
   const update = (patch: Partial<GlobalFilters>) => onChange({ ...filters, ...patch });
 
@@ -95,7 +101,7 @@ export function GlobalFilterBar({ filters, onChange }: Props) {
         <Col flex="auto" style={{ minWidth: 220, maxWidth: 350 }}>
           <Select mode="multiple" placeholder="Контрибьюторы" allowClear showSearch optionFilterProp="label"
             style={{ width: "100%" }} value={filters.contributors} onChange={(v) => update({ contributors: v })}
-            options={allContributorNames.map((n) => ({ value: n, label: n }))}
+            options={contributorOptions}
             tagRender={({ label, closable, onClose }) => (
               <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
             )}

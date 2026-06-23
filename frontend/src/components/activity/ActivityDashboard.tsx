@@ -183,7 +183,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(a.name)}>{a.name}</div>
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(a.email)}>{a.name}</div>
                           <div style={{ fontSize: 12, color: "#666" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>

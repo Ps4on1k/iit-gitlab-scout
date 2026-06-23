@@ -193,14 +193,11 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
             return (
               <tr key={c.id} style={{ cursor: "default" }} onMouseEnter={(e) => (e.currentTarget.style.background = "#f8f9fa")} onMouseLeave={(e) => (e.currentTarget.style.background = "")}>
                 <td style={{ ...tdStyle, fontWeight: 500 }}>
-                  {c.author_name ? (
-                    <div>
-                      <div style={{ fontWeight: 600, cursor: onContributorClick ? "pointer" : "default", color: onContributorClick ? "#667eea" : undefined }}
-                        onClick={onContributorClick ? () => onContributorClick(c.author_name) : undefined}>{c.author_name}</div>
-                      <div style={{ fontSize: 11, color: "#999" }}>{c.author_email}</div>
-                    </div>
-                  ) : <span style={{ cursor: onContributorClick ? "pointer" : "default", color: onContributorClick ? "#667eea" : undefined }}
-                    onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</span>}
+                  <div>
+                    {c.author_name && <div style={{ fontWeight: 600 }}>{c.author_name}</div>}
+                    <div style={{ fontSize: 11, color: onContributorClick ? "#667eea" : "#999", cursor: onContributorClick ? "pointer" : "default", fontWeight: c.author_name ? 400 : 500 }}
+                      onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</div>
+                  </div>
                 </td>
                 <td style={tdStyle}><ScoreCell score={c.score} /></td>
                 <td style={tdStyle}>{Number(c.total_commits)}</td>
