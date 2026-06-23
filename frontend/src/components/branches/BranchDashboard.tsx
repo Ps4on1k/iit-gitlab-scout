@@ -6,8 +6,9 @@ import { ProjectLabel } from "../common/ProjectLabel";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
 import type { Role } from "../../types";
+import type { GlobalFilters } from "../GlobalFilterBar";
 
-interface Props { userRole: Role; onContributorClick?: (name: string) => void; selectedContributor?: string; }
+interface Props { userRole: Role; filters: GlobalFilters; }
 
 type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author" | "days_ago" | "branch_age";
 
@@ -34,19 +35,14 @@ function getHealthColor(active: number, stale: number, total: number): string {
   return "#cf1322";
 }
 
-export function BranchDashboard({ userRole, onContributorClick, selectedContributor }: Props) {
+export function BranchDashboard({ userRole, filters }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [summary, setSummary] = useState<BranchSummary | null>(null);
-  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [searchText, setSearchText] = useState("");
-  const [contributorFilter, setContributorFilter] = useState<string>("");
-  const [dateFrom, setDateFrom] = useState<string | undefined>();
-  const [dateTo, setDateTo] = useState<string | undefined>();
   const [sortKey, setSortKey] = useState<SortKey>("days_ago");
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
@@ -64,12 +60,12 @@ export function BranchDashboard({ userRole, onContributorClick, selectedContribu
     setLoading(true);
     try {
       const qs = new URLSearchParams();
-      if (selectedProjectIds.length > 0) qs.set("project_ids", selectedProjectIds.join(","));
-      if (selectedTags.length > 0) qs.set("tag", selectedTags.join(","));
+      if (filters.projectIds.length > 0) qs.set("project_ids", filters.projectIds.join(","));
+      if (filters.tags.length > 0) qs.set("tag", filters.tags.join(","));
       if (statusFilter) qs.set("status", statusFilter);
       if (searchText) qs.set("search", searchText);
-      if (dateFrom) qs.set("date_from", dateFrom);
-      if (dateTo) qs.set("date_to", dateTo);
+      if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
+      if (filters.dateTo) qs.set("date_to", filters.dateTo);
       const url = `/v1/branches${qs.toString() ? "?" + qs.toString() : ""}`;
       const token = localStorage.getItem("token");
       const res = await fetch(`/api${url}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -78,9 +74,7 @@ export function BranchDashboard({ userRole, onContributorClick, selectedContribu
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [selectedProjectIds, selectedTags, statusFilter, dateFrom, dateTo]);
-
-  useEffect(() => { if (selectedContributor) setContributorFilter(selectedContributor); }, [selectedContributor]);
+  useEffect(() => { loadData(); }, [filters.projectIds, filters.tags, filters.dateFrom, filters.dateTo, statusFilter]);
 
   const filtered = useMemo(() => {
     let result = branches;
@@ -88,12 +82,14 @@ export function BranchDashboard({ userRole, onContributorClick, selectedContribu
       const lower = searchText.toLowerCase();
       result = result.filter((b) => b.name.toLowerCase().includes(lower) || b.project_label.toLowerCase().includes(lower));
     }
-    if (contributorFilter) {
-      const lower = contributorFilter.toLowerCase();
-      result = result.filter((b) => (b as any).display_author?.toLowerCase().includes(lower) || b.last_commit_author?.toLowerCase().includes(lower));
+    if (filters.contributors.length > 0) {
+      result = result.filter((b) => {
+        const author = (b as any).display_author || b.last_commit_author || "";
+        return filters.contributors.some((fc) => author.toLowerCase().includes(fc.toLowerCase()));
+      });
     }
     return result;
-  }, [branches, searchText, contributorFilter]);
+  }, [branches, searchText, filters.contributors]);
 
   const projectMap = useMemo(() => {
     const m = new Map<string, ProjectConfig>();
@@ -129,7 +125,7 @@ export function BranchDashboard({ userRole, onContributorClick, selectedContribu
     return sorted.slice(start, start + pageSize);
   }, [sorted, page]);
 
-  useEffect(() => { setPage(1); }, [searchText, selectedProjectIds, selectedTags, statusFilter, dateFrom, dateTo]);
+  useEffect(() => { setPage(1); }, [searchText, filters.projectIds, filters.tags, statusFilter, filters.dateFrom, filters.dateTo, filters.contributors]);
 
   const handleSort = (key: SortKey) => {
     if (sortKey === key) setSortAsc(!sortAsc);
@@ -141,7 +137,7 @@ export function BranchDashboard({ userRole, onContributorClick, selectedContribu
   const handleCollect = async () => {
     setCollecting(true);
     try {
-      const ids = selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id);
+      const ids = filters.projectIds.length > 0 ? filters.projectIds : projects.map((p) => p.id);
       for (const id of ids) {
         const res = await collectBranches(id);
         if (res.ok) message.success(`${res.data!.total} веток собрано`);
@@ -169,31 +165,13 @@ export function BranchDashboard({ userRole, onContributorClick, selectedContribu
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
-          style={{ minWidth: 280, maxWidth: 450 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
-          options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
-          tagRender={({ label, closable, onClose }) => (
-            <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
-          )}
-          maxTagCount="responsive" />
-        <Select mode="multiple" placeholder="Теги" allowClear style={{ minWidth: 160, maxWidth: 300 }} value={selectedTags} onChange={setSelectedTags}
-          options={availableTags}
-          tagRender={({ label, closable, onClose }) => (
-            <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
-          )}
-          maxTagCount="responsive" />
         <Select placeholder="Статус" allowClear style={{ width: 180 }} value={statusFilter} onChange={setStatusFilter}
           options={[
             { value: "active", label: "Активные (<90д)" },
             { value: "stale", label: "Заброшенные (>90д)" },
             { value: "merged", label: "Замерженные" },
           ]} />
-        <DatePicker.RangePicker onChange={(dates) => {
-          setDateFrom(dates?.[0]?.format("YYYY-MM-DD"));
-          setDateTo(dates?.[1]?.format("YYYY-MM-DD"));
-        }} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        <Input placeholder="Фильтр по контрибьютору..." allowClear style={{ width: 220 }} value={contributorFilter} onChange={(e) => setContributorFilter(e.target.value)} />
         {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>Собрать</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
@@ -296,9 +274,7 @@ export function BranchDashboard({ userRole, onContributorClick, selectedContribu
                     {r.branchAge !== null ? <span style={{ color: "#666" }}>{formatAge(r.branchAge)}</span> : "N/A"}
                   </td>
                   <td style={tdStyle}>
-                    <span style={{ color: "#667eea", cursor: "pointer" }} onClick={(e) => { e.stopPropagation(); onContributorClick?.(r.display_author); setContributorFilter(r.display_author); }}>
-                      {r.display_author}
-                    </span>
+                    {r.display_author}
                   </td>
                 </tr>
               );

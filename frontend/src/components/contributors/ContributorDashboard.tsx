@@ -26,56 +26,40 @@ function getDefaultDateFrom(): string {
 
 interface Props {
   userRole: Role;
-  onContributorClick?: (name: string) => void;
-  selectedContributor?: string;
+  filters: { projectIds: number[]; tags: string[]; dateFrom: string; dateTo: string; contributors: string[] };
 }
 
-export function ContributorDashboard({ userRole, onContributorClick, selectedContributor }: Props) {
+export function ContributorDashboard({ userRole, filters }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
-  const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [allContributors, setAllContributors] = useState<DbContributor[]>([]);
   const [allMetrics, setAllMetrics] = useState<ContributorMetrics | null>(null);
   const [allHeatmap, setAllHeatmap] = useState<HeatmapData>({ by_project: {}, by_contributor: {}, project_contributors: {}, by_project_contributor: {} });
-  const [selectedProjectIds, setSelectedProjectIds] = useState<number[]>([]);
-  const [selectedContributors, setSelectedContributors] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [dateFrom, setDateFrom] = useState<string | undefined>(getDefaultDateFrom);
-  const [dateTo, setDateTo] = useState<string | undefined>();
-
-  // When tags change, update project IDs to include all projects with selected tags
-  const effectiveProjectIds = useMemo(() => {
-    if (selectedTags.length === 0) return selectedProjectIds;
-    const tagProjectIds = projects
-      .filter((p) => selectedTags.includes(p.tag))
-      .map((p) => p.id);
-    // Merge with manually selected projects
-    const merged = new Set([...selectedProjectIds, ...tagProjectIds]);
-    return Array.from(merged);
-  }, [selectedProjectIds, selectedTags, projects]);
+  const [projects, setProjects] = useState<ProjectConfig[]>([]);
 
   useEffect(() => {
     fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); });
   }, []);
 
-  useEffect(() => {
-    if (selectedContributor && !selectedContributors.includes(selectedContributor)) {
-      setSelectedContributors([selectedContributor]);
-    }
-  }, [selectedContributor]);
+  const effectiveProjectIds = useMemo(() => {
+    if (filters.tags.length === 0) return filters.projectIds;
+    const tagProjectIds = projects.filter((p) => filters.tags.includes(p.tag)).map((p) => p.id);
+    const merged = new Set([...filters.projectIds, ...tagProjectIds]);
+    return Array.from(merged);
+  }, [filters.projectIds, filters.tags, projects]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const filters: ContributorFilters = {
+      const fc: ContributorFilters = {
         project_ids: effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined,
-        date_from: dateFrom,
-        date_to: dateTo,
+        date_from: filters.dateFrom,
+        date_to: filters.dateTo,
       };
       const [cRes, mRes, hRes] = await Promise.all([
-        fetchContributorsList(filters),
-        fetchContributorMetrics(filters),
-        fetchContributorHeatmap(filters),
+        fetchContributorsList(fc),
+        fetchContributorMetrics(fc),
+        fetchContributorHeatmap(fc),
       ]);
       if (cRes.ok) setAllContributors(cRes.data!);
       if (mRes.ok) setAllMetrics(mRes.data!);
@@ -83,21 +67,28 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
     } finally {
       setLoading(false);
     }
-  }, [effectiveProjectIds, dateFrom, dateTo]);
+  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   // Contributor filter
   const filteredContributors = useMemo(() => {
-    if (selectedContributors.length === 0) return allContributors;
-    return allContributors.filter((c) => selectedContributors.includes(c.author_email));
-  }, [allContributors, selectedContributors]);
+    if (filters.contributors.length === 0) return allContributors;
+    return allContributors.filter((c) => {
+      const displayName = c.author_name || c.author_email;
+      return filters.contributors.some((f) =>
+        displayName.toLowerCase().includes(f.toLowerCase()) ||
+        c.author_email.toLowerCase().includes(f.toLowerCase()) ||
+        c.author_name?.toLowerCase().includes(f.toLowerCase())
+      );
+    });
+  }, [allContributors, filters.contributors]);
 
   // Metrics from filtered contributors
   const filteredMetrics = useMemo((): ContributorMetrics | null => {
     if (!allMetrics) return null;
     const fc = filteredContributors;
-    if (fc.length === allContributors.length && selectedContributors.length === 0) return allMetrics;
+    if (fc.length === allContributors.length && filters.contributors.length === 0) return allMetrics;
 
     const total_commits = fc.reduce((s, c) => s + Number(c.total_commits), 0);
     const total_additions = fc.reduce((s, c) => s + Number(c.total_additions), 0);
@@ -115,7 +106,7 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
       avg_commits_per_day: total_commits / cd,
       avg_changes_per_day: total_changes / cd, avg_changes_per_commit: total_changes / Math.max(1, total_commits),
     };
-  }, [allMetrics, allContributors, filteredContributors, selectedContributors]);
+  }, [allMetrics, allContributors, filteredContributors, filters.contributors]);
 
   // Heatmap filter
   const filteredHeatmap = useMemo(() => {
@@ -123,11 +114,11 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
 
     // Filter contributors
     let filteredByContributor = by_contributor;
-    if (selectedContributors.length > 0) {
+    if (filters.contributors.length > 0) {
       filteredByContributor = {};
       for (const [name, daily] of Object.entries(by_contributor)) {
         const email = name.includes("(") ? name.split(" (")[0] : name;
-        if (selectedContributors.includes(email)) filteredByContributor[name] = daily;
+        if (filters.contributors.includes(email)) filteredByContributor[name] = daily;
       }
     }
 
@@ -140,10 +131,10 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
 
       // If contributor filter: only keep selected contributors' data
       let contribsToInclude: string[];
-      if (selectedContributors.length > 0) {
+      if (filters.contributors.length > 0) {
         contribsToInclude = Object.keys(projContribMap).filter((name) => {
           const email = name.includes("(") ? name.split(" (")[0] : name;
-          return selectedContributors.includes(email);
+          return filters.contributors.includes(email);
         });
       } else {
         contribsToInclude = Object.keys(projContribMap);
@@ -166,19 +157,7 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
     }
 
     return { by_project: filteredByProject, by_contributor: filteredByContributor, project_contributors };
-  }, [allHeatmap, selectedContributors]);
-
-  const contributorOptions = useMemo(() => {
-    const seen = new Map<string, string>();
-    for (const c of allContributors) seen.set(c.author_email, c.author_name ? `${c.author_email} (${c.author_name})` : c.author_email);
-    return Array.from(seen.entries()).map(([email, label]) => ({ value: email, label }));
-  }, [allContributors]);
-
-  const tagOptions = useMemo(() => {
-    const tags = new Set<string>();
-    for (const p of projects) { if (p.tag) tags.add(p.tag); }
-    return Array.from(tags).sort().map((t) => ({ value: t, label: t }));
-  }, [projects]);
+  }, [allHeatmap, filters.contributors]);
 
   const projectTags = useMemo(() => {
     const map: Record<string, string> = {};
@@ -197,7 +176,7 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
     setCollecting(true);
     try {
       for (const projectId of effectiveProjectIds) {
-        const res = await collectContributors(projectId, dateFrom, dateTo);
+        const res = await collectContributors(projectId, filters.dateFrom, filters.dateTo);
         if (res.ok) message.success(`${res.data!.project_path}: +${res.data!.new_commits} new`);
         else message.error(res.error!);
       }
@@ -214,41 +193,17 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сбор и визуализация статистики коммитов из GitLab</div>
       </div>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 30, flexWrap: "wrap", alignItems: "center" }}>
-        <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
-          style={{ minWidth: 360, maxWidth: 600 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
-          options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
-          tagRender={({ label, closable, onClose }) => {
-            const tagText = String(label);
-            const tagMatch = tagText.match(/\[(.+)\]$/);
-            const tagVal = tagMatch ? tagMatch[1] : "";
-            const c = tagVal ? getTagColor(tagVal) : { bg: "#667eea", text: "#fff" };
-            return <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: c.bg, color: c.text, border: "none" }}>{label}</Tag>;
-          }}
-          maxTagCount="responsive" />
-        <Select mode="multiple" placeholder="Контрибьюторы" allowClear showSearch optionFilterProp="label"
-          style={{ minWidth: 420, maxWidth: 750 }} value={selectedContributors} onChange={setSelectedContributors}
-          options={contributorOptions}
-          tagRender={({ label, closable, onClose }) => <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#764ba2", color: "white", border: "none" }}>{label}</Tag>}
-          maxTagCount="responsive" />
-        {tagOptions.length > 0 && (
-          <Select mode="multiple" placeholder="Теги" allowClear style={{ minWidth: 180 }}
-            value={selectedTags} onChange={setSelectedTags} options={tagOptions}
-            tagRender={({ label, closable, onClose }) => <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#1677ff", color: "white", border: "none" }}>{label}</Tag>} />
+      <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+        {userRole === "admin" && (
+          <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea", borderColor: "#667eea" }}>Собрать данные</Button>
         )}
-        <RangePicker defaultValue={[dayjs().subtract(90, "day"), dayjs()]} onChange={(dates) => { setDateFrom(dates?.[0]?.format("YYYY-MM-DD")); setDateTo(dates?.[1]?.format("YYYY-MM-DD")); }} />
-        <Space>
-          {userRole === "admin" && (
-            <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea", borderColor: "#667eea" }}>Собрать данные</Button>
-          )}
-          <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
-        </Space>
+        <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 
       <MetricsCards data={filteredMetrics} loading={loading} />
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30, marginBottom: 30 }}>
-        <CommitTimelineChart data={filteredContributors} loading={loading} dateFrom={dateFrom} dateTo={dateTo} />
+        <CommitTimelineChart data={filteredContributors} loading={loading} dateFrom={filters.dateFrom} dateTo={filters.dateTo} />
         <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
           <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Топ-10 контрибьюторов</h3>
           {loading ? <div style={{ textAlign: "center", padding: 40 }}>Загрузка...</div> : (
@@ -271,7 +226,7 @@ export function ContributorDashboard({ userRole, onContributorClick, selectedCon
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #f0f0f0" }}>
           <h3 style={{ margin: 0, fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
-        <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} onContributorClick={onContributorClick} /></div>
+        <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} /></div>
       </div>
       )}
 
