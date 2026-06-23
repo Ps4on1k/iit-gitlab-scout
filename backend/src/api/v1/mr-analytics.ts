@@ -19,9 +19,9 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
   });
 
   app.get<{
-    Querystring: { project_ids?: string; date_from?: string; date_to?: string };
+    Querystring: { project_ids?: string; date_from?: string; date_to?: string; contributor?: string };
   }>("/api/v1/mr-analytics", { preHandler: [requireAuth] }, async (request) => {
-    const { project_ids, date_from, date_to } = request.query;
+    const { project_ids, date_from, date_to, contributor } = request.query;
     const user = (request as any).user as JwtPayload;
     const pool = getPool();
 
@@ -36,6 +36,17 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
     if (finalIds && finalIds.length > 0) { conditions.push(`mr.project_id = ANY($${idx++})`); params.push(finalIds); }
     if (date_from) { conditions.push(`mr.created_at >= $${idx++}`); params.push(date_from); }
     if (date_to) { conditions.push(`mr.created_at <= $${idx++}`); params.push(date_to + "T23:59:59Z"); }
+    if (contributor) {
+      // contributor is email — try to resolve to name via directory
+      const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+      let nameForFilter = contributor;
+      for (const row of dirResult.rows) {
+        if (row.emails.includes(contributor)) { nameForFilter = row.display_name; break; }
+      }
+      conditions.push(`(mr.author_email ILIKE $${idx} OR mr.author_name ILIKE $${idx})`);
+      params.push(`%${nameForFilter}%`);
+      idx++;
+    }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 

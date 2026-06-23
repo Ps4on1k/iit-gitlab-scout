@@ -67,7 +67,7 @@ export async function collectMergeRequests(projectId: number): Promise<{ total: 
          updated_at=$10, merged_at=$11, closed_at=$12, merged_by=$13, reviewers=$14, approvals=$15, changes_count=$16, comments_count=$17`,
       [
         projectId, mr.iid, mr.title, mr.state,
-        mr.author?.name || "", mr.author?.email || "",
+        mr.author?.name || mr.author?.username || "", mr.author?.email || mr.author?.username || "",
         mr.source_branch, mr.target_branch,
         mr.created_at, mr.updated_at, mr.merged_at, mr.closed_at,
         mr.merged_by?.username || "", reviewerNames,

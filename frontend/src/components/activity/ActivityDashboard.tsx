@@ -49,10 +49,11 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
     setMrLoading(true);
     try {
       const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined;
-      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo);
+      const contrib = filters.contributors.length > 0 ? filters.contributors[0] : undefined;
+      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo, contrib);
       if (r.ok) setMrData(r.data);
     } finally { setMrLoading(false); }
-  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo]);
+  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors]);
 
   useEffect(() => { loadMRData(); }, [loadMRData]);
 

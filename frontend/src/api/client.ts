@@ -229,11 +229,12 @@ export async function fetchDashboard(): Promise<ApiResponse<{
   return fetchJson("/v1/dashboard");
 }
 
-export async function fetchMRAnalytics(projectIds?: number[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<any>> {
+export async function fetchMRAnalytics(projectIds?: number[], dateFrom?: string, dateTo?: string, contributor?: string): Promise<ApiResponse<any>> {
   const qs = new URLSearchParams();
   if (projectIds && projectIds.length > 0) qs.set("project_ids", projectIds.join(","));
   if (dateFrom) qs.set("date_from", dateFrom);
   if (dateTo) qs.set("date_to", dateTo);
+  if (contributor) qs.set("contributor", contributor);
   const url = `/v1/mr-analytics${qs.toString() ? "?" + qs.toString() : ""}`;
   return fetchJson(url);
 }
