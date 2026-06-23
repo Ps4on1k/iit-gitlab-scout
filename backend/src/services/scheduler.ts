@@ -3,6 +3,7 @@ import { collectStack } from "./stack-collector.js";
 import { collectActivity } from "./activity-collector.js";
 import { collectProject } from "./contributor-collector.js";
 import { collectBranches } from "./branch-collector.js";
+import { collectMergeRequests } from "./mr-collector.js";
 
 interface SchedulerTask {
   id: number;
@@ -42,6 +43,9 @@ async function runTask(taskName: string): Promise<void> {
           break;
         case "collect_branches":
           await collectBranches(projectId);
+          break;
+        case "collect_merge_requests":
+          await collectMergeRequests(projectId);
           break;
       }
       logFn(`[scheduler] ${taskName}: project ${projectId} done`);
