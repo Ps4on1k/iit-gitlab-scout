@@ -127,13 +127,13 @@ export async function fetchUsers(): Promise<ApiResponse<AppUser[]>> {
   return cachedGet<AppUser[]>("/v1/users", "users");
 }
 
-export async function createUser(data: { username: string; password: string; role?: string }): Promise<ApiResponse<AppUser>> {
+export async function createUser(data: { username: string; password: string; role?: string; allowed_tags?: string[] }): Promise<ApiResponse<AppUser>> {
   const result = await fetchJson<AppUser>("/v1/users", { method: "POST", body: JSON.stringify(data) });
   if (result.ok) clearCache("users");
   return result;
 }
 
-export async function updateUser(id: number, data: { role?: string; is_active?: boolean }): Promise<ApiResponse<AppUser>> {
+export async function updateUser(id: number, data: { role?: string; is_active?: boolean; allowed_tags?: string[] }): Promise<ApiResponse<AppUser>> {
   const result = await fetchJson<AppUser>(`/v1/users/${id}`, { method: "PUT", body: JSON.stringify(data) });
   if (result.ok) clearCache("users");
   return result;

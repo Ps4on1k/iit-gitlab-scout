@@ -81,6 +81,7 @@ export interface AppUser {
   username: string;
   role: Role;
   is_active: boolean;
+  allowed_tags: string[];
   created_at: string;
 }
 

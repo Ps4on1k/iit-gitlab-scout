@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth, requireAdmin } from "../../utils/auth.js";
+import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectStack } from "../../services/stack-collector.js";
 import { getLanguages, getLanguageSummary } from "../../db/stack-repository.js";
+import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function stackAnalyticsRoutes(app: FastifyInstance) {
   app.post<{
@@ -27,10 +28,13 @@ export async function stackAnalyticsRoutes(app: FastifyInstance) {
     Querystring: { project_ids?: string; tag?: string; language?: string };
   }>("/api/v1/stack/languages", { preHandler: [requireAuth] }, async (request) => {
     const { project_ids, tag, language } = request.query;
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
+    const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
     const tags = tag ? tag.split(",") : undefined;
     const langs = language ? language.split(",") : undefined;
-    const data = await getLanguages({ project_ids: ids, tag: tags, language: langs });
+    const data = await getLanguages({ project_ids: finalIds, tag: tags, language: langs });
     return { ok: true, data };
   });
 
@@ -38,10 +42,13 @@ export async function stackAnalyticsRoutes(app: FastifyInstance) {
     Querystring: { project_ids?: string; tag?: string; language?: string };
   }>("/api/v1/stack/languages/summary", { preHandler: [requireAuth] }, async (request) => {
     const { project_ids, tag, language } = request.query;
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
+    const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
     const tags = tag ? tag.split(",") : undefined;
     const langs = language ? language.split(",") : undefined;
-    const data = await getLanguageSummary({ project_ids: ids, tag: tags, language: langs });
+    const data = await getLanguageSummary({ project_ids: finalIds, tag: tags, language: langs });
     return { ok: true, data };
   });
 }

@@ -1,11 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth, requireAdmin } from "../../utils/auth.js";
+import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectProject } from "../../services/contributor-collector.js";
 import {
   getContributors,
   getHeatmapData,
   getMetrics,
 } from "../../db/contributor-repository.js";
+import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function contributorAnalyticsRoutes(app: FastifyInstance) {
   app.post<{
@@ -31,10 +32,13 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     Querystring: { project_id?: string; project_ids?: string; date_from?: string; date_to?: string };
   }>("/api/v1/contributor-analytics", { preHandler: [requireAuth] }, async (request) => {
     const { project_id, project_ids, date_from, date_to } = request.query;
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
+    const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
     const contributors = await getContributors({
       project_id: project_id ? Number(project_id) : undefined,
-      project_ids: ids,
+      project_ids: finalIds,
       date_from,
       date_to,
     });
@@ -45,10 +49,13 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     Querystring: { project_id?: string; project_ids?: string; date_from?: string; date_to?: string };
   }>("/api/v1/contributor-analytics/heatmap", { preHandler: [requireAuth] }, async (request) => {
     const { project_id, project_ids, date_from, date_to } = request.query;
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids
       ? project_ids.split(",").map(Number).filter(Boolean)
       : project_id ? [Number(project_id)] : undefined;
-    const data = await getHeatmapData(ids, date_from, date_to);
+    const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
+    const data = await getHeatmapData(finalIds, date_from, date_to);
     return { ok: true, data };
   });
 
@@ -56,10 +63,13 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     Querystring: { project_id?: string; project_ids?: string; date_from?: string; date_to?: string };
   }>("/api/v1/contributor-analytics/metrics", { preHandler: [requireAuth] }, async (request) => {
     const { project_id, project_ids, date_from, date_to } = request.query;
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
+    const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
     const metrics = await getMetrics({
       project_id: project_id ? Number(project_id) : undefined,
-      project_ids: ids,
+      project_ids: finalIds,
       date_from,
       date_to,
     });

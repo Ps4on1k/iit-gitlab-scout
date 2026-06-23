@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth, requireAdmin } from "../../utils/auth.js";
+import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { collectBranches } from "../../services/branch-collector.js";
+import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function branchRoutes(app: FastifyInstance) {
   app.post<{
@@ -23,10 +24,20 @@ export async function branchRoutes(app: FastifyInstance) {
     Querystring: { project_id?: string; project_ids?: string; tag?: string; status?: string; search?: string; date_from?: string; date_to?: string };
   }>("/api/v1/branches", { preHandler: [requireAuth] }, async (request) => {
     const { project_id, project_ids, tag, status, search, date_from, date_to } = request.query;
+    const user = (request as any).user as JwtPayload;
     const pool = getPool();
     const conditions: string[] = [];
     const params: any[] = [];
     let idx = 1;
+
+    const allowedIds = await getFilteredProjectIds(user.userId);
+    if (allowedIds !== null) {
+      if (allowedIds.length === 0) {
+        return { ok: true, data: { branches: [], summary: { total: 0, active: 0, stale: 0, merged: 0, protected: 0, avgDaysSinceCommit: 0, perProject: [] } } };
+      }
+      conditions.push(`pb.project_id = ANY($${idx++})`);
+      params.push(allowedIds);
+    }
 
     if (project_ids) {
       const ids = project_ids.split(",").map(Number).filter(Boolean);

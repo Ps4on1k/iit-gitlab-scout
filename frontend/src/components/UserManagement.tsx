@@ -1,25 +1,69 @@
 import { useState, useEffect } from "react";
-import { Table, Button, Modal, Form, Input, Select, Space, Typography, Popconfirm, message, Tag, Collapse, Switch } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, KeyOutlined } from "@ant-design/icons";
-import { fetchUsers, createUser, updateUser, changeUserPassword, deleteUser } from "../api/client";
-import type { AppUser } from "../types";
+import { Table, Button, Modal, Form, Input, Select, Space, Typography, Popconfirm, message, Tag, Collapse, Switch, Tooltip } from "antd";
+import { PlusOutlined, EditOutlined, DeleteOutlined, KeyOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import { fetchUsers, createUser, updateUser, changeUserPassword, deleteUser, fetchProjects } from "../api/client";
+import type { AppUser, ProjectConfig, Role } from "../types";
 
 const { Text } = Typography;
 
+const ROLE_PERMISSIONS: Record<Role, { label: string; color: string; permissions: string[] }> = {
+  admin: {
+    label: "Admin",
+    color: "#cf1322",
+    permissions: [
+      "Полный доступ ко всем данным",
+      "Управление проектами и пользователями",
+      "Сбор данных (кнопки «Собрать»)",
+      "Настройки и справочник контрибьюторов",
+      "Видит все теги проектов",
+    ],
+  },
+  manager: {
+    label: "Manager",
+    color: "#fa8c16",
+    permissions: [
+      "Просмотр статистики (все вкладки)",
+      "Фильтрация и поиск",
+      "Детальная таблица контрибьюторов",
+      "Нет доступа к сбору данных",
+      "Нет доступа к настройкам",
+      "Ограничение по тегам (если настроены)",
+    ],
+  },
+  user: {
+    label: "User",
+    color: "#1677ff",
+    permissions: [
+      "Просмотр статистики (все вкладки)",
+      "Фильтрация и поиск",
+      "Нет доступа к сбору данных",
+      "Нет доступа к настройкам",
+      "Нет доступа к детальной таблице",
+      "Ограничение по тегам (если настроены)",
+    ],
+  },
+};
+
 export function UserManagement() {
   const [users, setUsers] = useState<AppUser[]>([]);
+  const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [createForm] = Form.useForm();
+  const [editForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
+
+  const allTags = [...new Set(projects.map((p) => p.tag).filter(Boolean))].sort();
 
   const load = async () => {
     setLoading(true);
-    const res = await fetchUsers();
-    if (res.ok) setUsers(res.data!);
+    const [usersRes, projsRes] = await Promise.all([fetchUsers(), fetchProjects()]);
+    if (usersRes.ok) setUsers(usersRes.data!);
+    if (projsRes.ok) setProjects(projsRes.data!);
     setLoading(false);
   };
 
@@ -52,6 +96,27 @@ export function UserManagement() {
     if (!res.ok) { message.error(res.error!); return; }
     message.success(isActive ? "Учётка активирована" : "Учётка заблокирована");
     load();
+  };
+
+  const openEditModal = (user: AppUser) => {
+    setSelectedUserId(user.id);
+    editForm.setFieldsValue({ role: user.role, allowed_tags: user.allowed_tags || [] });
+    setEditModalOpen(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!selectedUserId) return;
+    const values = await editForm.validateFields();
+    setSubmitting(true);
+    try {
+      const res = await updateUser(selectedUserId, { role: values.role, allowed_tags: values.allowed_tags || [] });
+      if (!res.ok) { message.error(res.error!); return; }
+      message.success("Пользователь обновлён");
+      setEditModalOpen(false);
+      load();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const openPasswordModal = (id: number) => {
@@ -96,18 +161,50 @@ export function UserManagement() {
     {
       title: "Роль",
       key: "role",
-      render: (_: any, record: AppUser) => (
-        <Select
-          value={record.role}
-          onChange={(v) => handleRoleChange(record.id, v)}
-          size="small"
-          style={{ width: 100 }}
-          options={[
-            { value: "admin", label: "Admin" },
-            { value: "user", label: "User" },
-          ]}
-        />
-      ),
+      width: 200,
+      render: (_: any, record: AppUser) => {
+        const rp = ROLE_PERMISSIONS[record.role] || ROLE_PERMISSIONS.user;
+        return (
+          <Space size={4}>
+            <Select
+              value={record.role}
+              onChange={(v) => handleRoleChange(record.id, v)}
+              size="small"
+              style={{ width: 100 }}
+              options={[
+                { value: "admin", label: "Admin" },
+                { value: "manager", label: "Manager" },
+                { value: "user", label: "User" },
+              ]}
+            />
+            <Tooltip
+              title={
+                <div style={{ maxWidth: 280 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4, color: rp.color }}>{rp.label}</div>
+                  {rp.permissions.map((p, i) => <div key={i} style={{ fontSize: 12, marginBottom: 2 }}>• {p}</div>)}
+                </div>
+              }
+              placement="right"
+            >
+              <InfoCircleOutlined style={{ color: rp.color, cursor: "pointer" }} />
+            </Tooltip>
+          </Space>
+        );
+      },
+    },
+    {
+      title: "Теги",
+      key: "tags",
+      render: (_: any, record: AppUser) => {
+        if (record.role === "admin") return <Text type="secondary" style={{ fontSize: 12 }}>Все теги</Text>;
+        const tags = record.allowed_tags || [];
+        if (tags.length === 0) return <Text type="secondary" style={{ fontSize: 12 }}>Все теги</Text>;
+        return (
+          <Space size={2} wrap>
+            {tags.map((t: string) => <Tag key={t} style={{ fontSize: 11 }}>{t}</Tag>)}
+          </Space>
+        );
+      },
     },
     {
       title: "Статус",
@@ -126,6 +223,9 @@ export function UserManagement() {
       key: "actions",
       render: (_: any, record: AppUser) => (
         <Space>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEditModal(record)}>
+            Настроить
+          </Button>
           <Button type="link" size="small" icon={<KeyOutlined />} onClick={() => openPasswordModal(record.id)}>
             Пароль
           </Button>
@@ -159,7 +259,6 @@ export function UserManagement() {
               size="small"
             />
 
-            {/* Create User Modal */}
             <Modal
               title="Создать пользователя"
               open={createModalOpen}
@@ -178,12 +277,52 @@ export function UserManagement() {
                   <Input.Password placeholder="password" />
                 </Form.Item>
                 <Form.Item name="role" label="Роль" initialValue="user">
-                  <Select options={[{ value: "admin", label: "Admin" }, { value: "user", label: "User" }, { value: "manager", label: "Manager" }]} />
+                  <Select
+                    options={Object.entries(ROLE_PERMISSIONS).map(([value, rp]) => ({
+                      value,
+                      label: <Space>{rp.label}<InfoCircleOutlined style={{ color: rp.color, fontSize: 11 }} /></Space>,
+                    }))}
+                  />
                 </Form.Item>
               </Form>
             </Modal>
 
-            {/* Change Password Modal */}
+            <Modal
+              title="Настроить пользователя"
+              open={editModalOpen}
+              onCancel={() => setEditModalOpen(false)}
+              onOk={handleEditUser}
+              confirmLoading={submitting}
+              okText="Сохранить"
+              cancelText="Отмена"
+              destroyOnClose
+              width={520}
+            >
+              <Form form={editForm} layout="vertical" preserve={false}>
+                <Form.Item name="role" label="Роль">
+                  <Select
+                    options={Object.entries(ROLE_PERMISSIONS).map(([value, rp]) => ({
+                      value,
+                      label: <Space>{rp.label}<InfoCircleOutlined style={{ color: rp.color, fontSize: 11 }} /></Space>,
+                    }))}
+                  />
+                </Form.Item>
+                <Form.Item
+                  name="allowed_tags"
+                  label="Разрешённые теги"
+                  extra={<Text type="secondary" style={{ fontSize: 12 }}>Если теги не указаны — пользователь видит все проекты. Укажите теги для ограничения видимости.</Text>}
+                >
+                  <Select
+                    mode="multiple"
+                    placeholder="Все теги (без ограничений)"
+                    allowClear
+                    options={allTags.map((t) => ({ value: t, label: t }))}
+                    maxTagCount="responsive"
+                  />
+                </Form.Item>
+              </Form>
+            </Modal>
+
             <Modal
               title="Сменить пароль"
               open={passwordModalOpen}

@@ -70,6 +70,9 @@ export async function authRoutes(app: FastifyInstance) {
 
   app.get("/api/v1/auth/me", { preHandler: [requireAuth] }, async (request) => {
     const user = (request as any).user as JwtPayload;
-    return { ok: true, data: { id: user.userId, username: user.username, role: user.role } };
+    const pool = getPool();
+    const result = await pool.query("SELECT allowed_tags FROM app_users WHERE id = $1", [user.userId]);
+    const allowed_tags = result.rows[0]?.allowed_tags || [];
+    return { ok: true, data: { id: user.userId, username: user.username, role: user.role, allowed_tags } };
   });
 }

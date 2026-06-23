@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth, requireAdmin } from "../../utils/auth.js";
+import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectActivity } from "../../services/activity-collector.js";
 import { getActivity } from "../../db/activity-repository.js";
+import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function activityRoutes(app: FastifyInstance) {
   app.post<{
@@ -27,10 +28,13 @@ export async function activityRoutes(app: FastifyInstance) {
     Querystring: { project_ids?: string; tag?: string; date_from?: string; date_to?: string; group_by?: string };
   }>("/api/v1/activity", { preHandler: [requireAuth] }, async (request) => {
     const { project_ids, tag, date_from, date_to, group_by } = request.query;
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
+    const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
     const tags = tag ? tag.split(",") : undefined;
     const data = await getActivity({
-      project_ids: ids,
+      project_ids: finalIds,
       tag: tags,
       date_from,
       date_to,

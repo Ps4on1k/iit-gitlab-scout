@@ -1,6 +1,7 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import { getEnv } from "../config.js";
+import { getPool } from "../db/pool.js";
 
 export type Role = "admin" | "user" | "manager";
 
@@ -44,4 +45,22 @@ export async function requireAdmin(
   if (user.role !== "admin") {
     return reply.status(403).send({ ok: false, error: "Admin role required" });
   }
+}
+
+export async function getUserAllowedTags(userId: number): Promise<string[] | null> {
+  const pool = getPool();
+  const result = await pool.query("SELECT role, allowed_tags FROM app_users WHERE id = $1", [userId]);
+  const row = result.rows[0];
+  if (!row) return null;
+  if (row.role === "admin") return null;
+  if (!row.allowed_tags || row.allowed_tags.length === 0) return null;
+  return row.allowed_tags;
+}
+
+export async function getFilteredProjectIds(userId: number): Promise<number[] | null> {
+  const tags = await getUserAllowedTags(userId);
+  if (tags === null) return null;
+  const pool = getPool();
+  const result = await pool.query("SELECT id FROM projects WHERE tag = ANY($1)", [tags]);
+  return result.rows.map((r: any) => r.id);
 }

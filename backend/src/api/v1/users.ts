@@ -4,20 +4,18 @@ import { requireAdmin } from "../../utils/auth.js";
 import bcrypt from "bcryptjs";
 
 export async function userManagementRoutes(app: FastifyInstance) {
-  // List all users
   app.get("/api/v1/users", { preHandler: [requireAdmin] }, async () => {
     const pool = getPool();
     const result = await pool.query(
-      "SELECT id, username, role, is_active, created_at FROM app_users ORDER BY created_at"
+      "SELECT id, username, role, is_active, allowed_tags, created_at FROM app_users ORDER BY created_at"
     );
     return { ok: true, data: result.rows };
   });
 
-  // Create user
   app.post<{
-    Body: { username: string; password: string; role?: string };
+    Body: { username: string; password: string; role?: string; allowed_tags?: string[] };
   }>("/api/v1/users", { preHandler: [requireAdmin] }, async (request, reply) => {
-    const { username, password, role } = request.body;
+    const { username, password, role, allowed_tags } = request.body;
     if (!username || !password) {
       return reply.status(400).send({ ok: false, error: "username and password are required" });
     }
@@ -29,10 +27,10 @@ export async function userManagementRoutes(app: FastifyInstance) {
     const hash = await bcrypt.hash(password, 10);
     try {
       const result = await pool.query(
-        `INSERT INTO app_users (username, password_hash, role)
-         VALUES ($1, $2, $3)
-         RETURNING id, username, role, is_active, created_at`,
-        [username, hash, role || "user"]
+        `INSERT INTO app_users (username, password_hash, role, allowed_tags)
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, username, role, is_active, allowed_tags, created_at`,
+        [username, hash, role || "user", allowed_tags || []]
       );
       return { ok: true, data: result.rows[0] };
     } catch (err: any) {
@@ -43,13 +41,12 @@ export async function userManagementRoutes(app: FastifyInstance) {
     }
   });
 
-  // Update user (role, active status)
   app.put<{
     Params: { id: string };
-    Body: { role?: string; is_active?: boolean };
+    Body: { role?: string; is_active?: boolean; allowed_tags?: string[] };
   }>("/api/v1/users/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params;
-    const { role, is_active } = request.body;
+    const { role, is_active, allowed_tags } = request.body;
 
     const pool = getPool();
     const existing = await pool.query("SELECT id FROM app_users WHERE id = $1", [id]);
@@ -63,7 +60,7 @@ export async function userManagementRoutes(app: FastifyInstance) {
 
     if (role !== undefined) {
       if (!["admin", "user", "manager"].includes(role)) {
-      return reply.status(400).send({ ok: false, error: "role must be 'admin', 'user' or 'manager'" });
+        return reply.status(400).send({ ok: false, error: "role must be 'admin', 'user' or 'manager'" });
       }
       updates.push(`role = $${idx++}`);
       values.push(role);
@@ -71,6 +68,10 @@ export async function userManagementRoutes(app: FastifyInstance) {
     if (is_active !== undefined) {
       updates.push(`is_active = $${idx++}`);
       values.push(is_active);
+    }
+    if (allowed_tags !== undefined) {
+      updates.push(`allowed_tags = $${idx++}`);
+      values.push(allowed_tags);
     }
 
     if (updates.length === 0) {
@@ -80,14 +81,13 @@ export async function userManagementRoutes(app: FastifyInstance) {
     values.push(id);
     const result = await pool.query(
       `UPDATE app_users SET ${updates.join(", ")} WHERE id = $${idx}
-       RETURNING id, username, role, is_active, created_at`,
+       RETURNING id, username, role, is_active, allowed_tags, created_at`,
       values
     );
 
     return { ok: true, data: result.rows[0] };
   });
 
-  // Change password
   app.put<{
     Params: { id: string };
     Body: { password: string };
@@ -110,7 +110,6 @@ export async function userManagementRoutes(app: FastifyInstance) {
     return { ok: true, data: { message: "Password updated" } };
   });
 
-  // Delete user
   app.delete<{
     Params: { id: string };
   }>("/api/v1/users/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
