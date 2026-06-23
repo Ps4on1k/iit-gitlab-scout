@@ -81,7 +81,7 @@ export function GlobalFilterBar({ filters, onChange }: Props) {
         </Col>
         <Col flex="auto" style={{ minWidth: 220, maxWidth: 300 }}>
           <RangePicker
-            value={[dayjs(filters.dateFrom), dayjs(filters.dateTo)]}
+            value={filters.dateFrom && filters.dateTo ? [dayjs(filters.dateFrom), dayjs(filters.dateTo)] : null}
             onChange={(dates) => {
               if (!dates || !dates[0] || !dates[1]) {
                 update({ dateFrom: "", dateTo: "" });
