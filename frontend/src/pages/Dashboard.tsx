@@ -81,15 +81,18 @@ export function Dashboard() {
                     );
                   })}
                 </div>
-                <div style={{ display: "flex", gap: 0, marginTop: 4 }}>
+                <div style={{ position: "relative", height: 20, marginTop: 4 }}>
                   {recentActivity.map((a: any, i: number) => {
-                    const step = Math.max(1, Math.floor(recentActivity.length / 10));
+                    const step = Math.max(1, Math.floor(recentActivity.length / 8));
                     const show = i === 0 || i % step === 0 || i === recentActivity.length - 1;
-                    return show ? (
-                      <span key={a.date} style={{ flex: 1, fontSize: 9, color: "#999", textAlign: i === 0 ? "left" : i === recentActivity.length - 1 ? "right" : "center", overflow: "hidden", whiteSpace: "nowrap" }}>
-                        {a.date}
+                    if (!show) return null;
+                    const leftPct = (i / Math.max(1, recentActivity.length - 1)) * 100;
+                    const [y, m, d] = a.date.split("-");
+                    return (
+                      <span key={a.date} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "#999", whiteSpace: "nowrap" }}>
+                        {d}.{m}
                       </span>
-                    ) : <span key={a.date} style={{ flex: 1 }} />;
+                    );
                   })}
                 </div>
                 <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "#999" }}>
