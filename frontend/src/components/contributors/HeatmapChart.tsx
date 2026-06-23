@@ -224,7 +224,7 @@ export function HeatmapChart({ byProject, byContributor, loading, projectTags, p
       </div>
 
       <Collapse
-        defaultActiveKey={["projects", "contributors"]}
+        defaultActiveKey={[]}
         items={[
           {
             key: "projects",

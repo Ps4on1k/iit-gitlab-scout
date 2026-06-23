@@ -258,12 +258,14 @@ export function ContributorDashboard({ userRole }: Props) {
         <HeatmapChart byProject={filteredHeatmap.by_project} byContributor={filteredHeatmap.by_contributor} loading={loading} projectTags={projectTags} projectDescriptions={projectDescriptions} />
       </div>
 
+      {userRole !== "user" && (
       <div style={{ background: "white", borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: 30 }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid #f0f0f0" }}>
           <h3 style={{ margin: 0, fontSize: 16, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
         <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} /></div>
       </div>
+      )}
 
       <div style={{ textAlign: "center", padding: 20, color: "#666", fontSize: 12 }}>GitLab Scout — Аналитика контрибьюторов</div>
     </div>
