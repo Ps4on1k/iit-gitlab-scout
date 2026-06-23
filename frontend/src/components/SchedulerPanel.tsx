@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Table, Switch, InputNumber, Button, message, Space, Typography, Card } from "antd";
+import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm } from "antd";
 
 const { Text } = Typography;
-import { ReloadOutlined, SaveOutlined } from "@ant-design/icons";
-import { fetchSchedulerSettings, updateSchedulerTask, type SchedulerTask } from "../api/scheduler-client";
+import { ReloadOutlined, SaveOutlined, DeleteOutlined } from "@ant-design/icons";
+import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, type SchedulerTask } from "../api/scheduler-client";
 
 const TASK_LABELS: Record<string, string> = {
   collect_stack: "Сбор стека технологий",
@@ -42,6 +42,16 @@ export function SchedulerPanel() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleResetStats = async () => {
+    const res = await resetStatistics();
+    if (res.ok) {
+      message.success(`Статистика обнулена. Очищены таблицы: ${res.data!.cleared.join(", ")}`);
+      load();
+    } else {
+      message.error(res.error!);
+    }
+  };
 
   const handleSave = async (id: number) => {
     setSaving(id);
@@ -140,6 +150,26 @@ export function SchedulerPanel() {
           Интервал определяет, как часто автоматически запускается сбор данных из GitLab API.
           Минимальный интервал — 5 минут. Задачи выполняются последовательно.
         </Typography.Text>
+      </Card>
+
+      <Card style={{ marginTop: 16 }} title="Сброс статистики">
+        <Space direction="vertical" style={{ width: "100%" }}>
+          <Typography.Text type="secondary">
+            Полностью обнулит всю собранную статистику (коммиты, контрибьюторы, активность, ветки, MR, стек).
+            Настройки проектов, пользователей и справочник контрибьюторов не затрагиваются.
+            После сброса потребуется повторный сбор данных.
+          </Typography.Text>
+          <Popconfirm
+            title="Обнулить всю статистику?"
+            description="Это действие необратимо. Все собранные данные будут удалены."
+            onConfirm={handleResetStats}
+            okText="Да, обнулить"
+            cancelText="Отмена"
+            okButtonProps={{ danger: true }}
+          >
+            <Button danger icon={<DeleteOutlined />}>Обнулить статистику</Button>
+          </Popconfirm>
+        </Space>
       </Card>
     </div>
   );

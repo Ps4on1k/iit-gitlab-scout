@@ -53,7 +53,17 @@ export async function updateSchedulerTask(
     body: JSON.stringify(data),
   });
   if (result.ok) {
-    // Invalidate scheduler cache after update
+    const { clearCache } = await import("../utils/cache");
+    clearCache("scheduler");
+  }
+  return result;
+}
+
+export async function resetStatistics(): Promise<ApiResponse<{ cleared: string[] }>> {
+  const result = await fetchJson<{ cleared: string[] }>("/v1/scheduler/reset-stats", {
+    method: "POST",
+  });
+  if (result.ok) {
     const { clearCache } = await import("../utils/cache");
     clearCache("scheduler");
   }

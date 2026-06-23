@@ -72,4 +72,25 @@ export async function schedulerRoutes(app: FastifyInstance) {
     );
     return { ok: true, data: result.rows };
   });
+
+  app.post("/api/v1/scheduler/reset-stats", { preHandler: [requireAdmin] }, async () => {
+    const pool = getPool();
+    const tables = [
+      "commits",
+      "contributor_profiles",
+      "project_branches",
+      "project_activity",
+      "project_languages",
+      "project_merge_requests",
+    ];
+    const cleared: string[] = [];
+    for (const table of tables) {
+      try {
+        await pool.query(`DELETE FROM ${table}`);
+        cleared.push(table);
+      } catch { /* table may not exist */ }
+    }
+    await pool.query("UPDATE scheduler_settings SET last_run_at = NULL");
+    return { ok: true, data: { cleared } };
+  });
 }
