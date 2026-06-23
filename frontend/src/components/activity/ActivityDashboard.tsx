@@ -32,7 +32,6 @@ export function ActivityDashboard({ userRole }: Props) {
   const [groupBy, setGroupBy] = useState<"day" | "week">("day");
   const [mrData, setMrData] = useState<any>(null);
   const [mrLoading, setMrLoading] = useState(true);
-  const [collectingMR, setCollectingMR] = useState(false);
 
   useEffect(() => {
     fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); });
@@ -69,29 +68,20 @@ export function ActivityDashboard({ userRole }: Props) {
 
   useEffect(() => { loadMRData(); }, [loadMRData]);
 
-  const handleCollectMR = async () => {
-    setCollectingMR(true);
-    try {
-      const ids = selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id);
-      for (const id of ids) {
-        const res = await collectMR(id);
-        if (res.ok) message.success(`MR проекта ${id}: ${res.data!.total} собрано`);
-        else message.error(res.error!);
-      }
-      loadMRData();
-    } finally { setCollectingMR(false); }
-  };
-
   const handleCollect = async () => {
     setCollecting(true);
     try {
       const targetIds = selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id);
       for (const id of targetIds) {
-        const res = await collectActivity(id, dateFrom, dateTo);
-        if (res.ok) message.success(`Проект ${res.data!.project_id}: ${res.data!.days} дней`);
-        else message.error(res.error!);
+        const actRes = await collectActivity(id, dateFrom, dateTo);
+        if (actRes.ok) message.success(`Активность проекта ${id}: ${actRes.data!.days} дней`);
+        else message.error(actRes.error!);
+        const mrRes = await collectMR(id);
+        if (mrRes.ok) message.success(`MR проекта ${id}: ${mrRes.data!.total} собрано`);
+        else message.error(mrRes.error!);
       }
       loadData();
+      loadMRData();
     } finally {
       setCollecting(false);
     }
@@ -183,10 +173,6 @@ export function ActivityDashboard({ userRole }: Props) {
         )}
       </Card>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 16 }}>
-        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collectingMR} onClick={handleCollectMR} style={{ background: "#667eea" }}>Собрать MR</Button>}
-      </div>
-
       {mrLoading ? <div style={{ textAlign: "center", padding: 40 }}><Spin size="large" /></div> : mrData && (
         <>
           <h3 style={{ fontSize: 18, color: "#333", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Merge Requests</h3>
@@ -239,23 +225,25 @@ export function ActivityDashboard({ userRole }: Props) {
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={12}>
-              <Card title="Топ авторов MR (top 10)" size="small">
+              <Card title="Топ авторов MR (top 10)" size="small"
+                extra={<span style={{ fontSize: 11, color: "#999" }}>Длина бара — относительно автора с макс. кол-вом MR</span>}>
                 {mrData.topAuthors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
                     {mrData.topAuthors.map((a: any, i: number) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, fontSize: 13 }}>
-                        <span style={{ width: 20, textAlign: "center", fontWeight: 700, color: i === 0 ? "#faad14" : i === 1 ? "#8c8c8c" : i === 2 ? "#d48806" : "#999", fontSize: 12 }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: 13 }}>
+                        <span style={{ width: 24, textAlign: "center", fontWeight: 700, color: i === 0 ? "#faad14" : i === 1 ? "#8c8c8c" : i === 2 ? "#d48806" : "#999", fontSize: 13 }}>
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 12 }}>{a.name}</div>
-                          <div style={{ fontSize: 11, color: "#999" }}>{a.total} MR, {a.merged} замержено</div>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{a.name}</div>
+                          <div style={{ fontSize: 12, color: "#666" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
-                        <div style={{ width: 80 }}>
-                          <div style={{ height: 6, borderRadius: 3, background: "#f0f0f0", overflow: "hidden" }}>
-                            <div style={{ width: `${(a.total / (mrData.topAuthors[0]?.total || 1)) * 100}%`, height: "100%", background: "#667eea", borderRadius: 3 }} />
+                        <div style={{ width: 120 }}>
+                          <div style={{ height: 10, borderRadius: 5, background: "#f0f0f0", overflow: "hidden" }}>
+                            <div style={{ width: `${(a.total / (mrData.topAuthors[0]?.total || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #667eea, #764ba2)", borderRadius: 5 }} />
                           </div>
                         </div>
+                        <span style={{ fontSize: 12, color: "#666", width: 30, textAlign: "right" }}>{a.total}</span>
                       </div>
                     ))}
                   </div>
@@ -263,23 +251,25 @@ export function ActivityDashboard({ userRole }: Props) {
               </Card>
             </Col>
             <Col span={12}>
-              <Card title="Топ ревьюеров (top 10)" size="small">
+              <Card title="Топ ревьюеров (top 10)" size="small"
+                extra={<span style={{ fontSize: 11, color: "#999" }}>Кол-во одобрений MR (approvals)</span>}>
                 {mrData.topReviewers.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о ревью" /> : (
                   <div>
                     {mrData.topReviewers.map((r: any, i: number) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, fontSize: 13 }}>
-                        <span style={{ width: 20, textAlign: "center", fontWeight: 700, color: i < 3 ? ["#faad14", "#8c8c8c", "#d48806"][i] : "#999", fontSize: 12 }}>
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: 13 }}>
+                        <span style={{ width: 24, textAlign: "center", fontWeight: 700, color: i < 3 ? ["#faad14", "#8c8c8c", "#d48806"][i] : "#999", fontSize: 13 }}>
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 12 }}>{r.name}</div>
-                          <div style={{ fontSize: 11, color: "#999" }}>{r.reviews} одобрений</div>
+                          <div style={{ fontWeight: 500, fontSize: 13 }}>{r.name}</div>
+                          <div style={{ fontSize: 12, color: "#666" }}>{r.reviews} одобрений MR</div>
                         </div>
-                        <div style={{ width: 80 }}>
-                          <div style={{ height: 6, borderRadius: 3, background: "#f0f0f0", overflow: "hidden" }}>
-                            <div style={{ width: `${(r.reviews / (mrData.topReviewers[0]?.reviews || 1)) * 100}%`, height: "100%", background: "#764ba2", borderRadius: 3 }} />
+                        <div style={{ width: 120 }}>
+                          <div style={{ height: 10, borderRadius: 5, background: "#f0f0f0", overflow: "hidden" }}>
+                            <div style={{ width: `${(r.reviews / (mrData.topReviewers[0]?.reviews || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #764ba2, #f093fb)", borderRadius: 5 }} />
                           </div>
                         </div>
+                        <span style={{ fontSize: 12, color: "#666", width: 30, textAlign: "right" }}>{r.reviews}</span>
                       </div>
                     ))}
                   </div>

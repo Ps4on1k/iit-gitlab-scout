@@ -56,8 +56,8 @@ export default function App() {
     { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
     { key: "contributors", icon: <TeamOutlined />, label: "Контрибьюторы" },
     { key: "activity", icon: <ThunderboltOutlined />, label: "Активность" },
-    { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     { key: "branches", icon: <BranchesOutlined />, label: "Ветки" },
+    { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
     ...(user.role === "admin" ? [
       { key: "settings", icon: <SettingOutlined />, label: "Настройки" },
     ] : []),
