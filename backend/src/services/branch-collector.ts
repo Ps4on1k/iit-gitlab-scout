@@ -39,6 +39,7 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
     `/projects/${encodeURIComponent(proj.path)}/repository/branches?per_page=100`
   );
 
+  // Delete existing branches for this project before re-inserting
   await pool.query("DELETE FROM project_branches WHERE project_id = $1", [projectId]);
 
   let active = 0;
@@ -74,7 +75,19 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
 
     await pool.query(
       `INSERT INTO project_branches (project_id, name, "default", merged, protected, last_commit_date, last_commit_author, last_commit_author_email, last_commit_message, first_commit_date, can_push, last_commit_additions, last_commit_deletions)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+       ON CONFLICT (project_id, name) DO UPDATE SET
+         "default" = EXCLUDED."default",
+         merged = EXCLUDED.merged,
+         protected = EXCLUDED.protected,
+         last_commit_date = EXCLUDED.last_commit_date,
+         last_commit_author = EXCLUDED.last_commit_author,
+         last_commit_author_email = EXCLUDED.last_commit_author_email,
+         last_commit_message = EXCLUDED.last_commit_message,
+         first_commit_date = EXCLUDED.first_commit_date,
+         can_push = EXCLUDED.can_push,
+         last_commit_additions = EXCLUDED.last_commit_additions,
+         last_commit_deletions = EXCLUDED.last_commit_deletions`,
       [
         projectId, branch.name, branch.default, branch.merged, branch.protected,
         lastDate, branch.commit?.author_name || "",
