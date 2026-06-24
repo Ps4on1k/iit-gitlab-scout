@@ -37,6 +37,14 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
     else if (p.status === "failed") failed++;
     else if (p.status === "running") running++;
 
+    // Calculate duration from finished_at - created_at if API doesn't provide it
+    let duration = p.duration;
+    if (duration === null || duration === undefined) {
+      if (p.finished_at && p.created_at) {
+        duration = Math.round((new Date(p.finished_at).getTime() - new Date(p.created_at).getTime()) / 1000);
+      }
+    }
+
     await pool.query(
       `INSERT INTO project_pipelines (project_id, gitlab_id, status, ref, source, duration, created_at, updated_at, finished_at, user_name)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -46,7 +54,7 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
          finished_at = EXCLUDED.finished_at, user_name = EXCLUDED.user_name`,
       [
         projectId, p.id, p.status, p.ref || "", p.source || "",
-        p.duration, p.created_at, p.updated_at, p.finished_at,
+        duration, p.created_at, p.updated_at, p.finished_at,
         p.user?.name || "",
       ]
     );

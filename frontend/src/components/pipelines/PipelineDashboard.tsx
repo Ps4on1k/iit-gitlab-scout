@@ -83,9 +83,9 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             ["Всего", s.total, ""],
             ["Успешно", s.success, s.total > 0 ? Math.round(s.success / s.total * 100) + "%" : "0%"],
             ["Провалено", s.failed, s.total > 0 ? Math.round(s.failed / s.total * 100) + "%" : "0%"],
-            ["Ср. длительность (сек)", s.avg_duration || 0, ""],
-            ["Мин. длительность (сек)", s.min_duration || 0, ""],
-            ["Макс. длительность (сек)", s.max_duration || 0, ""],
+            ["Ср. длительность (сек)", s.avg_duration ?? "N/A", ""],
+            ["Мин. длительность (сек)", s.min_duration ?? "N/A", ""],
+            ["Макс. длительность (сек)", s.max_duration ?? "N/A", ""],
           ];
           downloadCsv("pipelines_summary.csv", headers, rows);
         }}>CSV</Button>}
@@ -98,8 +98,8 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             <Col span={4}><Card><Statistic title="Успешно" value={data.summary.success} valueStyle={{ color: "#3f8600" }} /></Card></Col>
             <Col span={4}><Card><Statistic title="Провалено" value={data.summary.failed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
             <Col span={4}><Card><Statistic title="Выполняется" value={data.summary.running} valueStyle={{ color: "#1677ff" }} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Ср. время (сек)" value={data.summary.avg_duration || 0} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Макс. время (сек)" value={data.summary.max_duration || 0} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Ср. время (сек)" value={data.summary.avg_duration ?? "N/A"} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Макс. время (сек)" value={data.summary.max_duration ?? "N/A"} /></Card></Col>
           </Row>
 
           <Row gutter={16} style={{ marginBottom: 16 }}>

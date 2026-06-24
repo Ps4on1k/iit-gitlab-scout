@@ -95,6 +95,8 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
       params
     );
 
+    const durationWhere = [...conditions, `pp.status = 'success'`, `pp.duration IS NOT NULL`];
+    const durationSql = durationWhere.length > 0 ? `WHERE ${durationWhere.join(" AND ")}` : "";
     const durationDistResult = await pool.query(
       `SELECT
          COUNT(*) FILTER (WHERE duration < 60)::int as under_1min,
@@ -102,8 +104,8 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
          COUNT(*) FILTER (WHERE duration >= 300 AND duration < 900)::int as min_5_15,
          COUNT(*) FILTER (WHERE duration >= 900 AND duration < 3600)::int as min_15_60,
          COUNT(*) FILTER (WHERE duration >= 3600)::int as over_1hour
-       FROM project_pipelines pp ${where}
-       WHERE pp.status = 'success' AND pp.duration IS NOT NULL`,
+       FROM project_pipelines pp
+       ${durationSql}`,
       params
     );
 
