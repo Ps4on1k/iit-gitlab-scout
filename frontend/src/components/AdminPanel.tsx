@@ -139,8 +139,15 @@ export function AdminPanel() {
           <Form.Item name="label" label="Название" rules={[{ required: true }]}>
             <Input placeholder="GitLab Runner" autoComplete="off" />
           </Form.Item>
-          <Form.Item name="tags" label="Теги" help="Выберите один или несколько тегов для проекта">
-            <Select mode="multiple" placeholder="Выберите теги" options={allTagOptions} showSearch optionFilterProp="label" />
+          <Form.Item name="tags" label="Теги" help="Введите тег и нажмите Enter. Можно добавить несколько.">
+            <Select
+              mode="tags"
+              placeholder="Введите теги (Enter для добавления)"
+              options={allTagOptions}
+              showSearch
+              optionFilterProp="label"
+              maxTagCount={4}
+            />
           </Form.Item>
           <Form.Item name="token" label="GitLab Token" rules={editingId ? [] : [{ required: true }]}>
             <Input.Password placeholder={editingId ? "Оставьте пустым, чтобы не менять" : "glpat-..."} autoComplete="new-password" />

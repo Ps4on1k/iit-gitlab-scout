@@ -57,7 +57,7 @@ export async function fetchProjects(): Promise<ApiResponse<ProjectConfig[]>> {
 }
 
 export async function createProject(data: {
-  path: string; label: string; token: string; base_url?: string; tag?: string;
+  path: string; label: string; token: string; base_url?: string; tags?: string[];
 }): Promise<ApiResponse<ProjectConfig>> {
   const result = await fetchJson<ProjectConfig>("/v1/projects", { method: "POST", body: JSON.stringify(data) });
   if (result.ok) clearCache("projects");
@@ -65,7 +65,7 @@ export async function createProject(data: {
 }
 
 export async function updateProject(
-  id: number, data: { path?: string; label?: string; token?: string; base_url?: string; tag?: string }
+  id: number, data: { path?: string; label?: string; token?: string; base_url?: string; tags?: string[]; description?: string }
 ): Promise<ApiResponse<ProjectConfig>> {
   const result = await fetchJson<ProjectConfig>(`/v1/projects/${id}`, { method: "PUT", body: JSON.stringify(data) });
   if (result.ok) clearCache("projects");
