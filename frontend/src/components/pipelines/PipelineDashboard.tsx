@@ -21,6 +21,13 @@ function downloadCsv(filename: string, headers: string[], rows: any[][]) {
 
 const PIE_COLORS = ["#3f8600", "#cf1322", "#1677ff", "#d4b106", "#722ed1"];
 
+function formatDuration(secs: number | null): string {
+  if (secs === null || secs === undefined) return "N/A";
+  if (secs < 60) return `${secs}с`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}м ${secs % 60}с`;
+  return `${Math.floor(secs / 3600)}ч ${Math.floor((secs % 3600) / 60)}м`;
+}
+
 export function PipelineDashboard({ userRole, filters }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
@@ -65,27 +72,28 @@ export function PipelineDashboard({ userRole, filters }: Props) {
   };
 
   const cc = chartColors();
+  const successRate = data?.summary?.total > 0 ? Math.round(data.summary.success / data.summary.total * 100) : 0;
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
       <div style={{ background: "linear-gradient(135deg, #722ed1 0%, #13c2c2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>CI/CD Пайплайны <span style={{ fontSize: 14, background: "rgba(255,255,255,0.2)", padding: "2px 10px", borderRadius: 10, verticalAlign: "middle" }}>Бэта</span></h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Длительность, успешность и распределение пайплайнов</div>
+        <div style={{ opacity: 0.9, fontSize: 14 }}>Длительность, успешность и стабильность процессов сборки</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#722ed1" }}>Собрать</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         {data && <Button size="small" icon={<DownloadOutlined />} onClick={() => {
-          const headers = ["Статус", "Кол-во", "Успешность %"];
+          const headers = ["Статус", "Кол-во", "%"];
           const s = data.summary;
           const rows = [
             ["Всего", s.total, ""],
             ["Успешно", s.success, s.total > 0 ? Math.round(s.success / s.total * 100) + "%" : "0%"],
             ["Провалено", s.failed, s.total > 0 ? Math.round(s.failed / s.total * 100) + "%" : "0%"],
-            ["Ср. длительность (сек)", s.avg_duration ?? "N/A", ""],
-            ["Мин. длительность (сек)", s.min_duration ?? "N/A", ""],
-            ["Макс. длительность (сек)", s.max_duration ?? "N/A", ""],
+            ["Ср. время", formatDuration(s.avg_duration), ""],
+            ["Мин. время", formatDuration(s.min_duration), ""],
+            ["Макс. время", formatDuration(s.max_duration), ""],
           ];
           downloadCsv("pipelines_summary.csv", headers, rows);
         }}>CSV</Button>}
@@ -93,14 +101,44 @@ export function PipelineDashboard({ userRole, filters }: Props) {
 
       {loading ? <div style={{ textAlign: "center", padding: 60 }}><Spin size="large" /></div> : data && (
         <>
+          {/* Summary Cards with success rate */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={4}><Card><Statistic title="Всего" value={data.summary.total} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Успешно" value={data.summary.success} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Провалено" value={data.summary.failed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Всего пайплайнов" value={data.summary.total} valueStyle={{ fontSize: 24 }} /></Card></Col>
+            <Col span={4}>
+              <Card>
+                <Statistic title="Успешно" value={data.summary.success} valueStyle={{ color: "#3f8600" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({successRate}%)</span>} />
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", background: "#f0f0f0" }}>
+                    <div style={{ width: `${successRate}%`, background: "#3f8600", borderRadius: 3 }} />
+                  </div>
+                </div>
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card>
+                <Statistic title="Провалено" value={data.summary.failed} valueStyle={{ color: "#cf1322" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({data.summary.total > 0 ? Math.round(data.summary.failed / data.summary.total * 100) : 0}%)</span>} />
+              </Card>
+            </Col>
             <Col span={4}><Card><Statistic title="Выполняется" value={data.summary.running} valueStyle={{ color: "#1677ff" }} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Ср. время (сек)" value={data.summary.avg_duration ?? "N/A"} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Макс. время (сек)" value={data.summary.max_duration ?? "N/A"} /></Card></Col>
+            <Col span={4}>
+              <Card>
+                <Statistic title="Ср. время" value={formatDuration(data.summary.avg_duration)} />
+                <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)", marginTop: 2 }}>от {formatDuration(data.summary.min_duration)} до {formatDuration(data.summary.max_duration)}</div>
+              </Card>
+            </Col>
+            <Col span={4}>
+              <Card>
+                <Statistic title="Отменено" value={data.summary.canceled || 0} valueStyle={{ color: "#d4b106" }} />
+              </Card>
+            </Col>
           </Row>
+
+          {/* Explanation banner */}
+          <div style={{ background: "var(--ant-color-fill-secondary)", borderRadius: 8, padding: "10px 16px", marginBottom: 16, fontSize: 12, color: "var(--ant-color-textSecondary)", display: "flex", gap: 16, flexWrap: "wrap" }}>
+            <span>📊 <b>Успешность</b> — доля пайплайнов без ошибок. Выше 80% — стабильная сборка</span>
+            <span>⏱️ <b>Длительность</b> — время от запуска до завершения пайплайна</span>
+            <span>🔄 <b>Тренд</b> — следите за ростом провалов, это может указывать на проблемы с кодом</span>
+          </div>
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={14}>
@@ -124,9 +162,9 @@ export function PipelineDashboard({ userRole, filters }: Props) {
               </Card>
             </Col>
             <Col span={10}>
-              <Card title="Статус пайплайнов" size="small">
+              <Card title="Распределение по статусу" size="small">
                 {data.summary.total === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-                  <div style={{ height: 260 }}>
+                  <div style={{ height: 280 }}>
                     <Pie
                       data={[
                         { type: "Успешно", value: data.summary.success },
@@ -140,7 +178,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                       legend={{ color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
                       statistic={false}
                       tooltip={{ title: "type", items: [{ field: "value", name: "Количество" }] }}
-                      height={260}
+                      height={280}
                     />
                   </div>
                 )}
@@ -153,18 +191,25 @@ export function PipelineDashboard({ userRole, filters }: Props) {
               <Card title="Пайплайны по проектам (top 10)" size="small">
                 {data.byProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
-                    {data.byProject.map((p: any) => (
-                      <div key={p.label} style={{ marginBottom: 8 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                          <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.label}{p.tags?.length > 0 && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tags.join(", ")}</Tag>}</span>
-                          <span style={{ color: "var(--ant-color-textSecondary)" }}>{p.total} ({p.avgDuration || 0}с)</span>
+                    {data.byProject.map((p: any) => {
+                      const pct = p.total > 0 ? Math.round(p.success / p.total * 100) : 0;
+                      return (
+                        <div key={p.label} style={{ marginBottom: 10 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
+                            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{p.label}{p.tag?.length > 0 && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tag.join(", ")}</Tag>}</span>
+                            <span style={{ color: "var(--ant-color-textSecondary)" }}>
+                              <span style={{ color: "#3f8600" }}>{p.success}</span>/<span>{p.total}</span>
+                              <span style={{ marginLeft: 6, color: pct >= 80 ? "#3f8600" : pct >= 50 ? "#d4b106" : "#cf1322", fontWeight: 600 }}>{pct}%</span>
+                              {p.avgDuration > 0 && <span style={{ marginLeft: 6, color: "var(--ant-color-textTertiary)" }}>⏱{formatDuration(p.avgDuration)}</span>}
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, background: "#3f8600" }} />
+                            <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#cf1322" }} />
+                          </div>
                         </div>
-                        <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{ width: `${p.total > 0 ? (p.success / p.total * 100) : 0}%`, background: "#3f8600" }} />
-                          <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#cf1322" }} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </Card>
@@ -173,24 +218,28 @@ export function PipelineDashboard({ userRole, filters }: Props) {
               <Card title="Длительность пайплайнов" size="small">
                 {data.durationDistribution ? (
                   <div>
+                    <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)", marginBottom: 12 }}>
+                      Распределение времени выполнения <b>успешных</b> пайплайнов
+                    </div>
                     {[
-                      { label: "< 1 мин", value: data.durationDistribution.under_1min, color: "#3f8600" },
-                      { label: "1–5 мин", value: data.durationDistribution.min_1_5, color: "#667eea" },
-                      { label: "5–15 мин", value: data.durationDistribution.min_5_15, color: "#d4b106" },
-                      { label: "15–60 мин", value: data.durationDistribution.min_15_60, color: "#fa8c16" },
-                      { label: "> 1 час", value: data.durationDistribution.over_1hour, color: "#cf1322" },
+                      { label: "< 1 мин", value: data.durationDistribution.under_1min, color: "#3f8600", hint: "Быстрые проверки" },
+                      { label: "1–5 мин", value: data.durationDistribution.min_1_5, color: "#667eea", hint: "Сборка + тесты" },
+                      { label: "5–15 мин", value: data.durationDistribution.min_5_15, color: "#d4b106", hint: "Полный pipeline" },
+                      { label: "15–60 мин", value: data.durationDistribution.min_15_60, color: "#fa8c16", hint: "Долгие сборки" },
+                      { label: "> 1 час", value: data.durationDistribution.over_1hour, color: "#cf1322", hint: "Критично долгие" },
                     ].map((d) => {
-                      const total = (data.summary.success || 1);
+                      const total = data.summary.success || 1;
                       const pct = Math.round(d.value / total * 100);
                       return (
-                        <div key={d.label} style={{ marginBottom: 8 }}>
+                        <div key={d.label} style={{ marginBottom: 10 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
                             <span style={{ fontWeight: 500 }}>{d.label}</span>
                             <span style={{ color: "var(--ant-color-textSecondary)" }}>{d.value} ({pct}%)</span>
                           </div>
-                          <div style={{ height: 8, borderRadius: 4, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>
+                          <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>
                             <div style={{ width: `${pct}%`, height: "100%", background: d.color, borderRadius: 4 }} />
                           </div>
+                          <div style={{ fontSize: 10, color: "var(--ant-color-textTertiary)", marginTop: 1 }}>{d.hint}</div>
                         </div>
                       );
                     })}
@@ -200,21 +249,28 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             </Col>
           </Row>
 
-          <Card title="Пайплайны по веткам (top 10)" size="small">
+          <Card title="Пайплайны по веткам (top 10)" size="small"
+            extra={<span style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>Зелёный — успех, красный — провал</span>}>
             {data.byRef.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
-                {data.byRef.map((r: any) => (
-                  <div key={r.ref} style={{ marginBottom: 8 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                      <span style={{ fontWeight: 500 }}><code>{r.ref}</code></span>
-                      <span style={{ color: "var(--ant-color-textSecondary)" }}>{r.total}</span>
+                {data.byRef.map((r: any) => {
+                  const pct = r.total > 0 ? Math.round(r.success / r.total * 100) : 0;
+                  return (
+                    <div key={r.ref} style={{ marginBottom: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
+                        <span style={{ fontWeight: 500 }}><code>{r.ref}</code></span>
+                        <span style={{ color: "var(--ant-color-textSecondary)" }}>
+                          <span style={{ color: "#3f8600" }}>{r.success}</span>/<span>{r.total}</span>
+                          <span style={{ marginLeft: 6, color: pct >= 80 ? "#3f8600" : "#cf1322", fontWeight: 600 }}>{pct}%</span>
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, background: "#3f8600" }} />
+                        <div style={{ width: `${r.total > 0 ? (r.failed / r.total * 100) : 0}%`, background: "#cf1322" }} />
+                      </div>
                     </div>
-                    <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
-                      <div style={{ width: `${r.total > 0 ? (r.success / r.total * 100) : 0}%`, background: "#3f8600" }} />
-                      <div style={{ width: `${r.total > 0 ? (r.failed / r.total * 100) : 0}%`, background: "#cf1322" }} />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
