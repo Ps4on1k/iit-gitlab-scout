@@ -77,6 +77,7 @@ export default function App() {
   const themeConfig = darkMode ? darkThemeConfig : lightThemeConfig;
   const contentBg = darkMode ? "#11111b" : "#f5f5f5";
   const subMenuBg = darkMode ? "#1a1a2e" : "#001529";
+  const filterKey = JSON.stringify(filters);
 
   if (loading) return <ConfigProvider theme={themeConfig}><div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: contentBg }}><Typography.Text>Загрузка...</Typography.Text></div></ConfigProvider>;
   if (!user) return <ConfigProvider theme={themeConfig}><LoginPage onLogin={setUser} /></ConfigProvider>;
@@ -137,10 +138,10 @@ export default function App() {
         <Content style={{ padding: "12px 24px 24px", background: contentBg, border: "none" }}>
           {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} />}
           {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard userRole={user.role} filters={filters} />}
+          {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
