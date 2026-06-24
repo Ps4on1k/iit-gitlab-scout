@@ -12,6 +12,7 @@ import { PipelineDashboard } from "./components/pipelines/PipelineDashboard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
 import { getMe, clearToken, resolveContributor } from "./api/client";
+import { clearCache } from "./utils/cache";
 import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
 import type { User } from "./types";
 
@@ -61,6 +62,11 @@ export default function App() {
   useEffect(() => {
     try { localStorage.setItem("darkMode", String(darkMode)); } catch {}
   }, [darkMode]);
+
+  // Clear data cache when filters change to ensure fresh data
+  useEffect(() => {
+    clearCache();
+  }, [filters]);
 
   const handleLogout = () => { clearToken(); setUser(null); };
 
