@@ -35,7 +35,7 @@ export async function projectsRoutes(app: FastifyInstance) {
       return { ok: true, data: result.rows[0] };
     } catch (err: any) {
       if (err.code === "23505") {
-        return reply.status(409).send({ ok: false, error: "Project path already exists" });
+        return reply.status(409).send({ ok: false, error: "Проект с таким path уже существует в этом GitLab инстансе" });
       }
       throw err;
     }
