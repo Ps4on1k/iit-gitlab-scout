@@ -51,7 +51,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   if (loading) return <div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>;
   if (!data) return <Empty description="Ошибка загрузки" />;
 
-  const { summary, topContributors, projectHealth, recentActivity, languageDistribution, branchStatusDistribution, branchesByProject } = data;
+  const { summary, topContributors, projectHealth, recentActivity, languageDistribution, branchStatusDistribution, branchesByProject, pipelinesByProject } = data;
   const stalePct = summary.branches > 0 ? Math.round(summary.staleBranches / summary.branches * 100) : 0;
   const maxActivity = Math.max(1, ...recentActivity.map((a: any) => a.commits));
 
@@ -154,25 +154,54 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         </Col>
       </Row>
 
-      <Card title="Ветки по проектам (top 10)" size="small" style={{ marginBottom: 16 }}>
-        {branchesByProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-          <div>
-            {branchesByProject.map((p: any) => (
-              <div key={p.label} style={{ marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                  <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 400 }}>{p.label}</span>
-                  <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 11 }}>{p.active} актив / {p.stale} заброш / {p.merged} мердж</span>
-                </div>
-                <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
-                  <div style={{ width: `${(p.active / p.total) * 100}%`, background: "#3f8600" }} />
-                  <div style={{ width: `${(p.stale / p.total) * 100}%`, background: "#cf1322" }} />
-                  <div style={{ width: `${(p.merged / p.total) * 100}%`, background: "#667eea" }} />
-                </div>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
+        <Col span={12}>
+          <Card title="Ветки по проектам (top 10)" size="small">
+            {branchesByProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+              <div>
+                {branchesByProject.map((p: any) => (
+                  <div key={p.label} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
+                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}</span>
+                      <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 11 }}>{p.active} акт / {p.stale} забр / {p.merged} мердж</span>
+                    </div>
+                    <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
+                      <div style={{ width: `${(p.active / p.total) * 100}%`, background: "#3f8600" }} />
+                      <div style={{ width: `${(p.stale / p.total) * 100}%`, background: "#cf1322" }} />
+                      <div style={{ width: `${(p.merged / p.total) * 100}%`, background: "#667eea" }} />
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
-      </Card>
+            )}
+          </Card>
+        </Col>
+        <Col span={12}>
+          <Card title="Пайплайны по проектам (top 10)" size="small">
+            {(pipelinesByProject || []).length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о пайплайнах" /> : (
+              <div>
+                {pipelinesByProject.map((p: any) => {
+                  const pct = p.total > 0 ? Math.round(p.success / p.total * 100) : 0;
+                  return (
+                    <div key={p.label} style={{ marginBottom: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
+                        <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}</span>
+                        <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 11 }}>
+                          <span style={{ color: "#3f8600" }}>{p.success}</span>/{p.total} ({pct}%)
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, background: "#3f8600" }} />
+                        <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#cf1322" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </Col>
+      </Row>
     </div>
   );
 }

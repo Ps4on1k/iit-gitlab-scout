@@ -159,6 +159,18 @@ export async function dashboardRoutes(app: FastifyInstance) {
           { type: "Замерженные", value: mergedBranches },
         ],
         branchesByProject: topBranches.map((p) => ({ label: p.label, total: p.total, active: p.active, stale: p.stale, merged: p.merged })),
+        pipelinesByProject: projectIds.length > 0 ? (await pool.query(
+          `SELECT p.label, p.tags,
+                  COUNT(*)::int as total,
+                  COUNT(*) FILTER (WHERE pp.status = 'success')::int as success,
+                  COUNT(*) FILTER (WHERE pp.status = 'failed')::int as failed
+           FROM project_pipelines pp
+           JOIN projects p ON p.id = pp.project_id
+           WHERE pp.project_id = ANY($1)
+           GROUP BY p.label, p.tags
+           ORDER BY total DESC LIMIT 10`,
+          [projectIds]
+        )).rows.map((r: any) => ({ label: r.label, tags: r.tags || [], total: r.total, success: r.success, failed: r.failed })) : [],
       },
     };
   });
