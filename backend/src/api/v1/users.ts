@@ -88,7 +88,7 @@ export async function userManagementRoutes(app: FastifyInstance) {
       values
     );
     const admin = (request as any).user as JwtPayload;
-    logAuditAction(admin.userId, "user_update", `Updated user ${id}: ${updates.join(", ")}`);
+    logAuditAction(admin.userId, "user_update", `Updated user ${id}: ${updates.map((u) => u.replace(/ = \$\d+/, "")).join(", ")}`);
     return { ok: true, data: result.rows[0] };
 
     return { ok: true, data: result.rows[0] };

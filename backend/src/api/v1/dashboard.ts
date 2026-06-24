@@ -75,7 +75,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
        WHERE c.project_id = ANY($1) AND c.committed_date >= $2
        GROUP BY c.author_email
        ORDER BY total_changes DESC
-       LIMIT 10`,
+        LIMIT 10`,
+      [projectIds, date90]
+    );
+
+    const totalContributorCount = await pool.query(
+      `SELECT COUNT(DISTINCT author_email)::int as cnt FROM commits WHERE project_id = ANY($1) AND committed_date >= $2`,
       [projectIds, date90]
     );
 
@@ -141,7 +146,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       data: {
         summary: {
           projects: projects.length,
-          contributors: topContributors.length,
+          contributors: totalContributorCount.rows[0]?.cnt || 0,
           branches: totalBranches,
           activeBranches,
           staleBranches,

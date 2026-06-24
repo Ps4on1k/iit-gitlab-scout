@@ -120,22 +120,63 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-  const result = await pool.query(
-    `SELECT
-       author_email,
-       MAX(author_name) as author_name,
-       SUM(total_commits)::int as total_commits,
-       SUM(total_additions)::int as total_additions,
-       SUM(total_deletions)::int as total_deletions,
-       SUM(total_changes)::int as total_changes,
-       MIN(first_commit_date) as first_commit_date,
-       MAX(last_commit_date) as last_commit_date
-     FROM contributor_profiles
-     ${where}
-     GROUP BY author_email
-     ORDER BY total_changes DESC`,
-    params
-  );
+
+  // When date filters are active, compute stats from commits table for accuracy
+  const hasDateFilter = filters.date_from || filters.date_to;
+  let result;
+
+  if (hasDateFilter) {
+    const commitConditions: string[] = [];
+    const commitParams: any[] = [];
+    let cIdx = 1;
+    if (filters.project_ids && filters.project_ids.length > 0) {
+      commitConditions.push(`c.project_id = ANY($${cIdx++})`);
+      commitParams.push(filters.project_ids);
+    }
+    if (filters.date_from) {
+      commitConditions.push(`c.committed_date >= $${cIdx++}`);
+      commitParams.push(filters.date_from);
+    }
+    if (filters.date_to) {
+      commitConditions.push(`c.committed_date <= $${cIdx++}`);
+      commitParams.push(filters.date_to + "T23:59:59Z");
+    }
+    const commitWhere = commitConditions.length > 0 ? `WHERE ${commitConditions.join(" AND ")}` : "";
+
+    result = await pool.query(
+      `SELECT
+         c.author_email,
+         MAX(c.author_name) as author_name,
+         COUNT(*)::int as total_commits,
+         SUM(c.additions)::int as total_additions,
+         SUM(c.deletions)::int as total_deletions,
+         SUM(c.additions + c.deletions)::int as total_changes,
+         MIN(c.committed_date) as first_commit_date,
+         MAX(c.committed_date) as last_commit_date
+       FROM commits c
+       ${commitWhere}
+       GROUP BY c.author_email
+       ORDER BY total_changes DESC`,
+      commitParams
+    );
+  } else {
+    result = await pool.query(
+      `SELECT
+         author_email,
+         MAX(author_name) as author_name,
+         SUM(total_commits)::int as total_commits,
+         SUM(total_additions)::int as total_additions,
+         SUM(total_deletions)::int as total_deletions,
+         SUM(total_changes)::int as total_changes,
+         MIN(first_commit_date) as first_commit_date,
+         MAX(last_commit_date) as last_commit_date
+       FROM contributor_profiles
+       ${where}
+       GROUP BY author_email
+       ORDER BY total_changes DESC`,
+      params
+    );
+  }
 
   // Load contributor directory for grouping
   const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
