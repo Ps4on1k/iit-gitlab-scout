@@ -69,7 +69,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
       <div style={{ background: "linear-gradient(135deg, #722ed1 0%, #13c2c2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 10 }}>CI/CD Пайплайны</h1>
+        <h1 style={{ fontSize: 28, marginBottom: 10 }}>CI/CD Пайплайны <span style={{ fontSize: 14, background: "rgba(255,255,255,0.2)", padding: "2px 10px", borderRadius: 10, verticalAlign: "middle" }}>Бэта</span></h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Длительность, успешность и распределение пайплайнов</div>
       </div>
 

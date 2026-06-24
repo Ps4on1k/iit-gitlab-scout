@@ -92,7 +92,7 @@ export default function App() {
     { key: "contributors", label: "Контрибьюторы" },
     { key: "activity", label: "Активность" },
     { key: "branches", label: "Ветки" },
-    { key: "pipelines", label: "CI/CD" },
+    { key: "pipelines", label: <span>CI/CD <span style={{ fontSize: 10, background: "rgba(255,255,255,0.15)", padding: "1px 6px", borderRadius: 4, marginLeft: 4 }}>Beta</span></span> },
   ];
 
   return (
