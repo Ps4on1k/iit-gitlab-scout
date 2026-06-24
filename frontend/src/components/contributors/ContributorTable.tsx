@@ -103,31 +103,40 @@ function CommitPopup({ email, dateFrom, dateTo }: { email: string; dateFrom?: st
   };
 
   return (
-    <div style={{ width: 500, maxHeight: 400, overflowY: "auto" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-        <span style={{ fontWeight: 600 }}>Последние коммиты ({total})</span>
-        <Button size="small" icon={<DownloadOutlined />} onClick={handleExport}>CSV</Button>
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ fontWeight: 600 }}>Коммиты ({total})</span>
+        <Button size="small" icon={<DownloadOutlined />} onClick={handleExport}>Скачать CSV</Button>
       </div>
       {loading ? <Spin size="small" /> : commits.length === 0 ? <Empty description="Нет коммитов" image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-        <div>
-          {commits.map((c: any) => {
-            const d = c.committed_date ? new Date(c.committed_date) : null;
-            return (
-              <div key={c.id || c.commit_sha} style={{ padding: "4px 0", borderBottom: "1px solid var(--ant-color-border-secondary)", fontSize: 12 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <code style={{ color: "#667eea", fontSize: 11 }}>{c.commit_sha?.slice(0, 7)}</code>
-                  <span style={{ color: "var(--ant-color-textSecondary)" }}>{d ? d.toLocaleDateString() : "—"}</span>
-                  {c.project_label && <Tag style={{ fontSize: 10 }}>{c.project_label}</Tag>}
-                </div>
-                <div style={{ color: "var(--ant-color-textSecondary)", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {(c.message || c.raw_json?.message || "").split("\n")[0].slice(0, 100)}
-                </div>
-                <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>
-                  <span style={{ color: "#3f8600" }}>+{c.additions}</span> <span style={{ color: "#cf1322" }}>-{c.deletions}</span>
-                </div>
-              </div>
-            );
-          })}
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>SHA</th>
+                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>Дата</th>
+                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>Проект</th>
+                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>+ строки</th>
+                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>- строки</th>
+                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>Сообщение</th>
+              </tr>
+            </thead>
+            <tbody>
+              {commits.map((c: any) => {
+                const d = c.committed_date ? new Date(c.committed_date) : null;
+                return (
+                  <tr key={c.id || c.commit_sha} style={{ borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
+                    <td style={{ padding: "5px 8px" }}><code style={{ color: "#667eea", fontSize: 11 }}>{c.commit_sha?.slice(0, 8)}</code></td>
+                    <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>{d ? d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
+                    <td style={{ padding: "5px 8px" }}>{c.project_label && <Tag style={{ fontSize: 10 }}>{c.project_label}</Tag>}</td>
+                    <td style={{ padding: "5px 8px", color: "#3f8600" }}>+{c.additions}</td>
+                    <td style={{ padding: "5px 8px", color: "#cf1322" }}>-{c.deletions}</td>
+                    <td style={{ padding: "5px 8px", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(c.message || c.raw_json?.message || "").split("\n")[0].slice(0, 120)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -335,7 +344,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         footer={null}
-        width={700}
+        width="80%"
         destroyOnClose
       >
         <CommitPopup email={modalEmail} />

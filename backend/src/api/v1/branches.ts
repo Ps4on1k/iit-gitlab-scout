@@ -78,15 +78,40 @@ export async function branchRoutes(app: FastifyInstance) {
       conditions.push(`pb.merged = true`);
     }
     if (contributor) {
-      // Resolve contributor email/name from directory
+      // Build all possible identifiers for this contributor
+      const identifiers = new Set<string>([contributor]);
+
+      // Check directory for all emails mapped to the same display_name
       const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
-      let nameForFilter = contributor;
       for (const row of dirResult.rows) {
-        if (row.emails.includes(contributor)) { nameForFilter = row.display_name; break; }
+        if (row.emails.includes(contributor)) {
+          for (const email of row.emails) identifiers.add(email);
+          identifiers.add(row.display_name);
+          break;
+        }
+        // Also check by name match
+        if (row.display_name.toLowerCase().includes(contributor.toLowerCase())) {
+          for (const email of row.emails) identifiers.add(email);
+          identifiers.add(row.display_name);
+        }
       }
-      conditions.push(`(pb.last_commit_author_email ILIKE $${idx} OR pb.last_commit_author ILIKE $${idx})`);
-      params.push(`%${nameForFilter}%`);
-      idx++;
+
+      // Check contributor_profiles for same-name authors
+      const profileResult = await pool.query(
+        `SELECT DISTINCT author_name, author_email FROM contributor_profiles WHERE author_name ILIKE $1 OR author_email ILIKE $1`,
+        [`%${contributor}%`]
+      );
+      for (const row of profileResult.rows) {
+        identifiers.add(row.author_name);
+        identifiers.add(row.author_email);
+      }
+
+      const idArray = Array.from(identifiers).filter(Boolean);
+      if (idArray.length > 0) {
+        conditions.push(`(pb.last_commit_author_email = ANY($${idx}) OR pb.last_commit_author = ANY($${idx}))`);
+        params.push(idArray);
+        idx++;
+      }
     }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

@@ -76,7 +76,6 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
       if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
       if (filters.dateTo) qs.set("date_to", filters.dateTo);
       if (filters.contributors.length > 0) qs.set("contributor", filters.contributors[0]);
-      if (filters.contributors.length > 0) qs.set("contributor", filters.contributors[0]);
       const url = `/v1/branches${qs.toString() ? "?" + qs.toString() : ""}`;
       const token = localStorage.getItem("token");
       const res = await fetch(`/api${url}`, { headers: { Authorization: `Bearer ${token}` } });
