@@ -103,9 +103,9 @@ export function PipelineDashboard({ userRole, filters }: Props) {
         <>
           {/* Summary Cards with success rate */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={4}><Card><Statistic title="Всего пайплайнов" value={data.summary.total} valueStyle={{ fontSize: 24 }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Всего пайплайнов" value={data.summary.total} valueStyle={{ fontSize: 24 }} /></Card></Col>
             <Col span={4}>
-              <Card>
+              <Card style={{ height: "100%" }}>
                 <Statistic title="Успешно" value={data.summary.success} valueStyle={{ color: "#3f8600" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({successRate}%)</span>} />
                 <div style={{ marginTop: 4 }}>
                   <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", background: "#f0f0f0" }}>
@@ -115,19 +115,19 @@ export function PipelineDashboard({ userRole, filters }: Props) {
               </Card>
             </Col>
             <Col span={4}>
-              <Card>
+              <Card style={{ height: "100%" }}>
                 <Statistic title="Провалено" value={data.summary.failed} valueStyle={{ color: "#cf1322" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({data.summary.total > 0 ? Math.round(data.summary.failed / data.summary.total * 100) : 0}%)</span>} />
               </Card>
             </Col>
-            <Col span={4}><Card><Statistic title="Выполняется" value={data.summary.running} valueStyle={{ color: "#1677ff" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Выполняется" value={data.summary.running} valueStyle={{ color: "#1677ff" }} /></Card></Col>
             <Col span={4}>
-              <Card>
+              <Card style={{ height: "100%" }}>
                 <Statistic title="Ср. время" value={formatDuration(data.summary.avg_duration)} />
                 <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)", marginTop: 2 }}>от {formatDuration(data.summary.min_duration)} до {formatDuration(data.summary.max_duration)}</div>
               </Card>
             </Col>
             <Col span={4}>
-              <Card>
+              <Card style={{ height: "100%" }}>
                 <Statistic title="Отменено" value={data.summary.canceled || 0} valueStyle={{ color: "#d4b106" }} />
               </Card>
             </Col>
@@ -164,7 +164,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             <Col span={10}>
               <Card title="Распределение по статусу" size="small" style={{ height: "100%" }}>
                 {data.summary.total === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-                  <div style={{ height: 280 }}>
+                  <div style={{ height: 320 }}>
                     <Pie
                       data={[
                         { type: "Успешно", value: data.summary.success },
@@ -178,7 +178,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                       legend={{ color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
                       statistic={false}
                       tooltip={{ title: "type", items: [{ field: "value", name: "Количество" }] }}
-                      height={280}
+                      height={320}
                     />
                   </div>
                 )}
