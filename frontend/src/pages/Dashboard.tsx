@@ -1,19 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
-import { Card, Row, Col, Statistic, Spin, Tag, Empty } from "antd";
+import { useState, useEffect } from "react";
+import { Card, Row, Col, Statistic, Spin, Empty } from "antd";
 import { ProjectOutlined, TeamOutlined, BranchesOutlined, FireOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import { Pie } from "@ant-design/charts";
 import { fetchDashboard } from "../api/client";
-import { formatContributorName } from "../utils/contributor";
+import { chartColors } from "../utils/chartTheme";
 
 const PIE_COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#fa709a", "#fee140", "#30cfd0"];
 
 function donutConfig(data: { type: string; value: number }[], colors?: string[]) {
-  const isDark = document.documentElement.classList.contains("dark") ||
-    getComputedStyle(document.body).backgroundColor === "rgb(17, 17, 27)" ||
-    localStorage.getItem("darkMode") === "true";
-  const textColor = isDark ? "#e0e0e8" : "#333";
-  const secondaryColor = isDark ? "#a0a0b4" : "#666";
-
+  const cc = chartColors();
   return {
     data,
     angleField: "value",
@@ -22,23 +17,14 @@ function donutConfig(data: { type: string; value: number }[], colors?: string[])
     innerRadius: 0.55,
     color: colors || PIE_COLORS,
     label: false as const,
-    legend: {
-      color: {
-        position: "bottom",
-        layout: { justifyContent: "center" },
-        itemLabelFontSize: 11,
-        itemLabelFill: secondaryColor,
-      },
-    },
+    legend: { color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } },
     statistic: false,
-    tooltip: {
-      title: "type",
-      items: [{ field: "value", name: "Значение" }],
-      titleStyle: { color: textColor },
-      contentStyle: { color: textColor },
-    },
+    tooltip: { title: "type", items: [{ field: "value", name: "Значение" }] },
   };
 }
+
+const ROW_HEIGHT = 400;
+const CARD_STYLE = { height: "100%" as const };
 
 export function Dashboard({ onContributorClick }: { onContributorClick?: (name: string) => void }) {
   const [loading, setLoading] = useState(true);
@@ -57,7 +43,6 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
 
   const contributorsPie = topContributors.map((c: any) => ({ type: c.name || c.email, value: c.changes }));
   const langsPie = languageDistribution.map((l: any) => ({ type: l.language, value: l.percentage }));
-  const branchesPie = branchStatusDistribution;
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
@@ -66,18 +51,20 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сводная статистика за последние 90 дней</div>
       </div>
 
+      {/* Summary cards */}
       <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={4}><Card><Statistic title="Проектов" value={summary.projects} prefix={<ProjectOutlined />} /></Card></Col>
-        <Col span={4}><Card><Statistic title="Контрибьюторов" value={summary.contributors} prefix={<TeamOutlined />} /></Card></Col>
-        <Col span={4}><Card><Statistic title="Коммитов" value={summary.commits} prefix={<FireOutlined />} /></Card></Col>
-        <Col span={4}><Card><Statistic title="Дней активности" value={summary.activeDays} /></Card></Col>
-        <Col span={4}><Card><Statistic title="Активные ветки" value={summary.activeBranches} valueStyle={{ color: "#3f8600" }} prefix={<CheckCircleOutlined />} /></Card></Col>
-        <Col span={4}><Card><Statistic title="Заброшенные" value={summary.staleBranches} valueStyle={{ color: stalePct > 50 ? "#cf1322" : "#d4b106" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({stalePct}%)</span>} /></Card></Col>
+        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Проектов" value={summary.projects} prefix={<ProjectOutlined />} /></Card></Col>
+        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Контрибьюторов" value={summary.contributors} prefix={<TeamOutlined />} /></Card></Col>
+        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Коммитов" value={summary.commits} prefix={<FireOutlined />} /></Card></Col>
+        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Дней активности" value={summary.activeDays} /></Card></Col>
+        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Активные ветки" value={summary.activeBranches} valueStyle={{ color: "#3f8600" }} prefix={<CheckCircleOutlined />} /></Card></Col>
+        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Заброшенные" value={summary.staleBranches} valueStyle={{ color: stalePct > 50 ? "#cf1322" : "#d4b106" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({stalePct}%)</span>} /></Card></Col>
       </Row>
 
+      {/* Row 1: Activity chart + Health */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={12}>
-          <Card title="Активность за 90 дней" size="small" style={{ height: "100%" }}>
+          <Card title="Активность за 90 дней" size="small" style={CARD_STYLE}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
                 <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 200, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
@@ -97,7 +84,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                     const show = i === 0 || i % step === 0 || i === recentActivity.length - 1;
                     if (!show) return null;
                     const leftPct = (i / Math.max(1, recentActivity.length - 1)) * 100;
-                    const [y, m, d] = a.date.split("-");
+                    const [, m, d] = a.date.split("-");
                     return <span key={a.date} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "var(--ant-color-textTertiary)", whiteSpace: "nowrap" }}>{d}.{m}</span>;
                   })}
                 </div>
@@ -110,7 +97,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           </Card>
         </Col>
         <Col span={12}>
-          <Card title="Здоровье проектов (top 10)" size="small" style={{ height: "100%" }}>
+          <Card title="Здоровье проектов (top 10)" size="small" style={CARD_STYLE}>
             {projectHealth.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
                 {projectHealth.sort((a: any, b: any) => a.healthPct - b.healthPct).map((p: any) => (
@@ -130,33 +117,35 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         </Col>
       </Row>
 
+      {/* Row 2: 3 Pie charts */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={8}>
-          <Card title="Топ-10 контрибьюторов" size="small" style={{ height: "100%" }}>
+          <Card title="Топ-10 контрибьюторов" size="small" style={CARD_STYLE}>
             {contributorsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: 360 }}><Pie {...donutConfig(contributorsPie)} height={360} /></div>
+              <div style={{ height: ROW_HEIGHT }}><Pie {...donutConfig(contributorsPie)} height={ROW_HEIGHT} /></div>
             )}
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="Языки (top 10)" size="small" style={{ height: "100%" }}>
+          <Card title="Языки (top 10)" size="small" style={CARD_STYLE}>
             {langsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: 360 }}><Pie {...donutConfig(langsPie)} height={360} /></div>
+              <div style={{ height: ROW_HEIGHT }}><Pie {...donutConfig(langsPie)} height={ROW_HEIGHT} /></div>
             )}
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="Статус веток" size="small" style={{ height: "100%" }}>
+          <Card title="Статус веток" size="small" style={CARD_STYLE}>
             {summary.branches === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: 360 }}><Pie {...donutConfig(branchesPie, ["#3f8600", "#cf1322", "#667eea"])} height={360} /></div>
+              <div style={{ height: ROW_HEIGHT }}><Pie {...donutConfig(branchStatusDistribution, ["#3f8600", "#cf1322", "#667eea"])} height={ROW_HEIGHT} /></div>
             )}
           </Card>
         </Col>
       </Row>
 
+      {/* Row 3: Branches by project + Pipelines by project */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={12}>
-          <Card title="Ветки по проектам (top 10)" size="small">
+          <Card title="Ветки по проектам (top 10)" size="small" style={CARD_STYLE}>
             {branchesByProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
                 {branchesByProject.map((p: any) => (
@@ -177,7 +166,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           </Card>
         </Col>
         <Col span={12}>
-          <Card title="Пайплайны по проектам (top 10)" size="small">
+          <Card title="Пайплайны по проектам (top 10)" size="small" style={CARD_STYLE}>
             {(pipelinesByProject || []).length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о пайплайнах" /> : (
               <div>
                 {pipelinesByProject.map((p: any) => {
