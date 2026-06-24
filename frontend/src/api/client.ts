@@ -255,3 +255,11 @@ export async function fetchContributorCommits(email: string, projectIds?: number
   if (dateTo) qs.set("date_to", dateTo);
   return fetchJson(`/v1/contributor-commits?${qs.toString()}`);
 }
+
+export async function fetchAuditLog(limit?: number, offset?: number, action?: string): Promise<ApiResponse<{ entries: any[]; total: number }>> {
+  const qs = new URLSearchParams();
+  if (limit) qs.set("limit", String(limit));
+  if (offset) qs.set("offset", String(offset));
+  if (action) qs.set("action", action);
+  return fetchJson(`/v1/audit-log${qs.toString() ? "?" + qs.toString() : ""}`);
+}

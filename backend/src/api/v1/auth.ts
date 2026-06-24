@@ -3,6 +3,7 @@ import { getPool } from "../../db/pool.js";
 import { verifyPassword, hashPassword } from "../../utils/password.js";
 import { signToken, requireAuth } from "../../utils/auth.js";
 import { validate, loginSchema } from "../../utils/validation.js";
+import { logAuditAction } from "../../utils/audit.js";
 import type { JwtPayload } from "../../utils/auth.js";
 
 async function seedDefaultUsers() {
@@ -37,6 +38,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const user = result.rows[0];
     if (!user) {
+      logAuditAction(0, "login_failed", `Failed login attempt: ${username}`);
       return reply.status(401).send({ ok: false, error: "Invalid credentials" });
     }
 
@@ -46,8 +48,11 @@ export async function authRoutes(app: FastifyInstance) {
 
     const valid = await verifyPassword(password, user.password_hash);
     if (!valid) {
+      logAuditAction(user.id, "login_failed", `Failed login: ${username}`);
       return reply.status(401).send({ ok: false, error: "Invalid credentials" });
     }
+
+    logAuditAction(user.id, "login_success", `Successful login: ${username}`);
 
     const token = signToken({
       userId: user.id,

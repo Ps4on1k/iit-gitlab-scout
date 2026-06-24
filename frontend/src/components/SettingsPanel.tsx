@@ -1,9 +1,10 @@
 import { Tabs } from "antd";
-import { ProjectOutlined, UserOutlined, ClockCircleOutlined, TeamOutlined } from "@ant-design/icons";
+import { ProjectOutlined, UserOutlined, ClockCircleOutlined, TeamOutlined, FileTextOutlined } from "@ant-design/icons";
 import { AdminPanel } from "./AdminPanel";
 import { UserManagement } from "./UserManagement";
 import { SchedulerPanel } from "./SchedulerPanel";
 import { ContributorDirectoryPanel } from "./directory/ContributorDirectoryPanel";
+import { AuditLogPanel } from "./AuditLogPanel";
 
 export function SettingsPanel() {
   return (
@@ -30,6 +31,11 @@ export function SettingsPanel() {
             key: "scheduler",
             label: <span><ClockCircleOutlined /> Периодичность</span>,
             children: <SchedulerPanel />,
+          },
+          {
+            key: "audit",
+            label: <span><FileTextOutlined /> Аудит-лог</span>,
+            children: <AuditLogPanel />,
           },
         ]}
       />

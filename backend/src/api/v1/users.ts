@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { getPool } from "../../db/pool.js";
-import { requireAdmin } from "../../utils/auth.js";
+import { requireAdmin, type JwtPayload } from "../../utils/auth.js";
+import { logAuditAction } from "../../utils/audit.js";
 import bcrypt from "bcryptjs";
 
 export async function userManagementRoutes(app: FastifyInstance) {
@@ -32,6 +33,8 @@ export async function userManagementRoutes(app: FastifyInstance) {
          RETURNING id, username, role, is_active, allowed_tags, created_at`,
         [username, hash, role || "user", allowed_tags || []]
       );
+      const admin = (request as any).user as JwtPayload;
+      logAuditAction(admin.userId, "user_create", `Created user: ${username} (${role || "user"})`);
       return { ok: true, data: result.rows[0] };
     } catch (err: any) {
       if (err.code === "23505") {
@@ -84,6 +87,9 @@ export async function userManagementRoutes(app: FastifyInstance) {
        RETURNING id, username, role, is_active, allowed_tags, created_at`,
       values
     );
+    const admin = (request as any).user as JwtPayload;
+    logAuditAction(admin.userId, "user_update", `Updated user ${id}: ${updates.join(", ")}`);
+    return { ok: true, data: result.rows[0] };
 
     return { ok: true, data: result.rows[0] };
   });
@@ -119,6 +125,8 @@ export async function userManagementRoutes(app: FastifyInstance) {
     if (result.rows.length === 0) {
       return reply.status(404).send({ ok: false, error: "User not found" });
     }
+    const admin = (request as any).user as JwtPayload;
+    logAuditAction(admin.userId, "user_delete", `Deleted user ${id}`);
     return { ok: true, data: { deleted: true } };
   });
 }

@@ -80,7 +80,8 @@ export async function projectsRoutes(app: FastifyInstance) {
        RETURNING id, path, label, tags, base_url, description, created_at, updated_at`,
       values
     );
-
+    const user = (request as any).user as JwtPayload;
+    logAuditAction(user.userId, "project_update", `Updated project ${id}: ${updates.join(", ")}`);
     return { ok: true, data: result.rows[0] };
   });
 
@@ -93,6 +94,8 @@ export async function projectsRoutes(app: FastifyInstance) {
     if (result.rows.length === 0) {
       return reply.status(404).send({ ok: false, error: "Project not found" });
     }
+    const user = (request as any).user as JwtPayload;
+    logAuditAction(user.userId, "project_delete", `Deleted project ${id}`);
     return { ok: true, data: { deleted: true } };
   });
 
