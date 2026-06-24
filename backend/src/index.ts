@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import { getEnv } from "./config.js";
 import { closePool } from "./db/pool.js";
 import { authRoutes } from "./api/v1/auth.js";
@@ -21,12 +22,54 @@ import { mrAnalyticsRoutes } from "./api/v1/mr-analytics.js";
 import { contributorResolveRoutes } from "./api/v1/contributor-resolve.js";
 import { commitDetailRoutes } from "./api/v1/commit-detail.js";
 import { pipelineAnalyticsRoutes } from "./api/v1/pipeline-analytics.js";
+import { securityPlugin } from "./utils/security.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 
 const env = getEnv();
 const app = Fastify({ logger: true });
 
 await app.register(cors, { origin: true });
+await app.register(helmet, {
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+});
+
+// Security headers
+app.addHook("onRequest", async (request, reply) => {
+  reply.header("X-Content-Type-Options", "nosniff");
+  reply.header("X-Frame-Options", "DENY");
+  reply.header("X-XSS-Protection", "1; mode=block");
+  reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  reply.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+});
+
+// Rate limiting
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+app.addHook("onRequest", async (request, reply) => {
+  const ip = request.ip || "unknown";
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (entry && now < entry.resetAt) {
+    if (entry.count >= 100) return reply.status(429).send({ ok: false, error: "Too many requests" });
+    entry.count++;
+  } else {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + 60000 });
+  }
+  if (rateLimitMap.size > 1000) {
+    for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k); }
+  }
+});
+
+// Sanitize errors
+app.setErrorHandler((error, request, reply) => {
+  const isDev = process.env.NODE_ENV !== "production";
+  const err = error as any;
+  app.log.error(error);
+  reply.status(err.statusCode || 500).send({
+    ok: false,
+    error: isDev ? err.message : "Internal server error",
+  });
+});
 
 app.get("/health", async () => ({ status: "ok" }));
 

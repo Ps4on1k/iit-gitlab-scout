@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { getPool } from "../../db/pool.js";
-import { requireAuth, requireAdmin } from "../../utils/auth.js";
+import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { encrypt, decrypt } from "../../utils/crypto.js";
+import { logAuditAction } from "../../utils/audit.js";
 import yamlLib from "js-yaml";
 
 export async function projectsRoutes(app: FastifyInstance) {
@@ -32,6 +33,8 @@ export async function projectsRoutes(app: FastifyInstance) {
          RETURNING id, path, label, tags, base_url, description, created_at`,
         [path, label, encrypted, base_url || "https://gitlab.com/api/v4", tags || [], description || ""]
       );
+      const user = (request as any).user as JwtPayload;
+      logAuditAction(user.userId, "project_create", `Created project: ${label} (${path})`);
       return { ok: true, data: result.rows[0] };
     } catch (err: any) {
       if (err.code === "23505") {

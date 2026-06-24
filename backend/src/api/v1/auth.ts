@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { getPool } from "../../db/pool.js";
 import { verifyPassword, hashPassword } from "../../utils/password.js";
 import { signToken, requireAuth } from "../../utils/auth.js";
+import { validate, loginSchema } from "../../utils/validation.js";
 import type { JwtPayload } from "../../utils/auth.js";
 
 async function seedDefaultUsers() {
@@ -25,9 +26,8 @@ export async function authRoutes(app: FastifyInstance) {
   }>("/api/v1/auth/login", async (request, reply) => {
     const { username, password } = request.body;
 
-    if (!username || !password) {
-      return reply.status(400).send({ ok: false, error: "username and password required" });
-    }
+    const v = validate(loginSchema, request.body);
+    if (!v.success) return reply.status(400).send({ ok: false, error: v.error });
 
     const pool = getPool();
     const result = await pool.query(
