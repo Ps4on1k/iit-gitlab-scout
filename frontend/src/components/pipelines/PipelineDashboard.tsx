@@ -156,7 +156,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                     {data.byProject.map((p: any) => (
                       <div key={p.label} style={{ marginBottom: 8 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                          <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.label}{p.tags && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tags}</Tag>}</span>
+                          <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.label}{p.tags?.length > 0 && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tags.join(", ")}</Tag>}</span>
                           <span style={{ color: "var(--ant-color-textSecondary)" }}>{p.total} ({p.avgDuration || 0}с)</span>
                         </div>
                         <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>

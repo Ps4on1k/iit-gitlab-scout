@@ -48,11 +48,8 @@ export async function branchRoutes(app: FastifyInstance) {
     }
     if (tag) {
       const tags = tag.split(",").filter(Boolean);
-      if (tags.length === 1) {
-        conditions.push(`p.tags = $${idx++}`);
-        params.push(tags[0]);
-      } else if (tags.length > 1) {
-        conditions.push(`p.tags &&($${idx++})`);
+      if (tags.length > 0) {
+        conditions.push(`p.tags && $${idx++}`);
         params.push(tags);
       }
     }
@@ -157,10 +154,10 @@ export async function branchRoutes(app: FastifyInstance) {
     })();
 
     const perProject = (() => {
-      const map = new Map<number, { label: string; tag: string; total: number; active: number; stale: number; merged: number }>();
+      const map = new Map<number, { label: string; tags: string[]; total: number; active: number; stale: number; merged: number }>();
       for (const r of result.rows as any[]) {
         let entry = map.get(r.project_id);
-        if (!entry) { entry = { label: r.project_label, tag: r.project_tag, total: 0, active: 0, stale: 0, merged: 0 }; map.set(r.project_id, entry); }
+        if (!entry) { entry = { label: r.project_label, tags: r.project_tags || [], total: 0, active: 0, stale: 0, merged: 0 }; map.set(r.project_id, entry); }
         entry.total++;
         if (r.merged) entry.merged++;
         else if (r.last_commit_date && new Date(r.last_commit_date).getTime() > Date.now() - 90 * 86400000) entry.active++;

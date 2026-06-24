@@ -215,7 +215,7 @@ function ProjectLanguageDetails({ filters }: { filters: StackFilters }) {
           {projectStats.map((proj) => (
             <div key={proj.path} style={{ marginBottom: 16, padding: "12px 0", borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
               <div style={{ marginBottom: 6 }}>
-                {proj.tag && <Tag style={{ background: getTagColor(proj.tag).bg, color: getTagColor(proj.tag).text, border: "none", marginRight: 6 }}>{proj.tag}</Tag>}
+                {Array.isArray(proj.tag) ? proj.tag.map((t: string) => <Tag key={t} style={{ background: getTagColor(t).bg, color: getTagColor(t).text, border: "none", marginRight: 4, fontSize: 11 }}>{t}</Tag>) : proj.tag && <Tag style={{ background: getTagColor(proj.tag).bg, color: getTagColor(proj.tag).text, border: "none", marginRight: 6 }}>{proj.tag}</Tag>}
                 <span style={{ fontWeight: 600, fontSize: 18 }}><ProjectLabel label={proj.label} description={projectMap.get(proj.label)?.description} /></span>
                 <span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)", marginLeft: 8 }}>{proj.path}</span>
               </div>

@@ -130,7 +130,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       const active = pb.filter((b: any) => !b.merged && b.last_commit_date && (now - new Date(b.last_commit_date).getTime()) <= stale90).length;
       const stale = total - merged - active;
       const nonMerged = total - merged || 1;
-      return { label: p.label, tag: p.tags, total, merged, active, stale, healthPct: Math.round((active / nonMerged) * 100) };
+      return { label: p.label, tags: p.tags || [], total, merged, active, stale, healthPct: Math.round((active / nonMerged) * 100) };
     });
 
     const topHealth = projectHealth.sort((a, b) => a.healthPct - b.healthPct).slice(0, 10);

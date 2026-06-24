@@ -10,7 +10,7 @@ export interface ProjectLanguage {
   project_id: number;
   project_path: string;
   project_label: string;
-  project_tag: string;
+  project_tags: string[];
   language: string;
   bytes: number;
   percentage: number;
