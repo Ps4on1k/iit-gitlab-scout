@@ -4,6 +4,7 @@ import { collectActivity } from "./activity-collector.js";
 import { collectProject } from "./contributor-collector.js";
 import { collectBranches } from "./branch-collector.js";
 import { collectMergeRequests } from "./mr-collector.js";
+import { collectPipelines } from "./pipeline-collector.js";
 
 interface SchedulerTask {
   id: number;
@@ -46,6 +47,9 @@ async function runTask(taskName: string): Promise<void> {
           break;
         case "collect_merge_requests":
           await collectMergeRequests(projectId);
+          break;
+        case "collect_pipelines":
+          await collectPipelines(projectId);
           break;
       }
       logFn(`[scheduler] ${taskName}: project ${projectId} done`);

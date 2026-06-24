@@ -8,6 +8,7 @@ import { ContributorDashboard } from "./components/contributors/ContributorDashb
 import { StackDashboard } from "./components/stack/StackDashboard";
 import { ActivityDashboard } from "./components/activity/ActivityDashboard";
 import { BranchDashboard } from "./components/branches/BranchDashboard";
+import { PipelineDashboard } from "./components/pipelines/PipelineDashboard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
 import { getMe, clearToken, resolveContributor } from "./api/client";
@@ -39,7 +40,7 @@ const defaultFilters: GlobalFilters = {
 };
 
 type TabKey = "dashboard" | "analytics" | "stack" | "settings";
-type AnalyticsTab = "contributors" | "activity" | "branches";
+type AnalyticsTab = "contributors" | "activity" | "branches" | "pipelines";
 
 function getInitialDarkMode(): boolean {
   try { return localStorage.getItem("darkMode") === "true"; } catch { return false; }
@@ -91,6 +92,7 @@ export default function App() {
     { key: "contributors", label: "Контрибьюторы" },
     { key: "activity", label: "Активность" },
     { key: "branches", label: "Ветки" },
+    { key: "pipelines", label: "CI/CD" },
   ];
 
   return (
@@ -138,6 +140,7 @@ export default function App() {
           {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+          {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard userRole={user.role} filters={filters} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>

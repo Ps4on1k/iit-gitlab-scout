@@ -11,6 +11,7 @@ const TASK_LABELS: Record<string, string> = {
   collect_contributors: "Сбор контрибьюторов",
   collect_branches: "Сбор веток",
   collect_merge_requests: "Сбор MR",
+  collect_pipelines: "Сбор пайплайнов",
 };
 
 const TASK_DESCRIPTIONS: Record<string, string> = {
@@ -19,6 +20,7 @@ const TASK_DESCRIPTIONS: Record<string, string> = {
   collect_contributors: "Автоматический сбор статистики контрибьюторов",
   collect_branches: "Автоматический сбор веток проектов из GitLab",
   collect_merge_requests: "Автоматический сбор Merge Request из GitLab",
+  collect_pipelines: "Автоматический сбор CI/CD пайплайнов из GitLab",
 };
 
 export function SchedulerPanel() {
