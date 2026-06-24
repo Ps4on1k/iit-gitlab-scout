@@ -47,7 +47,7 @@ export function IssueDashboard() {
 
   const columns = [
     { title: "Проект", dataIndex: "project_label", key: "project",
-      render: (_: string, r: Issue) => <div><span>{r.project_label}</span>{r.project_tag && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tag}</Tag>}</div> },
+      render: (_: string, r: Issue) => <div><span>{r.project_label}</span>{r.project_tags?.length > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tags.join(", ")}</Tag>}</div> },
     { title: "#", dataIndex: "gitlab_iid", key: "iid" },
     { title: "Заголовок", dataIndex: "title", key: "title", ellipsis: true },
     { title: "Статус", dataIndex: "state", key: "state",
@@ -63,7 +63,7 @@ export function IssueDashboard() {
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
           style={{ minWidth: 300 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
-          options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
+          options={projects.map((p) => ({ value: p.id, label: p.tags ? `${p.label} [${p.tags}]` : p.label }))}
           maxTagCount="responsive" />
         <Select placeholder="Статус" allowClear style={{ width: 140 }} value={stateFilter} onChange={setStateFilter}
           options={[{ value: "opened", label: "Opened" }, { value: "closed", label: "Closed" }]} />

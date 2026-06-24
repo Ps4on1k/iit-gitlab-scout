@@ -61,6 +61,6 @@ export async function getFilteredProjectIds(userId: number): Promise<number[] | 
   const tags = await getUserAllowedTags(userId);
   if (tags === null) return null;
   const pool = getPool();
-  const result = await pool.query("SELECT id FROM projects WHERE tag = ANY($1)", [tags]);
+  const result = await pool.query("SELECT id FROM projects WHERE tags && $1", [tags]);
   return result.rows.map((r: any) => r.id);
 }

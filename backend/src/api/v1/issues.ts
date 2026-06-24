@@ -36,7 +36,7 @@ export async function issueRoutes(app: FastifyInstance) {
       params.push(Number(project_id));
     }
     if (tag) {
-      conditions.push(`p.tag = $${idx++}`);
+      conditions.push(`p.tags = $${idx++}`);
       params.push(tag);
     }
     if (state) {
@@ -46,7 +46,7 @@ export async function issueRoutes(app: FastifyInstance) {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const result = await pool.query(
-      `SELECT pi.*, p.path as project_path, p.label as project_label, p.tag as project_tag
+      `SELECT pi.*, p.path as project_path, p.label as project_label, p.tags as project_tags
        FROM project_issues pi
        JOIN projects p ON p.id = pi.project_id
        ${where}

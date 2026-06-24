@@ -25,7 +25,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
 
   const effectiveProjectIds = useMemo(() => {
     if (filters.tags.length === 0) return filters.projectIds;
-    const tagIds = projects.filter((p) => filters.tags.includes(p.tag)).map((p) => p.id);
+    const tagIds = projects.filter((p) => p.tags?.some((t) => filters.tags.includes(t))).map((p) => p.id);
     return [...new Set([...filters.projectIds, ...tagIds])];
   }, [filters.projectIds, filters.tags, projects]);
 

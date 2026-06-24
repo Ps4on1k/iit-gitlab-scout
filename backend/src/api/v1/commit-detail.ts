@@ -27,7 +27,7 @@ export async function commitDetailRoutes(app: FastifyInstance) {
     );
 
     const result = await pool.query(
-      `SELECT c.*, p.label as project_label, p.tag as project_tag
+      `SELECT c.*, p.label as project_label, p.tags as project_tags
        FROM commits c
        JOIN projects p ON p.id = c.project_id
        WHERE ${conditions.join(" AND ")}

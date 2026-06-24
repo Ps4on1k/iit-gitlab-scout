@@ -7,7 +7,7 @@ export async function getFilteredProjectIds(userId: number): Promise<number[] | 
   if (!row) return [];
   if (row.role === "admin") return null;
   if (!row.allowed_tags || row.allowed_tags.length === 0) return null;
-  const projResult = await pool.query("SELECT id FROM projects WHERE tag = ANY($1)", [row.allowed_tags]);
+  const projResult = await pool.query("SELECT id FROM projects WHERE tags && $1", [row.allowed_tags]);
   const ids = projResult.rows.map((r: any) => r.id);
   return ids.length > 0 ? ids : [];
 }

@@ -29,7 +29,7 @@ export async function getActivity(filters: ActivityFilters): Promise<ActivityDay
       params.push(filters.project_ids);
     }
     if (filters.tag && filters.tag.length > 0) {
-      conditions.push(`p.tag = ANY($${idx++})`);
+      conditions.push(`p.tags &&($${idx++})`);
       params.push(filters.tag);
     }
     if (filters.date_from) {
@@ -74,7 +74,7 @@ export async function getActivity(filters: ActivityFilters): Promise<ActivityDay
     params.push(filters.project_ids);
   }
   if (filters.tag && filters.tag.length > 0) {
-    conditions.push(`p.tag = ANY($${idx++})`);
+    conditions.push(`p.tags &&($${idx++})`);
     params.push(filters.tag);
   }
   if (filters.date_from) {

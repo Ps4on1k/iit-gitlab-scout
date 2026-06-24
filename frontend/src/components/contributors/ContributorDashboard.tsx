@@ -44,7 +44,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
   const effectiveProjectIds = useMemo(() => {
     if (filters.tags.length === 0) return filters.projectIds;
-    const tagProjectIds = projects.filter((p) => filters.tags.includes(p.tag)).map((p) => p.id);
+    const tagProjectIds = projects.filter((p) => p.tags?.some((t) => filters.tags.includes(t))).map((p) => p.id);
     const merged = new Set([...filters.projectIds, ...tagProjectIds]);
     return Array.from(merged);
   }, [filters.projectIds, filters.tags, projects]);
@@ -170,7 +170,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
   const projectTags = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of projects) { if (p.tag) map[p.path] = p.tag; }
+    for (const p of projects) { if (p.tags) map[p.path] = p.tags.join(", "); }
     return map;
   }, [projects]);
 

@@ -57,7 +57,7 @@ export function UserManagement() {
   const [editForm] = Form.useForm();
   const [passwordForm] = Form.useForm();
 
-  const allTags = [...new Set(projects.map((p) => p.tag).filter(Boolean))].sort();
+  const allTags = [...new Set(projects.map((p) => p.tags).filter(Boolean))].sort();
 
   const load = async () => {
     setLoading(true);

@@ -49,10 +49,10 @@ export async function branchRoutes(app: FastifyInstance) {
     if (tag) {
       const tags = tag.split(",").filter(Boolean);
       if (tags.length === 1) {
-        conditions.push(`p.tag = $${idx++}`);
+        conditions.push(`p.tags = $${idx++}`);
         params.push(tags[0]);
       } else if (tags.length > 1) {
-        conditions.push(`p.tag = ANY($${idx++})`);
+        conditions.push(`p.tags &&($${idx++})`);
         params.push(tags);
       }
     }
@@ -116,7 +116,7 @@ export async function branchRoutes(app: FastifyInstance) {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const result = await pool.query(
-      `SELECT pb.*, p.path as project_path, p.label as project_label, p.tag as project_tag
+      `SELECT pb.*, p.path as project_path, p.label as project_label, p.tags as project_tags
        FROM project_branches pb
        JOIN projects p ON p.id = pb.project_id
        ${where}

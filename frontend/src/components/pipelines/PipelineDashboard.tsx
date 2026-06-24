@@ -31,7 +31,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
 
   const effectiveProjectIds = useMemo(() => {
     if (filters.tags.length === 0) return filters.projectIds;
-    const tagIds = projects.filter((p) => filters.tags.includes(p.tag)).map((p) => p.id);
+    const tagIds = projects.filter((p) => p.tags?.some((t) => filters.tags.includes(t))).map((p) => p.id);
     return [...new Set([...filters.projectIds, ...tagIds])];
   }, [filters.projectIds, filters.tags, projects]);
 
@@ -156,7 +156,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                     {data.byProject.map((p: any) => (
                       <div key={p.label} style={{ marginBottom: 8 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                          <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.label}{p.tag && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tag}</Tag>}</span>
+                          <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.label}{p.tags && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tags}</Tag>}</span>
                           <span style={{ color: "var(--ant-color-textSecondary)" }}>{p.total} ({p.avgDuration || 0}с)</span>
                         </div>
                         <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>

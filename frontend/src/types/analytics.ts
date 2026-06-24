@@ -3,7 +3,7 @@ export interface Branch {
   project_id: number;
   project_path: string;
   project_label: string;
-  project_tag: string;
+  project_tags: string[];
   name: string;
   default: boolean;
   merged: boolean;
@@ -22,7 +22,7 @@ export interface Branch {
 export interface BranchPerProject {
   project_id: number;
   label: string;
-  tag: string;
+  tags: string[];
   total: number;
   active: number;
   stale: number;
@@ -44,7 +44,7 @@ export interface Issue {
   project_id: number;
   project_path: string;
   project_label: string;
-  project_tag: string;
+  project_tags: string[];
   gitlab_iid: number;
   title: string;
   state: string;
@@ -69,7 +69,7 @@ export interface DependencyAudit {
   project_id: number;
   project_path: string;
   project_label: string;
-  project_tag: string;
+  project_tags: string[];
   name: string;
   current_version: string;
   latest_version: string;

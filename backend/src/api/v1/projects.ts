@@ -8,15 +8,15 @@ export async function projectsRoutes(app: FastifyInstance) {
   app.get("/api/v1/projects", { preHandler: [requireAuth] }, async () => {
     const pool = getPool();
     const result = await pool.query(
-      "SELECT id, path, label, tag, base_url, description, created_at, updated_at FROM projects ORDER BY created_at DESC"
+      "SELECT id, path, label, tags, base_url, description, created_at, updated_at FROM projects ORDER BY created_at DESC"
     );
     return { ok: true, data: result.rows };
   });
 
   app.post<{
-    Body: { path: string; label: string; token: string; base_url?: string; tag?: string; description?: string };
+    Body: { path: string; label: string; token: string; base_url?: string; tags?: string[]; description?: string };
   }>("/api/v1/projects", { preHandler: [requireAdmin] }, async (request, reply) => {
-    const { path, label, token, base_url, tag, description } = request.body;
+    const { path, label, token, base_url, tags, description } = request.body;
 
     if (!path || !label || !token || token.trim().length === 0) {
       return reply.status(400).send({ ok: false, error: "path, label, token are required" });
@@ -27,10 +27,10 @@ export async function projectsRoutes(app: FastifyInstance) {
 
     try {
       const result = await pool.query(
-        `INSERT INTO projects (path, label, token_encrypted, base_url, tag, description)
+        `INSERT INTO projects (path, label, token_encrypted, base_url, tags, description)
          VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING id, path, label, tag, base_url, description, created_at`,
-        [path, label, encrypted, base_url || "https://gitlab.com/api/v4", tag || "", description || ""]
+         RETURNING id, path, label, tags, base_url, description, created_at`,
+        [path, label, encrypted, base_url || "https://gitlab.com/api/v4", tags || [], description || ""]
       );
       return { ok: true, data: result.rows[0] };
     } catch (err: any) {
@@ -43,10 +43,10 @@ export async function projectsRoutes(app: FastifyInstance) {
 
   app.put<{
     Params: { id: string };
-    Body: { path?: string; label?: string; token?: string; base_url?: string; tag?: string; description?: string };
+    Body: { path?: string; label?: string; token?: string; base_url?: string; tags?: string[]; description?: string };
   }>("/api/v1/projects/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params;
-    const { path, label, token, base_url, tag, description } = request.body;
+    const { path, label, token, base_url, tags, description } = request.body;
 
     const pool = getPool();
     const existing = await pool.query("SELECT id FROM projects WHERE id = $1", [id]);
@@ -62,15 +62,19 @@ export async function projectsRoutes(app: FastifyInstance) {
     if (label !== undefined) { updates.push(`label = $${idx++}`); values.push(label); }
     if (token !== undefined && token.trim().length > 0) { updates.push(`token_encrypted = $${idx++}`); values.push(encrypt(token)); }
     if (base_url !== undefined) { updates.push(`base_url = $${idx++}`); values.push(base_url); }
-    if (tag !== undefined) { updates.push(`tag = $${idx++}`); values.push(tag); }
+    if (tags !== undefined) { updates.push(`tags = $${idx++}`); values.push(tags); }
     if (description !== undefined) { updates.push(`description = $${idx++}`); values.push(description); }
+
+    if (updates.length === 0) {
+      return reply.status(400).send({ ok: false, error: "Nothing to update" });
+    }
 
     updates.push(`updated_at = now()`);
     values.push(id);
 
     const result = await pool.query(
       `UPDATE projects SET ${updates.join(", ")} WHERE id = $${idx}
-       RETURNING id, path, label, tag, base_url, description, created_at, updated_at`,
+       RETURNING id, path, label, tags, base_url, description, created_at, updated_at`,
       values
     );
 
@@ -83,11 +87,9 @@ export async function projectsRoutes(app: FastifyInstance) {
     const { id } = request.params;
     const pool = getPool();
     const result = await pool.query("DELETE FROM projects WHERE id = $1 RETURNING id", [id]);
-
     if (result.rows.length === 0) {
       return reply.status(404).send({ ok: false, error: "Project not found" });
     }
-
     return { ok: true, data: { deleted: true } };
   });
 
@@ -96,15 +98,10 @@ export async function projectsRoutes(app: FastifyInstance) {
   }>("/api/v1/projects/:id/token", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params;
     const pool = getPool();
-    const result = await pool.query(
-      "SELECT token_encrypted FROM projects WHERE id = $1",
-      [id]
-    );
-
+    const result = await pool.query("SELECT token_encrypted FROM projects WHERE id = $1", [id]);
     if (result.rows.length === 0) {
       return reply.status(404).send({ ok: false, error: "Project not found" });
     }
-
     const decrypted = decrypt(result.rows[0].token_encrypted);
     return { ok: true, data: { token: decrypted } };
   });
@@ -136,16 +133,13 @@ export async function projectsRoutes(app: FastifyInstance) {
         try {
           const encrypted = encrypt(proj.token);
           await pool.query(
-            `INSERT INTO projects (path, label, token_encrypted, base_url, tag, description)
+            `INSERT INTO projects (path, label, token_encrypted, base_url, tags, description)
              VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (path) DO UPDATE SET
-               label = EXCLUDED.label,
-               token_encrypted = EXCLUDED.token_encrypted,
-               base_url = EXCLUDED.base_url,
-               tag = EXCLUDED.tag,
-               description = EXCLUDED.description,
-               updated_at = now()`,
-            [proj.path, proj.label, encrypted, proj.base_url || "https://gitlab.com/api/v4", proj.tag || "", proj.description || ""]
+               label = EXCLUDED.label, token_encrypted = EXCLUDED.token_encrypted,
+               base_url = EXCLUDED.base_url, tags = EXCLUDED.tags,
+               description = EXCLUDED.description, updated_at = now()`,
+            [proj.path, proj.label, encrypted, proj.base_url || "https://gitlab.com/api/v4", proj.tags || [], proj.description || ""]
           );
           imported.push({ path: proj.path, label: proj.label });
         } catch (err) {

@@ -36,7 +36,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
 
   const projects = useMemo(() => {
     if (userRole === "admin" || !userAllowedTags || userAllowedTags.length === 0) return allProjects;
-    return allProjects.filter((p) => !p.tag || userAllowedTags.includes(p.tag));
+    return allProjects.filter((p) => p.tags && p.tags.some((t) => userAllowedTags.includes(t)));
   }, [allProjects, userRole, userAllowedTags]);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
 
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
-    for (const p of projects) { if (p.tag) tags.add(p.tag); }
+    for (const p of projects) { if (p.tags) p.tags.forEach((t) => tags.add(t)); }
     return Array.from(tags).sort().map((t) => ({ value: t, label: t }));
   }, [projects]);
 
@@ -77,7 +77,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
         <Col flex="auto" style={{ minWidth: 250, maxWidth: 400 }}>
           <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
             style={{ width: "100%" }} value={filters.projectIds} onChange={(v) => update({ projectIds: v })}
-            options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
+            options={projects.map((p) => ({ value: p.id, label: p.tags && p.tags.length > 0 ? `${p.label} [${p.tags.join(", ")}]` : p.label }))}
             tagRender={({ label, closable, onClose }) => (
               <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#667eea", color: "white", border: "none" }}>{label}</Tag>
             )}

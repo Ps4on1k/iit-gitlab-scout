@@ -70,7 +70,7 @@ export interface ProjectConfig {
   id: number;
   path: string;
   label: string;
-  tag: string;
+  tags: string[];
   base_url: string;
   description?: string;
   created_at: string;

@@ -69,7 +69,7 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
     );
 
     const byProjectResult = await pool.query(
-      `SELECT p.label, p.tag,
+      `SELECT p.label, p.tags,
               COUNT(*)::int as total,
               COUNT(*) FILTER (WHERE pp.status = 'success')::int as success,
               COUNT(*) FILTER (WHERE pp.status = 'failed')::int as failed,
@@ -77,7 +77,7 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
        FROM project_pipelines pp
        JOIN projects p ON p.id = pp.project_id
        ${where}
-       GROUP BY p.label, p.tag
+       GROUP BY p.label, p.tags
        ORDER BY total DESC
        LIMIT 10`,
       params

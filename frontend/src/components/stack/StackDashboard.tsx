@@ -80,13 +80,13 @@ export function StackDashboard({ userRole }: Props) {
   };
 
   const projectOptions = useMemo(() =>
-    projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label })),
+    projects.map((p) => ({ value: p.id, label: p.tags?.length ? `${p.label} [${p.tags.join(", ")}]` : p.label })),
     [projects]
   );
 
   const tagOptions = useMemo(() => {
     const tags = new Set<string>();
-    for (const p of projects) { if (p.tag) tags.add(p.tag); }
+    for (const p of projects) { if (p.tags) p.tags?.forEach((t) => tags.add(t)); }
     return Array.from(tags).sort().map((t) => ({ value: t, label: t }));
   }, [projects]);
 
@@ -194,7 +194,7 @@ function ProjectLanguageDetails({ filters }: { filters: StackFilters }) {
     for (const lang of languages) {
       let entry = map.get(lang.project_id);
       if (!entry) {
-        entry = { path: lang.project_path, label: lang.project_label, tag: lang.project_tag, languages: [] };
+        entry = { path: lang.project_path, label: lang.project_label, tag: Array.isArray(lang.project_tags) ? lang.project_tags.join(", ") : (lang.project_tags || ""), languages: [] };
         map.set(lang.project_id, entry);
       }
       entry.languages.push(lang);

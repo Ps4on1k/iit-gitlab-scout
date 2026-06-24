@@ -52,7 +52,7 @@ export function AnalyticsDashboard() {
 
   const projectOptions = projects.map((p) => ({
     value: p.id,
-    label: p.tag ? `${p.label} [${p.tag}]` : p.label,
+    label: p.tags ? `${p.label} [${p.tags}]` : p.label,
   }));
 
   return (

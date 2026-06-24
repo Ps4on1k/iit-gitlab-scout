@@ -61,7 +61,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
 
   const availableTags = useMemo(() => {
     const tags = new Set<string>();
-    for (const p of projects) { if (p.tag) tags.add(p.tag); }
+    for (const p of projects) { if (p.tags) p.tags?.forEach((t) => tags.add(t)); }
     return Array.from(tags).sort().map((t) => ({ value: t, label: t }));
   }, [projects]);
 
@@ -210,7 +210,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                       return (
                         <div key={p.project_id} style={{ padding: 12, border: `2px solid ${healthColor}`, borderRadius: 8, background: "var(--ant-color-fill-secondary)" }}>
                           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>
-                            <ProjectLabel label={p.label} tag={p.tag} description={projectMap.get(p.label)?.description} />
+                            <ProjectLabel label={p.label} tag={p.tags?.join(", ")} description={projectMap.get(p.label)?.description} />
                           </div>
                           <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
                             <span>Всего: <b>{p.total}</b></span>
@@ -264,7 +264,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
               const rowBg = r.type === "stale" ? "rgba(207,19,34,0.08)" : r.type === "active" ? "rgba(63,134,0,0.08)" : "";
               return (
                 <tr key={r.id} style={{ background: rowBg }} onMouseEnter={(e) => { if (!rowBg) e.currentTarget.style.background = "var(--ant-color-fill-secondary)"; }} onMouseLeave={(e) => { if (!rowBg) e.currentTarget.style.background = rowBg; }}>
-                  <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tag} description={projectMap.get(r.project_label)?.description} /></td>
+                    <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tags?.join(", ")} description={projectMap.get(r.project_label)?.description} /></td>
                   <td style={tdStyle}><code style={{ fontSize: 12 }}>{r.name}</code></td>
                   <td style={tdStyle}>
                     {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : r.daysAgo > 90 ? <Tag color="red">заброшена</Tag> : <Tag color="green">активная</Tag>}

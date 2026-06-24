@@ -47,7 +47,7 @@ export function DependencyDashboard() {
 
   const columns = [
     { title: "Проект", dataIndex: "project_label", key: "project",
-      render: (_: string, r: DependencyAudit) => <div><span>{r.project_label}</span>{r.project_tag && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tag}</Tag>}</div> },
+      render: (_: string, r: DependencyAudit) => <div><span>{r.project_label}</span>{r.project_tags?.length > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tags.join(", ")}</Tag>}</div> },
     { title: "Имя", dataIndex: "name", key: "name", render: (v: string) => <Text code>{v}</Text> },
     { title: "Версия", dataIndex: "current_version", key: "version" },
     { title: "Источник", dataIndex: "source", key: "source",
@@ -61,7 +61,7 @@ export function DependencyDashboard() {
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
           style={{ minWidth: 300 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
-          options={projects.map((p) => ({ value: p.id, label: p.tag ? `${p.label} [${p.tag}]` : p.label }))}
+          options={projects.map((p) => ({ value: p.id, label: p.tags ? `${p.label} [${p.tags}]` : p.label }))}
           maxTagCount="responsive" />
         <Select placeholder="Источник" allowClear style={{ width: 140 }} value={sourceFilter} onChange={setSourceFilter}
           options={[{ value: "npm", label: "npm" }, { value: "pip", label: "pip" }, { value: "go", label: "go" }]} />

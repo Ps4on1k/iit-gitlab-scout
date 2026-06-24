@@ -36,7 +36,7 @@ export async function dependencyAuditRoutes(app: FastifyInstance) {
       params.push(Number(project_id));
     }
     if (tag) {
-      conditions.push(`p.tag = $${idx++}`);
+      conditions.push(`p.tags = $${idx++}`);
       params.push(tag);
     }
     if (source) {
@@ -46,7 +46,7 @@ export async function dependencyAuditRoutes(app: FastifyInstance) {
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const result = await pool.query(
-      `SELECT pda.*, p.path as project_path, p.label as project_label, p.tag as project_tag
+      `SELECT pda.*, p.path as project_path, p.label as project_label, p.tags as project_tags
        FROM project_dependencies_audit pda
        JOIN projects p ON p.id = pda.project_id
        ${where}

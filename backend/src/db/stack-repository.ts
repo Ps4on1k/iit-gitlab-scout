@@ -34,7 +34,7 @@ export async function getLanguages(filters: StackFilters): Promise<ProjectLangua
     params.push(filters.project_ids);
   }
   if (filters.tag && filters.tag.length > 0) {
-    conditions.push(`p.tag = ANY($${idx++})`);
+    conditions.push(`p.tags &&($${idx++})`);
     params.push(filters.tag);
   }
   if (filters.language && filters.language.length > 0) {
@@ -44,7 +44,7 @@ export async function getLanguages(filters: StackFilters): Promise<ProjectLangua
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
   const result = await pool.query(
-    `SELECT pl.project_id, p.path as project_path, p.label as project_label, p.tag as project_tag,
+    `SELECT pl.project_id, p.path as project_path, p.label as project_label, p.tags as project_tags,
             pl.language, pl.bytes, pl.percentage
      FROM project_languages pl
      JOIN projects p ON p.id = pl.project_id
@@ -66,7 +66,7 @@ export async function getLanguageSummary(filters: StackFilters): Promise<Languag
     params.push(filters.project_ids);
   }
   if (filters.tag && filters.tag.length > 0) {
-    conditions.push(`p.tag = ANY($${idx++})`);
+    conditions.push(`p.tags &&($${idx++})`);
     params.push(filters.tag);
   }
   if (filters.language && filters.language.length > 0) {
