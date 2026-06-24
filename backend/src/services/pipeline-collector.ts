@@ -37,7 +37,6 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
     else if (p.status === "failed") failed++;
     else if (p.status === "running") running++;
 
-    // Calculate duration from finished_at - created_at if API doesn't provide it
     let duration = p.duration;
     if (duration === null || duration === undefined) {
       if (p.finished_at && p.created_at) {
@@ -59,6 +58,36 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
       ]
     );
   }
+
+  // Estimate duration for pipelines without duration using next pipeline on same ref
+  await pool.query(`
+    WITH ranked AS (
+      SELECT id, ref, created_at, status, duration,
+             LEAD(created_at) OVER (PARTITION BY project_id, ref ORDER BY created_at) as next_created
+      FROM project_pipelines
+      WHERE project_id = $1 AND duration IS NULL AND status IN ('success', 'failed')
+    )
+    UPDATE project_pipelines pp
+    SET duration = GREATEST(1, EXTRACT(EPOCH FROM (r.next_created - r.created_at))::int)
+    FROM ranked r
+    WHERE pp.id = r.id AND r.next_created IS NOT NULL
+      AND EXTRACT(EPOCH FROM (r.next_created - r.created_at)) > 0
+      AND EXTRACT(EPOCH FROM (r.next_created - r.created_at)) < 7200
+  `, [projectId]);
+
+  // For the remaining pipelines without duration, estimate average from same-ref completed pipelines
+  await pool.query(`
+    WITH ref_avg AS (
+      SELECT ref, AVG(duration)::int as avg_dur
+      FROM project_pipelines
+      WHERE project_id = $1 AND duration IS NOT NULL AND status IN ('success', 'failed')
+      GROUP BY ref
+    )
+    UPDATE project_pipelines pp
+    SET duration = ra.avg_dur
+    FROM ref_avg ra
+    WHERE pp.project_id = $1 AND pp.ref = ra.ref AND pp.duration IS NULL AND pp.status IN ('success', 'failed')
+  `, [projectId]);
 
   return { total: pipelines.length, success, failed, running };
 }
