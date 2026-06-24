@@ -142,7 +142,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={14}>
-              <Card title="Пайплайны по дням" size="small">
+              <Card title="Пайплайны по дням" size="small" style={{ height: "100%" }}>
                 {data.byDay.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <Line
                     data={data.byDay.flatMap((d: any) => [
@@ -162,7 +162,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
               </Card>
             </Col>
             <Col span={10}>
-              <Card title="Распределение по статусу" size="small">
+              <Card title="Распределение по статусу" size="small" style={{ height: "100%" }}>
                 {data.summary.total === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div style={{ height: 280 }}>
                     <Pie
@@ -188,7 +188,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={12}>
-              <Card title="Пайплайны по проектам (top 10)" size="small">
+              <Card title="Пайплайны по проектам (top 10)" size="small" style={{ height: "100%" }}>
                 {data.byProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
                     {data.byProject.map((p: any) => {
@@ -215,7 +215,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
               </Card>
             </Col>
             <Col span={12}>
-              <Card title="Длительность пайплайнов" size="small">
+              <Card title="Длительность пайплайнов" size="small" style={{ height: "100%" }}>
                 {data.durationDistribution ? (
                   <div>
                     <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)", marginBottom: 12 }}>

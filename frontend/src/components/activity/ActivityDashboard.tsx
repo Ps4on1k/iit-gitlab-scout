@@ -159,17 +159,17 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
         <>
           <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Merge Requests</h3>
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={4}><Card><Statistic title="Всего MR" value={mrData.summary.total} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Замержено" value={mrData.summary.merged} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Открыто" value={mrData.summary.opened} valueStyle={{ color: "#1677ff" }} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Закрыто" value={mrData.summary.closed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Ср. дн. до мержа" value={Number(mrData.summary.avg_days_to_merge) || 0} suffix="дн." /></Card></Col>
-            <Col span={4}><Card><Statistic title="Ср. одобрений" value={Number(mrData.summary.avg_approvals) || 0} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Всего MR" value={mrData.summary.total} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Замержено" value={mrData.summary.merged} valueStyle={{ color: "#3f8600" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Открыто" value={mrData.summary.opened} valueStyle={{ color: "#1677ff" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Закрыто" value={mrData.summary.closed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Ср. дн. до мержа" value={Number(mrData.summary.avg_days_to_merge) || 0} suffix="дн." /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Ср. одобрений" value={Number(mrData.summary.avg_approvals) || 0} /></Card></Col>
           </Row>
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={12}>
-              <Card title={groupBy === "day" ? "MR по дням" : "MR по неделям"} size="small">
+              <Card title={groupBy === "day" ? "MR по дням" : "MR по неделям"} size="small" style={{ height: "100%" }}>
                 {mrChartData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <Line data={mrChartData} xField="date" yField="count" colorField="type"
                     point={{ size: 3 }} style={{ lineWidth: 2 }}
@@ -184,7 +184,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
               </Card>
             </Col>
             <Col span={12}>
-              <Card title="Ср. время мержа по проектам (дней)" size="small">
+              <Card title="Ср. время мержа по проектам (дней)" size="small" style={{ height: "100%" }}>
                 {mrData.avgMergeTime.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
                     {mrData.avgMergeTime.map((p: any) => (
@@ -206,8 +206,8 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={12}>
-              <Card title="Топ авторов MR (top 10)" size="small"
-                extra={<span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>Длина бара — относительно макс. кол-ва MR</span>}>
+              <Card title="Топ авторов MR (top 10)" size="small" style={{ height: "100%" }}
+                extra={<span style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>Длина бара — относительно макс. кол-ва MR</span>}>
                 {mrData.topAuthors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
                     {mrData.topAuthors.map((a: any, i: number) => (
@@ -234,8 +234,8 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
               </Card>
             </Col>
             <Col span={12}>
-              <Card title="Топ ревьюеров (top 10)" size="small"
-                extra={<span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>Кол-во одобрений MR (approvals)</span>}>
+              <Card title="Топ ревьюеров (top 10)" size="small" style={{ height: "100%" }}
+                extra={<span style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>Кол-во одобрений MR (approvals)</span>}>
                 {mrData.topReviewers.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о ревью" /> : (
                   <div>
                     {mrData.topReviewers.map((r: any, i: number) => (
