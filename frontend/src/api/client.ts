@@ -25,7 +25,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResp
     ...(options?.headers as Record<string, string> || {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${BASE_URL}${url}`, { ...options, headers });
+  const res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     return { ok: false, error: (body as any).error || `HTTP ${res.status}` };

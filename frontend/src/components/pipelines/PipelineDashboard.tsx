@@ -50,7 +50,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
       if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
       if (filters.dateTo) qs.set("date_to", filters.dateTo);
       const token = localStorage.getItem("token");
-      const res = await fetch(`/api/v1/pipelines${qs.toString() ? "?" + qs.toString() : ""}`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`/api/v1/pipelines${qs.toString() ? "?" + qs.toString() : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       const r = await res.json();
       if (r.ok) setData(r.data);
     } finally { setLoading(false); }
