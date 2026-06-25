@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectStack } from "../../services/stack-collector.js";
+import { logCollectionError } from "../../utils/collection-error.js";
 import { getLanguages, getLanguageSummary } from "../../db/stack-repository.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
@@ -17,6 +18,7 @@ export async function stackAnalyticsRoutes(app: FastifyInstance) {
       const result = await collectStack(project_id);
       return { ok: true, data: result };
     } catch (err) {
+      logCollectionError("collect_stack", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
       return reply.status(500).send({
         ok: false,
         error: err instanceof Error ? err.message : String(err),

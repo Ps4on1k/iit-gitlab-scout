@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { collectPipelines } from "../../services/pipeline-collector.js";
+import { logCollectionError } from "../../utils/collection-error.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
@@ -14,6 +15,7 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
       const result = await collectPipelines(project_id);
       return { ok: true, data: result };
     } catch (err) {
+      logCollectionError("collect_pipelines", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
       return reply.status(500).send({ ok: false, error: err instanceof Error ? err.message : String(err) });
     }
   });

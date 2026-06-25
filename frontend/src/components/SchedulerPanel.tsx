@@ -208,6 +208,8 @@ export function SchedulerPanel() {
                 { title: "Проект", key: "project",
                   render: (_: any, r: any) => r.project_label || <Text type="secondary">N/А</Text> },
                 { title: "Код", dataIndex: "error_code", key: "error_code", width: 100 },
+                { title: "Источник", dataIndex: "source", key: "source", width: 100,
+                  render: (v: string) => <Tag color={v === "manual" ? "blue" : "green"}>{v === "manual" ? "Ручной" : "Шедулер"}</Tag> },
                 { title: "Ошибка", dataIndex: "error_message", key: "error_message",
                   render: (v: string) => <Text type="danger" style={{ fontSize: 12, wordBreak: "break-all" }}>{v}</Text> },
               ]}
