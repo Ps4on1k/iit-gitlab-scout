@@ -53,9 +53,16 @@ async function runTask(taskName: string): Promise<void> {
           break;
       }
       logFn(`[scheduler] ${taskName}: project ${projectId} done`);
-    } catch (err) {
-      logFn(`[scheduler] ${taskName}: project ${projectId} error: ${err instanceof Error ? err.message : err}`);
-    }
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        logFn(`[scheduler] ${taskName}: project ${projectId} error: ${errMsg}`);
+        try {
+          await pool.query(
+            "INSERT INTO scheduler_errors (task_name, project_id, error_code, error_message) VALUES ($1, $2, $3, $4)",
+            [taskName, projectId, (err as any)?.code || "UNKNOWN", errMsg]
+          );
+        } catch { /* don't let logging errors break the scheduler */ }
+      }
   }
 
   await pool.query(

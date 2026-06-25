@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm } from "antd";
+import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select } from "antd";
 
 const { Text } = Typography;
 import { ReloadOutlined, SaveOutlined, DeleteOutlined } from "@ant-design/icons";
-import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, type SchedulerTask } from "../api/scheduler-client";
+import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, type SchedulerTask } from "../api/scheduler-client";
 
 const TASK_LABELS: Record<string, string> = {
   collect_stack: "Сбор стека технологий",
@@ -28,6 +28,11 @@ export function SchedulerPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<Record<number, { enabled: boolean; interval_minutes: number }>>({});
+  const [errors, setErrors] = useState<any[]>([]);
+  const [errorsTotal, setErrorsTotal] = useState(0);
+  const [errorsLoading, setErrorsLoading] = useState(false);
+  const [errorsPage, setErrorsPage] = useState(1);
+  const [errorsTaskFilter, setErrorsTaskFilter] = useState<string | undefined>();
 
   const load = async () => {
     setLoading(true);
@@ -44,6 +49,15 @@ export function SchedulerPanel() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const loadErrors = async () => {
+    setErrorsLoading(true);
+    const res = await fetchSchedulerErrors(50, (errorsPage - 1) * 50, errorsTaskFilter);
+    if (res.ok) { setErrors(res.data!.entries); setErrorsTotal(res.data!.total); }
+    setErrorsLoading(false);
+  };
+
+  useEffect(() => { loadErrors(); }, [errorsPage, errorsTaskFilter]);
 
   const handleResetStats = async () => {
     const res = await resetStatistics();
@@ -173,6 +187,45 @@ export function SchedulerPanel() {
           </Popconfirm>
         </Space>
       </Card>
+
+      <Collapse style={{ marginTop: 16 }} items={[{
+        key: "errors",
+        label: <span style={{ fontSize: 14 }}>Лог ошибок ({errorsTotal})</span>,
+        children: (
+          <div>
+            <div style={{ marginBottom: 12, display: "flex", gap: 12, alignItems: "center" }}>
+              <Select placeholder="Фильтр по задаче" allowClear style={{ width: 250 }}
+                value={errorsTaskFilter} onChange={(v) => { setErrorsTaskFilter(v); setErrorsPage(1); }}
+                options={Object.entries(TASK_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
+              <Button icon={<ReloadOutlined />} onClick={loadErrors} loading={errorsLoading}>Обновить</Button>
+            </div>
+            <Table
+              columns={[
+                { title: "Время", dataIndex: "created_at", key: "created_at", width: 170,
+                  render: (v: string) => new Date(v).toLocaleString() },
+                { title: "Задача", dataIndex: "task_name", key: "task_name", width: 180,
+                  render: (v: string) => <Tag>{TASK_LABELS[v] || v}</Tag> },
+                { title: "Проект", key: "project",
+                  render: (_: any, r: any) => r.project_label || <Text type="secondary">N/А</Text> },
+                { title: "Код", dataIndex: "error_code", key: "error_code", width: 100 },
+                { title: "Ошибка", dataIndex: "error_message", key: "error_message",
+                  render: (v: string) => <Text type="danger" style={{ fontSize: 12, wordBreak: "break-all" }}>{v}</Text> },
+              ]}
+              dataSource={errors}
+              rowKey="id"
+              loading={errorsLoading}
+              size="small"
+              pagination={{
+                current: errorsPage,
+                pageSize: 50,
+                total: errorsTotal,
+                onChange: setErrorsPage,
+                showTotal: (t: number) => `Всего: ${t} ошибок`,
+              }}
+            />
+          </div>
+        ),
+      }]} />
     </div>
   );
 }

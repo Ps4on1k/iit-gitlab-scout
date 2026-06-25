@@ -70,3 +70,11 @@ export async function resetStatistics(): Promise<ApiResponse<{ cleared: string[]
   }
   return result;
 }
+
+export async function fetchSchedulerErrors(limit?: number, offset?: number, taskName?: string): Promise<ApiResponse<{ entries: any[]; total: number }>> {
+  const qs = new URLSearchParams();
+  if (limit) qs.set("limit", String(limit));
+  if (offset) qs.set("offset", String(offset));
+  if (taskName) qs.set("task_name", taskName);
+  return fetchJson(`/v1/scheduler/errors${qs.toString() ? "?" + qs.toString() : ""}`);
+}

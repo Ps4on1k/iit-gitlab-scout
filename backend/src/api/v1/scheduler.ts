@@ -93,4 +93,47 @@ export async function schedulerRoutes(app: FastifyInstance) {
     await pool.query("UPDATE scheduler_settings SET last_run_at = NULL");
     return { ok: true, data: { cleared } };
   });
+
+  app.get<{
+    Querystring: { limit?: string; offset?: string; task_name?: string };
+  }>("/api/v1/scheduler/errors", { preHandler: [requireAdmin] }, async (request) => {
+    const { limit, offset, task_name } = request.query;
+    const pool = getPool();
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (task_name) {
+      conditions.push(`se.task_name = $${idx++}`);
+      params.push(task_name);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const lim = Math.min(Number(limit) || 50, 200);
+    const off = Number(offset) || 0;
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int as total FROM scheduler_errors se ${where}`,
+      params
+    );
+
+    const result = await pool.query(
+      `SELECT se.id, se.task_name, se.project_id, se.error_code, se.error_message, se.created_at,
+              p.label as project_label
+       FROM scheduler_errors se
+       LEFT JOIN projects p ON p.id = se.project_id
+       ${where}
+       ORDER BY se.created_at DESC
+       LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, lim, off]
+    );
+
+    return {
+      ok: true,
+      data: {
+        entries: result.rows,
+        total: countResult.rows[0]?.total || 0,
+      },
+    };
+  });
 }
