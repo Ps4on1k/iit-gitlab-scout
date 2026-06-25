@@ -295,13 +295,14 @@ export async function removeProjectToken(projectId: number): Promise<ApiResponse
 }
 
 export interface CollectJob {
-  project_id: number;
+  id: string;
   collector: string;
+  project_ids: number[];
   started_at: number;
   current: number;
   total: number;
   status: "running" | "done" | "error" | "stuck";
-  error?: string;
+  errors: { project_id: number; error: string }[];
 }
 
 export async function fetchCollectStatus(): Promise<ApiResponse<CollectJob[]>> {

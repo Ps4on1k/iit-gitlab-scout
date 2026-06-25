@@ -21,11 +21,9 @@ export function CollectButton({ collector, projectIds, dateFrom, dateTo, onCompl
   const [localStarting, setLocalStarting] = useState(false);
   const lastClickRef = useRef(0);
 
-  const runningJobs = activeJobs.filter((j) => j.status === "running");
-  const totalRunning = runningJobs.length;
-  const backendCollecting = totalRunning > 0;
-  const isDisabled = localStarting || backendCollecting;
-  const currentJob = backendCollecting ? runningJobs[0] : null;
+  const currentJob = activeJobs.find((j) => j.collector === collector && j.status === "running");
+  const backendCollecting = !!currentJob;
+  const isDisabled = localStarting || isAnyRunning;
 
   const handleClick = async () => {
     const now = Date.now();
@@ -45,14 +43,16 @@ export function CollectButton({ collector, projectIds, dateFrom, dateTo, onCompl
   };
 
   let buttonText = label;
-  if (backendCollecting) {
-    buttonText = `Сбор ${currentJob?.current || 0}/${currentJob?.total || projectIds.length}`;
+  if (backendCollecting && currentJob) {
+    buttonText = `Сбор ${currentJob.current}/${currentJob.total}`;
   }
 
   const tooltipContent = stuckJobs.length > 0
     ? `Есть зависшие сборки (${stuckJobs.length})`
-    : backendCollecting
-    ? `Сбор на сервере: ${currentJob?.collector || collector} — ${currentJob?.current || 0}/${currentJob?.total || projectIds.length}`
+    : backendCollecting && currentJob
+    ? `Сбор на сервере: ${currentJob.collector} — ${currentJob.current}/${currentJob.total}`
+    : isAnyRunning && !backendCollecting
+    ? "Другой сбор уже идёт"
     : undefined;
 
   const button = (

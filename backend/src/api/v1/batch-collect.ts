@@ -68,6 +68,7 @@ async function runBatchCollect(collector: string, projectIds: number[], dateFrom
 
   for (let i = 0; i < projectIds.length; i++) {
     const projectId = projectIds[i];
+    updateBatchCollect(batchId, i);
     try {
       if (collector === "contributors" && (dateFrom || dateTo)) {
         await collectProject(projectId, dateFrom, dateTo);
@@ -79,12 +80,12 @@ async function runBatchCollect(collector: string, projectIds: number[], dateFrom
       addBatchError(batchId, projectId, msg);
       logCollectionError(collectorDef.errorType, projectId, "BATCH", msg, "scheduler");
     }
-    updateBatchCollect(batchId, i + 1);
     if (i < projectIds.length - 1) {
       await new Promise((r) => setTimeout(r, COLLECT_DELAY_MS));
     }
   }
 
+  updateBatchCollect(batchId, projectIds.length);
   finishBatchCollect(batchId);
 }
 
