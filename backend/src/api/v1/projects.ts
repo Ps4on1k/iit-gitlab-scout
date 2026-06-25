@@ -105,6 +105,28 @@ export async function projectsRoutes(app: FastifyInstance) {
     return { ok: true, data: { deleted: true } };
   });
 
+  app.delete("/api/v1/projects/all", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const pool = getPool();
+    const countResult = await pool.query("SELECT COUNT(*)::int AS count FROM projects");
+    const count = countResult.rows[0].count;
+    if (count === 0) {
+      return { ok: true, data: { deleted: 0 } };
+    }
+    await pool.query("DELETE FROM commits");
+    await pool.query("DELETE FROM contributor_profiles");
+    await pool.query("DELETE FROM project_activity");
+    await pool.query("DELETE FROM project_branches");
+    await pool.query("DELETE FROM project_results");
+    await pool.query("DELETE FROM project_pipelines");
+    await pool.query("DELETE FROM project_merge_requests");
+    await pool.query("DELETE FROM project_issues");
+    await pool.query("DELETE FROM project_packages");
+    await pool.query("DELETE FROM projects");
+    const user = (request as any).user as JwtPayload;
+    logAuditAction(user.userId, "project_delete", `Deleted ALL projects (${count} total)`);
+    return { ok: true, data: { deleted: count } };
+  });
+
   app.get("/api/v1/projects/export", { preHandler: [requireAdmin] }, async () => {
     const pool = getPool();
     const result = await pool.query("SELECT path, label, tags, base_url, description FROM projects ORDER BY label");
@@ -164,10 +186,10 @@ export async function projectsRoutes(app: FastifyInstance) {
           await pool.query(
             `INSERT INTO projects (path, label, token_encrypted, base_url, tags, description)
              VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (path) DO UPDATE SET
-               label = EXCLUDED.label, token_encrypted = EXCLUDED.token_encrypted,
-               base_url = EXCLUDED.base_url, tags = EXCLUDED.tags,
-               description = EXCLUDED.description, updated_at = now()`,
+              ON CONFLICT (path, base_url) DO UPDATE SET
+                label = EXCLUDED.label, token_encrypted = EXCLUDED.token_encrypted,
+                tags = EXCLUDED.tags,
+                description = EXCLUDED.description, updated_at = now()`,
             [proj.path, proj.label, encrypted, proj.base_url || "https://gitlab.com/api/v4", proj.tags || [], proj.description || ""]
           );
           imported.push({ path: proj.path, label: proj.label });

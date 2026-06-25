@@ -78,6 +78,12 @@ export async function deleteProject(id: number): Promise<ApiResponse<{ deleted: 
   return result;
 }
 
+export async function deleteAllProjects(): Promise<ApiResponse<{ deleted: number }>> {
+  const result = await fetchJson<{ deleted: number }>("/v1/projects/all", { method: "DELETE" });
+  if (result.ok) clearCache("projects");
+  return result;
+}
+
 export async function importProjectsYaml(yaml: string): Promise<ApiResponse<{ imported: { path: string; label: string }[]; errors: { path: string; error: string }[]; total: number }>> {
   const result = await fetchJson<{ imported: { path: string; label: string }[]; errors: { path: string; error: string }[]; total: number }>("/v1/projects/import-yaml", { method: "POST", body: JSON.stringify({ yaml }) });
   if (result.ok) clearCache("projects");

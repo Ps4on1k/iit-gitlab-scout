@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Table, Button, Modal, Form, Input, Select, Space, Typography, Popconfirm, message, Tag, Collapse } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, KeyOutlined } from "@ant-design/icons";
-import { fetchProjects, createProject, updateProject, deleteProject, importProjectsYaml, exportProjects, removeProjectToken } from "../api/client";
+import { fetchProjects, createProject, updateProject, deleteProject, deleteAllProjects, importProjectsYaml, exportProjects, removeProjectToken } from "../api/client";
 import { getTagColor } from "../utils/tagColors";
 import type { ProjectConfig } from "../types";
 
@@ -66,6 +66,13 @@ export function AdminPanel() {
     const res = await deleteProject(id);
     if (!res.ok) { message.error(res.error!); return; }
     message.success("Проект удалён");
+    load();
+  };
+
+  const handleDeleteAll = async () => {
+    const res = await deleteAllProjects();
+    if (!res.ok) { message.error(res.error!); return; }
+    message.success(`Удалено проектов: ${res.data!.deleted}`);
     load();
   };
 
@@ -137,6 +144,16 @@ export function AdminPanel() {
         <Space>
           <Button icon={<UploadOutlined />} onClick={() => setYamlModalOpen(true)}>Импорт YAML</Button>
           <Button icon={<DownloadOutlined />} onClick={handleExport}>Экспорт YAML</Button>
+          <Popconfirm
+            title="Удалить ВСЕ проекты?"
+            description={`Все ${projects.length} проектов и связанные данные будут удалены. Это действие необратимо.`}
+            onConfirm={handleDeleteAll}
+            okText="Да, удалить всё"
+            cancelText="Нет"
+            okButtonProps={{ danger: true }}
+          >
+            <Button danger icon={<DeleteOutlined />}>Удалить всё</Button>
+          </Popconfirm>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Добавить проект</Button>
         </Space>
       </div>

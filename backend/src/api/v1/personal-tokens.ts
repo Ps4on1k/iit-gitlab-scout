@@ -66,6 +66,15 @@ export async function personalTokenRoutes(app: FastifyInstance) {
       let added = 0;
       let skipped = 0;
 
+      const baseUrlHost = (() => {
+        try {
+          const u = new URL(pt.base_url);
+          return u.hostname;
+        } catch {
+          return "unknown";
+        }
+      })();
+
       for (const glp of glProjects) {
         const path = glp.path_with_namespace;
         const existing = await pool.query(
@@ -77,11 +86,15 @@ export async function personalTokenRoutes(app: FastifyInstance) {
           continue;
         }
 
+        const rootGroup = path.split("/")[0] || "unknown";
+        const autoTag = `${rootGroup}.${baseUrlHost}`;
+        const tags = [autoTag];
+
         await pool.query(
           `INSERT INTO projects (path, label, token_encrypted, base_url, tags, description)
-           VALUES ($1, $2, '', $3, '{}', $4)
+           VALUES ($1, $2, '', $3, $4, $5)
            ON CONFLICT (path, base_url) DO NOTHING`,
-          [path, glp.name || path, pt.base_url, glp.description || ""]
+          [path, glp.name || path, pt.base_url, tags, glp.description || ""]
         );
         added++;
       }
