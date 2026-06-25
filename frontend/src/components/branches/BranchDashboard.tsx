@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker, Collapse } from "antd";
+import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker, Collapse, Alert } from "antd";
 import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
@@ -157,6 +157,20 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Ветки проектов</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Оценка состояния веток: активность, заброшенность, здоровье проектов</div>
       </div>
+
+      <Alert
+        type="info"
+        showIcon
+        style={{ marginBottom: 16 }}
+        message="Классификация веток"
+        description={
+          <div>
+            <b>Активные</b> — ветки с последним коммитом менее 90 дней назад, не замерженные в основную ветку. Требуют внимания и контроля.<br />
+            <b>Заброшенные</b> — ветки без коммитов более 90 дней, не замерженные. Вероятно устарели и могут быть удалены.<br />
+            <b>Замерженные</b> — ветки, уже влитые в основную ветку. Можно безопасно удалить из репозитория.
+          </div>
+        }
+      />
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <Select placeholder="Статус" allowClear style={{ width: 180 }} value={statusFilter} onChange={setStatusFilter}

@@ -105,9 +105,14 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
     const langResult = await pool.query(
       `SELECT language, ROUND(SUM(percentage), 2) as total_pct
-       FROM project_languages WHERE project_id = ANY($1)
+       FROM project_languages pl
+       WHERE pl.project_id = ANY($1)
+         AND EXISTS (
+           SELECT 1 FROM commits c
+           WHERE c.project_id = pl.project_id AND c.committed_date >= $2
+         )
        GROUP BY language ORDER BY total_pct DESC LIMIT 10`,
-      [projectIds]
+      [projectIds, date90]
     );
 
     const activityResult = await pool.query(
@@ -171,10 +176,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
                   COUNT(*) FILTER (WHERE pp.status = 'failed')::int as failed
            FROM project_pipelines pp
            JOIN projects p ON p.id = pp.project_id
-           WHERE pp.project_id = ANY($1)
+           WHERE pp.project_id = ANY($1) AND pp.created_at >= $2
            GROUP BY p.label, p.tags
            ORDER BY total DESC LIMIT 10`,
-          [projectIds]
+          [projectIds, date90]
         )).rows.map((r: any) => ({ label: r.label, tags: r.tags || [], total: r.total, success: r.success, failed: r.failed })) : [],
       },
     };
