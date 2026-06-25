@@ -3,7 +3,6 @@ import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js"
 import { getPool } from "../../db/pool.js";
 import { collectBranches } from "../../services/branch-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
-import { startCollect, finishCollect } from "../../utils/collect-tracker.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function branchRoutes(app: FastifyInstance) {
@@ -14,13 +13,10 @@ export async function branchRoutes(app: FastifyInstance) {
     if (!project_id) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });
     }
-    startCollect(project_id, "branches", 1);
     try {
       const result = await collectBranches(project_id);
-      finishCollect(project_id, "branches");
       return { ok: true, data: result };
     } catch (err) {
-      finishCollect(project_id, "branches", err instanceof Error ? err.message : String(err));
       logCollectionError("collect_branches", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
       return reply.status(500).send({ ok: false, error: err instanceof Error ? err.message : String(err) });
     }

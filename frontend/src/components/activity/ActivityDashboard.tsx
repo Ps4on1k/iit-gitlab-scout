@@ -16,8 +16,6 @@ interface Props { userRole: Role; filters: GlobalFilters; onContributorClick?: (
 
 export function ActivityDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
-  const [collecting, setCollecting] = useState(false);
-  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [activity, setActivity] = useState<ActivityDay[]>([]);
   const [groupBy, setGroupBy] = useState<"day" | "week">("day");
@@ -86,25 +84,9 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
     ]);
   }, [mrData, groupBy]);
 
-  const handleCollect = async () => {
-    setCollecting(true);
-    try {
-      const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id);
-      setCollectProgress({ current: 0, total: ids.length });
-      for (let i = 0; i < ids.length; i++) {
-        setCollectProgress({ current: i + 1, total: ids.length });
-        const actRes = await collectActivity(ids[i], filters.dateFrom, filters.dateTo);
-        if (actRes.ok) message.success(`Активность проекта ${ids[i]}: ${actRes.data!.days} дней`);
-        else message.error(actRes.error!);
-        const mrRes = await collectMR(ids[i]);
-        if (mrRes.ok) message.success(`MR проекта ${ids[i]}: ${mrRes.data!.total} собрано`);
-        else message.error(mrRes.error!);
-        if (i < ids.length - 1) await delay();
-      }
-      loadData();
-      loadMRData();
-    } finally { setCollecting(false); setCollectProgress(null); }
-  };
+  const activityProjectIds = useMemo(() => effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id), [effectiveProjectIds, projects]);
+
+  const loadAll = useCallback(() => { loadData(); loadMRData(); }, []);
 
   const totals = useMemo(() => ({
     commits: activity.reduce((s, d) => s + d.commits, 0),
@@ -132,7 +114,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
         <Select value={groupBy} onChange={(v) => setGroupBy(v)} style={{ width: 120 }}
           options={[{ value: "day", label: "По дням" }, { value: "week", label: "По неделям" }]} />
         <Space>
-          {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#c47a5a" label="Собрать данные" />}
+          {userRole === "admin" && <CollectButton collector="activity_mr" projectIds={activityProjectIds} onComplete={loadAll} color="#c47a5a" label="Собрать данные" />}
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         </Space>
       </div>

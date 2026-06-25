@@ -1,21 +1,30 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchCollectStatus, type CollectJob } from "../api/client";
 
-const POLL_MS = 5000;
-const STUCK_TIMEOUT_MS = 5 * 60 * 1000;
+const POLL_MS = 3000;
+const STUCK_TIMEOUT_MS = 15 * 60 * 1000;
 
 export { type CollectJob };
 
-export function useCollectStatus() {
+export function useCollectStatus(onComplete?: () => void) {
   const [activeJobs, setActiveJobs] = useState<CollectJob[]>([]);
+  const hadRunningRef = useRef(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const poll = useCallback(async () => {
     try {
       const res = await fetchCollectStatus();
-      if (res.ok) setActiveJobs(res.data!);
+      if (res.ok) {
+        const jobs = res.data!;
+        setActiveJobs(jobs);
+        const running = jobs.some((j) => j.status === "running");
+        if (hadRunningRef.current && !running && onComplete) {
+          onComplete();
+        }
+        hadRunningRef.current = running;
+      }
     } catch {}
-  }, []);
+  }, [onComplete]);
 
   useEffect(() => {
     poll();

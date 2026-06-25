@@ -2,7 +2,6 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { collectIssues } from "../../services/issue-collector.js";
-import { startCollect, finishCollect } from "../../utils/collect-tracker.js";
 
 export async function issueRoutes(app: FastifyInstance) {
   app.post<{
@@ -12,13 +11,10 @@ export async function issueRoutes(app: FastifyInstance) {
     if (!project_id) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });
     }
-    startCollect(project_id, "issues", 1);
     try {
       const result = await collectIssues(project_id);
-      finishCollect(project_id, "issues");
       return { ok: true, data: result };
     } catch (err) {
-      finishCollect(project_id, "issues", err instanceof Error ? err.message : String(err));
       return reply.status(500).send({ ok: false, error: err instanceof Error ? err.message : String(err) });
     }
   });

@@ -2,7 +2,6 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectStack } from "../../services/stack-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
-import { startCollect, finishCollect } from "../../utils/collect-tracker.js";
 import { getLanguages, getLanguageSummary } from "../../db/stack-repository.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
@@ -15,13 +14,10 @@ export async function stackAnalyticsRoutes(app: FastifyInstance) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });
     }
 
-    startCollect(project_id, "stack", 1);
     try {
       const result = await collectStack(project_id);
-      finishCollect(project_id, "stack");
       return { ok: true, data: result };
     } catch (err) {
-      finishCollect(project_id, "stack", err instanceof Error ? err.message : String(err));
       logCollectionError("collect_stack", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
       return reply.status(500).send({
         ok: false,

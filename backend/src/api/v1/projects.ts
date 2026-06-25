@@ -123,6 +123,10 @@ export async function projectsRoutes(app: FastifyInstance) {
     await pool.query("DELETE FROM project_merge_requests");
     await pool.query("DELETE FROM project_issues");
     await pool.query("DELETE FROM project_packages");
+    await pool.query("DELETE FROM project_dependencies_audit");
+    await pool.query("DELETE FROM project_languages");
+    await pool.query("DELETE FROM analysis_runs");
+    await pool.query("DELETE FROM scheduler_errors");
     await pool.query("DELETE FROM projects");
     const user = (request as any).user as JwtPayload;
     logAuditAction(user.userId, "project_delete", `Deleted ALL projects (${count} total)`);

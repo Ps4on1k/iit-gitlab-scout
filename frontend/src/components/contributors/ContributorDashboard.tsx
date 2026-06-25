@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Select, DatePicker, Button, Space, message, Tag, Progress } from "antd";
+import { Select, DatePicker, Button, Space, message, Tag } from "antd";
 import dayjs from "dayjs";
 import { ReloadOutlined } from "@ant-design/icons";
 import { MetricsCards } from "./MetricsCards";
@@ -7,7 +7,6 @@ import { ContributorTable } from "./ContributorTable";
 import { HeatmapChart } from "./HeatmapChart";
 import { CommitTimelineChart } from "./CommitTimelineChart";
 import { getTagColor } from "../../utils/tagColors";
-import { delay } from "../../utils/collect";
 import { CollectButton } from "../common/CollectButton";
 import {
   fetchContributorsList,
@@ -34,8 +33,6 @@ interface Props {
 
 export function ContributorDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
-  const [collecting, setCollecting] = useState(false);
-  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [allContributors, setAllContributors] = useState<DbContributor[]>([]);
   const [allMetrics, setAllMetrics] = useState<ContributorMetrics | null>(null);
   const [allHeatmap, setAllHeatmap] = useState<HeatmapData>({ by_project: {}, by_contributor: {}, project_contributors: {}, by_project_contributor: {} });
@@ -183,24 +180,9 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
     return map;
   }, [projects]);
 
-  const handleCollect = async () => {
-    setCollecting(true);
-    try {
-      const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id);
-      setCollectProgress({ current: 0, total: ids.length });
-      for (let i = 0; i < ids.length; i++) {
-        setCollectProgress({ current: i + 1, total: ids.length });
-        const res = await collectContributors(ids[i], filters.dateFrom, filters.dateTo);
-        if (res.ok) message.success(`${res.data!.project_path}: +${res.data!.new_commits} new`);
-        else message.error(res.error!);
-        if (i < ids.length - 1) await delay();
-      }
-      loadData();
-    } finally {
-      setCollecting(false);
-      setCollectProgress(null);
-    }
-  };
+  const contributorIds = useMemo(() => {
+    return effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id);
+  }, [effectiveProjectIds, projects]);
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
@@ -211,7 +193,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         {userRole === "admin" && (
-          <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#667eea" label="Собрать данные" />
+          <CollectButton collector="contributors" projectIds={contributorIds} dateFrom={filters.dateFrom} dateTo={filters.dateTo} onComplete={loadData} color="#667eea" label="Собрать данные" />
         )}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>

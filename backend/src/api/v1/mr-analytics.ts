@@ -3,7 +3,6 @@ import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js"
 import { getPool } from "../../db/pool.js";
 import { collectMergeRequests } from "../../services/mr-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
-import { startCollect, finishCollect } from "../../utils/collect-tracker.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function mrAnalyticsRoutes(app: FastifyInstance) {
@@ -12,13 +11,10 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
   }>("/api/v1/mr-analytics/collect", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { project_id } = request.body;
     if (!project_id) return reply.status(400).send({ ok: false, error: "project_id is required" });
-    startCollect(project_id, "mr", 1);
     try {
       const result = await collectMergeRequests(project_id);
-      finishCollect(project_id, "mr");
       return { ok: true, data: result };
     } catch (err) {
-      finishCollect(project_id, "mr", err instanceof Error ? err.message : String(err));
       logCollectionError("collect_merge_requests", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
       return reply.status(500).send({ ok: false, error: err instanceof Error ? err.message : String(err) });
     }

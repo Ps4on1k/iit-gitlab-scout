@@ -2,7 +2,6 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectActivity } from "../../services/activity-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
-import { startCollect, finishCollect } from "../../utils/collect-tracker.js";
 import { getActivity } from "../../db/activity-repository.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
@@ -15,13 +14,10 @@ export async function activityRoutes(app: FastifyInstance) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });
     }
 
-    startCollect(project_id, "activity", 1);
     try {
       const result = await collectActivity(project_id, date_from, date_to);
-      finishCollect(project_id, "activity");
       return { ok: true, data: { project_id, days: result.length } };
     } catch (err) {
-      finishCollect(project_id, "activity", err instanceof Error ? err.message : String(err));
       logCollectionError("collect_activity", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
       return reply.status(500).send({
         ok: false,

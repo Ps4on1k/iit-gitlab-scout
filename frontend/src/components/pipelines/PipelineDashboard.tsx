@@ -32,8 +32,6 @@ function formatDuration(secs: number | null): string {
 
 export function PipelineDashboard({ userRole, filters }: Props) {
   const [loading, setLoading] = useState(false);
-  const [collecting, setCollecting] = useState(false);
-  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [data, setData] = useState<any>(null);
 
@@ -61,21 +59,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
 
   useEffect(() => { loadData(); }, [effectiveProjectIds, filters.dateFrom, filters.dateTo]);
 
-  const handleCollect = async () => {
-    setCollecting(true);
-    try {
-      const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id);
-      setCollectProgress({ current: 0, total: ids.length });
-      for (let i = 0; i < ids.length; i++) {
-        setCollectProgress({ current: i + 1, total: ids.length });
-        const res = await collectPipelines(ids[i]);
-        if (res.ok) message.success(`Проект ${ids[i]}: ${res.data!.total} пайплайнов`);
-        else message.error(res.error!);
-        if (i < ids.length - 1) await delay();
-      }
-      loadData();
-    } finally { setCollecting(false); setCollectProgress(null); }
-  };
+  const pipelineProjectIds = useMemo(() => effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id), [effectiveProjectIds, projects]);
 
   const cc = chartColors();
   const successRate = data?.summary?.total > 0 ? Math.round(data.summary.success / data.summary.total * 100) : 0;
@@ -88,7 +72,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#722ed1" />}
+        {userRole === "admin" && <CollectButton collector="pipelines" projectIds={pipelineProjectIds} onComplete={loadData} color="#722ed1" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         {data && <Button size="small" icon={<DownloadOutlined />} onClick={() => {
           const headers = ["Статус", "Кол-во", "%"];

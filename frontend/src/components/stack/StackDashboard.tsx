@@ -28,8 +28,6 @@ function getLangColor(lang: string): string {
 
 export function StackDashboard({ userRole }: Props) {
   const [loading, setLoading] = useState(false);
-  const [collecting, setCollecting] = useState(false);
-  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [languages, setLanguages] = useState<LanguageSummary[]>([]);
   const [allLanguages, setAllLanguages] = useState<string[]>([]);
@@ -67,24 +65,7 @@ export function StackDashboard({ userRole }: Props) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleCollect = async () => {
-    setCollecting(true);
-    try {
-      const targetIds = selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id);
-      setCollectProgress({ current: 0, total: targetIds.length });
-      for (let i = 0; i < targetIds.length; i++) {
-        setCollectProgress({ current: i + 1, total: targetIds.length });
-        const res = await collectStack(targetIds[i]);
-        if (res.ok) message.success(`${res.data!.path}: ${res.data!.languages.length} языков`);
-        else message.error(res.error!);
-        if (i < targetIds.length - 1) await delay();
-      }
-      loadData();
-    } finally {
-      setCollecting(false);
-      setCollectProgress(null);
-    }
-  };
+  const stackProjectIds = useMemo(() => selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id), [selectedProjectIds, projects]);
 
   const projectOptions = useMemo(() =>
     projects.map((p) => ({ value: p.id, label: p.tags?.length ? `${p.label} [${p.tags.join(", ")}]` : p.label })),
@@ -136,7 +117,7 @@ export function StackDashboard({ userRole }: Props) {
             }}
             maxTagCount="responsive" />
         )}
-        {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#13c2c2" label="Собрать стек" />}
+        {userRole === "admin" && <CollectButton collector="stack" projectIds={stackProjectIds} onComplete={loadData} color="#13c2c2" label="Собрать стек" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

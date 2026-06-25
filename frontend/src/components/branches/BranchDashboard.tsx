@@ -48,8 +48,6 @@ function downloadCsv(filename: string, headers: string[], rows: any[][]) {
 
 export function BranchDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
-  const [collecting, setCollecting] = useState(false);
-  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [summary, setSummary] = useState<BranchSummary | null>(null);
@@ -141,21 +139,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
 
   const arrow = (key: SortKey) => sortKey === key ? (sortAsc ? " ↑" : " ↓") : " ↕";
 
-  const handleCollect = async () => {
-    setCollecting(true);
-    try {
-      const ids = filters.projectIds.length > 0 ? filters.projectIds : projects.map((p) => p.id);
-      setCollectProgress({ current: 0, total: ids.length });
-      for (let i = 0; i < ids.length; i++) {
-        setCollectProgress({ current: i + 1, total: ids.length });
-        const res = await collectBranches(ids[i]);
-        if (res.ok) message.success(`${res.data!.total} веток собрано`);
-        else message.error(res.error!);
-        if (i < ids.length - 1) await delay();
-      }
-      loadData();
-    } finally { setCollecting(false); setCollectProgress(null); }
-  };
+  const branchProjectIds = useMemo(() => filters.projectIds.length > 0 ? filters.projectIds : projects.map((p) => p.id), [filters.projectIds, projects]);
 
   const thStyle: React.CSSProperties = {
     background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -182,7 +166,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
             { value: "merged", label: "Замерженные" },
           ]} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#667eea" />}
+        {userRole === "admin" && <CollectButton collector="branches" projectIds={branchProjectIds} onComplete={loadData} color="#667eea" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

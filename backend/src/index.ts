@@ -24,6 +24,7 @@ import { commitDetailRoutes } from "./api/v1/commit-detail.js";
 import { pipelineAnalyticsRoutes } from "./api/v1/pipeline-analytics.js";
 import { auditLogRoutes } from "./api/v1/audit-log.js";
 import { personalTokenRoutes } from "./api/v1/personal-tokens.js";
+import { batchCollectRoutes } from "./api/v1/batch-collect.js";
 import { securityPlugin } from "./utils/security.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { getActiveJobs } from "./utils/collect-tracker.js";
@@ -102,6 +103,7 @@ await app.register(commitDetailRoutes);
 await app.register(pipelineAnalyticsRoutes);
 await app.register(auditLogRoutes);
 await app.register(personalTokenRoutes);
+await app.register(batchCollectRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

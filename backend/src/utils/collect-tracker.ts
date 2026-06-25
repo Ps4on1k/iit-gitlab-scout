@@ -1,48 +1,46 @@
 export interface CollectJob {
-  project_id: number;
+  id: string;
   collector: string;
+  project_ids: number[];
   started_at: number;
   current: number;
   total: number;
   status: "running" | "done" | "error" | "stuck";
-  error?: string;
+  errors: { project_id: number; error: string }[];
 }
 
-const TIMEOUT_MS = 5 * 60 * 1000;
+const TIMEOUT_MS = 15 * 60 * 1000;
 const jobs = new Map<string, CollectJob>();
+let jobCounter = 0;
 
-function jobKey(projectId: number, collector: string): string {
-  return `${collector}:${projectId}`;
-}
-
-export function startCollect(projectId: number, collector: string, total: number): void {
-  const key = jobKey(projectId, collector);
-  jobs.set(key, {
-    project_id: projectId,
+export function startBatchCollect(collector: string, projectIds: number[]): string {
+  const id = `batch-${++jobCounter}`;
+  jobs.set(id, {
+    id,
     collector,
+    project_ids: projectIds,
     started_at: Date.now(),
     current: 0,
-    total,
+    total: projectIds.length,
     status: "running",
+    errors: [],
   });
+  return id;
 }
 
-export function updateCollect(projectId: number, collector: string, current: number, total: number): void {
-  const key = jobKey(projectId, collector);
-  const job = jobs.get(key);
-  if (job) {
-    job.current = current;
-    job.total = total;
-  }
+export function updateBatchCollect(id: string, current: number): void {
+  const job = jobs.get(id);
+  if (job) job.current = current;
 }
 
-export function finishCollect(projectId: number, collector: string, error?: string): void {
-  const key = jobKey(projectId, collector);
-  const job = jobs.get(key);
-  if (job) {
-    job.status = error ? "error" : "done";
-    job.error = error;
-  }
+export function addBatchError(id: string, projectId: number, error: string): void {
+  const job = jobs.get(id);
+  if (job) job.errors.push({ project_id: projectId, error });
+}
+
+export function finishBatchCollect(id: string): void {
+  const job = jobs.get(id);
+  if (job) job.status = "done";
 }
 
 export function getActiveJobs(): CollectJob[] {
@@ -51,7 +49,7 @@ export function getActiveJobs(): CollectJob[] {
   for (const [key, job] of jobs) {
     if (job.status === "running" && now - job.started_at > TIMEOUT_MS) {
       job.status = "stuck";
-      job.error = "Timeout exceeded (5 min)";
+      job.errors.push({ project_id: 0, error: "Timeout exceeded (15 min)" });
     }
     if (job.status === "running") {
       result.push(job);
@@ -62,8 +60,9 @@ export function getActiveJobs(): CollectJob[] {
   return result;
 }
 
-export function isCollectorActive(projectId: number, collector: string): boolean {
-  const key = jobKey(projectId, collector);
-  const job = jobs.get(key);
-  return job?.status === "running";
+export function isCollectorActive(collector: string): boolean {
+  for (const job of jobs.values()) {
+    if (job.collector === collector && job.status === "running") return true;
+  }
+  return false;
 }

@@ -307,3 +307,10 @@ export interface CollectJob {
 export async function fetchCollectStatus(): Promise<ApiResponse<CollectJob[]>> {
   return fetchJson<CollectJob[]>("/v1/collect/status");
 }
+
+export async function startBatchCollect(collector: string, projectIds: number[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<{ started: boolean; total: number }>> {
+  const body: any = { collector, project_ids: projectIds };
+  if (dateFrom) body.date_from = dateFrom;
+  if (dateTo) body.date_to = dateTo;
+  return fetchJson<{ started: boolean; total: number }>("/v1/collect/batch", { method: "POST", body: JSON.stringify(body) });
+}
