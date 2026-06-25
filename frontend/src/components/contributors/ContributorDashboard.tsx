@@ -181,10 +181,10 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
   }, [projects]);
 
   const handleCollect = async () => {
-    if (effectiveProjectIds.length === 0) { message.warning("Выберите проект для сбора"); return; }
     setCollecting(true);
     try {
-      for (const projectId of effectiveProjectIds) {
+      const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id);
+      for (const projectId of ids) {
         const res = await collectContributors(projectId, filters.dateFrom, filters.dateTo);
         if (res.ok) message.success(`${res.data!.project_path}: +${res.data!.new_commits} new`);
         else message.error(res.error!);
