@@ -3,6 +3,7 @@ import { Select, Button, Space, message, Card, Row, Col, Statistic, Spin, Typogr
 import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
 import { collectActivity, fetchActivity } from "../../api/activity-client";
+import { delay } from "../../utils/collect";
 import { Line } from "@ant-design/charts";
 import { chartColors } from "../../utils/chartTheme";
 import type { ProjectConfig } from "../../types";
@@ -15,6 +16,7 @@ interface Props { userRole: Role; filters: GlobalFilters; onContributorClick?: (
 export function ActivityDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
+  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [activity, setActivity] = useState<ActivityDay[]>([]);
   const [groupBy, setGroupBy] = useState<"day" | "week">("day");
@@ -87,17 +89,20 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
     setCollecting(true);
     try {
       const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id);
-      for (const id of ids) {
-        const actRes = await collectActivity(id, filters.dateFrom, filters.dateTo);
-        if (actRes.ok) message.success(`Активность проекта ${id}: ${actRes.data!.days} дней`);
+      setCollectProgress({ current: 0, total: ids.length });
+      for (let i = 0; i < ids.length; i++) {
+        setCollectProgress({ current: i + 1, total: ids.length });
+        const actRes = await collectActivity(ids[i], filters.dateFrom, filters.dateTo);
+        if (actRes.ok) message.success(`Активность проекта ${ids[i]}: ${actRes.data!.days} дней`);
         else message.error(actRes.error!);
-        const mrRes = await collectMR(id);
-        if (mrRes.ok) message.success(`MR проекта ${id}: ${mrRes.data!.total} собрано`);
+        const mrRes = await collectMR(ids[i]);
+        if (mrRes.ok) message.success(`MR проекта ${ids[i]}: ${mrRes.data!.total} собрано`);
         else message.error(mrRes.error!);
+        if (i < ids.length - 1) await delay();
       }
       loadData();
       loadMRData();
-    } finally { setCollecting(false); }
+    } finally { setCollecting(false); setCollectProgress(null); }
   };
 
   const totals = useMemo(() => ({
@@ -127,7 +132,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
           options={[{ value: "day", label: "По дням" }, { value: "week", label: "По неделям" }]} />
         <Space>
           {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
-            style={{ background: "#c47a5a", borderColor: "#c47a5a" }}>Собрать данные</Button>}
+            style={{ background: "#c47a5a", borderColor: "#c47a5a" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать данные"}</Button>}
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         </Space>
       </div>

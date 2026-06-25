@@ -5,6 +5,7 @@ import { fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
 import { collectStack, fetchLanguageSummary, fetchLanguages } from "../../api/stack-client";
 import { getTagColor } from "../../utils/tagColors";
+import { delay } from "../../utils/collect";
 import type { ProjectConfig } from "../../types";
 import type { LanguageSummary, StackFilters } from "../../types/stack";
 import type { Role } from "../../types";
@@ -27,6 +28,7 @@ function getLangColor(lang: string): string {
 export function StackDashboard({ userRole }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
+  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [languages, setLanguages] = useState<LanguageSummary[]>([]);
   const [allLanguages, setAllLanguages] = useState<string[]>([]);
@@ -68,14 +70,18 @@ export function StackDashboard({ userRole }: Props) {
     setCollecting(true);
     try {
       const targetIds = selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id);
-      for (const id of targetIds) {
-        const res = await collectStack(id);
+      setCollectProgress({ current: 0, total: targetIds.length });
+      for (let i = 0; i < targetIds.length; i++) {
+        setCollectProgress({ current: i + 1, total: targetIds.length });
+        const res = await collectStack(targetIds[i]);
         if (res.ok) message.success(`${res.data!.path}: ${res.data!.languages.length} языков`);
         else message.error(res.error!);
+        if (i < targetIds.length - 1) await delay();
       }
       loadData();
     } finally {
       setCollecting(false);
+      setCollectProgress(null);
     }
   };
 
@@ -130,7 +136,7 @@ export function StackDashboard({ userRole }: Props) {
             maxTagCount="responsive" />
         )}
         {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
-          style={{ background: "#13c2c2", borderColor: "#13c2c2" }}>Собрать стек</Button>}
+          style={{ background: "#13c2c2", borderColor: "#13c2c2" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать стек"}</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

@@ -16,14 +16,14 @@ export class GitLabClient {
   private rps: number;
   private tokens: number;
   private lastRefill: number;
-  private retryCount = 3;
+  private retryCount = 5;
 
   constructor(options: { token: string; baseUrl?: string }) {
     const env = getEnv();
     this.token = options.token || env.GITLAB_PERSONAL_TOKEN || "";
     this.baseUrl = options.baseUrl || env.GITLAB_BASE_URL;
     this.timeout = env.REQUEST_TIMEOUT;
-    this.rps = env.RATE_LIMIT_RPS;
+    this.rps = Math.min(env.RATE_LIMIT_RPS, 2);
     this.tokens = this.rps;
     this.lastRefill = Date.now();
   }
@@ -67,7 +67,7 @@ export class GitLabClient {
         clearTimeout(timer);
 
         if (res.status === 429) {
-          const retryAfter = Number(res.headers.get("retry-after") || 5);
+          const retryAfter = Number(res.headers.get("retry-after") || Math.min(5 * (attempt + 1), 30));
           await new Promise((r) => setTimeout(r, retryAfter * 1000));
           continue;
         }
@@ -83,7 +83,7 @@ export class GitLabClient {
         if (err instanceof DOMException && err.name === "AbortError") {
           continue;
         }
-        const backoff = Math.pow(2, attempt) * 1000;
+        const backoff = Math.pow(2, attempt) * 2000;
         await new Promise((r) => setTimeout(r, backoff));
       }
     }
@@ -94,6 +94,7 @@ export class GitLabClient {
   async requestPaginated<T>(path: string, maxPages = 100): Promise<T[]> {
     const results: T[] = [];
     let url: string | null = `${this.baseUrl}${path}`;
+    let retry429 = 0;
 
     for (let page = 0; page < maxPages && url; page++) {
       const isAbsolute = url.startsWith("http");
@@ -107,12 +108,14 @@ export class GitLabClient {
       });
 
       if (res.status === 429) {
-        const retryAfter = Number(res.headers.get("retry-after") || 5);
+        retry429++;
+        const retryAfter = Number(res.headers.get("retry-after") || Math.min(10 * retry429, 60));
         await new Promise((r) => setTimeout(r, retryAfter * 1000));
         page--;
         continue;
       }
 
+      retry429 = 0;
       if (!res.ok) {
         throw new Error(`GitLab API ${res.status}: ${res.statusText}`);
       }

@@ -3,6 +3,7 @@ import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePic
 import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
+import { delay } from "../../utils/collect";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
 import type { Role } from "../../types";
@@ -47,6 +48,7 @@ function downloadCsv(filename: string, headers: string[], rows: any[][]) {
 export function BranchDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
   const [collecting, setCollecting] = useState(false);
+  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [summary, setSummary] = useState<BranchSummary | null>(null);
@@ -142,13 +144,16 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
     setCollecting(true);
     try {
       const ids = filters.projectIds.length > 0 ? filters.projectIds : projects.map((p) => p.id);
-      for (const id of ids) {
-        const res = await collectBranches(id);
+      setCollectProgress({ current: 0, total: ids.length });
+      for (let i = 0; i < ids.length; i++) {
+        setCollectProgress({ current: i + 1, total: ids.length });
+        const res = await collectBranches(ids[i]);
         if (res.ok) message.success(`${res.data!.total} веток собрано`);
         else message.error(res.error!);
+        if (i < ids.length - 1) await delay();
       }
       loadData();
-    } finally { setCollecting(false); }
+    } finally { setCollecting(false); setCollectProgress(null); }
   };
 
   const thStyle: React.CSSProperties = {
@@ -176,7 +181,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
             { value: "merged", label: "Замерженные" },
           ]} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>Собрать</Button>}
+        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать"}</Button>}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

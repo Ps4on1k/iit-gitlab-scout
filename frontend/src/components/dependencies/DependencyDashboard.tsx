@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typography } from "antd";
 import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchDependencies, collectDependencies, fetchProjects } from "../../api/client";
+import { delay } from "../../utils/collect";
 import type { ProjectConfig } from "../../types";
 import type { DependencyAudit, DependencySummary } from "../../types/analytics";
 
 const { Text } = Typography;
 
 export function DependencyDashboard() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [collecting, setCollecting] = useState(false);
+  const [collectProgress, setCollectProgress] = useState<{ current: number; total: number } | null>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [deps, setDeps] = useState<DependencyAudit[]>([]);
   const [summary, setSummary] = useState<DependencySummary | null>(null);
@@ -36,13 +38,16 @@ export function DependencyDashboard() {
     setCollecting(true);
     try {
       const ids = selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id);
-      for (const id of ids) {
-        const res = await collectDependencies(id);
-        if (res.ok) message.success(`Project ${id}: ${res.data!.total} deps`);
+      setCollectProgress({ current: 0, total: ids.length });
+      for (let i = 0; i < ids.length; i++) {
+        setCollectProgress({ current: i + 1, total: ids.length });
+        const res = await collectDependencies(ids[i]);
+        if (res.ok) message.success(`Project ${ids[i]}: ${res.data!.total} deps`);
         else message.error(res.error!);
+        if (i < ids.length - 1) await delay();
       }
       loadData();
-    } finally { setCollecting(false); }
+    } finally { setCollecting(false); setCollectProgress(null); }
   };
 
   const columns = [
@@ -65,7 +70,7 @@ export function DependencyDashboard() {
           maxTagCount="responsive" />
         <Select placeholder="Источник" allowClear style={{ width: 140 }} value={sourceFilter} onChange={setSourceFilter}
           options={[{ value: "npm", label: "npm" }, { value: "pip", label: "pip" }, { value: "go", label: "go" }]} />
-        <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>Собрать</Button>
+        <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать"}</Button>
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 
