@@ -3,6 +3,7 @@ import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typogra
 import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchIssues, collectIssues, fetchProjects } from "../../api/client";
 import { delay } from "../../utils/collect";
+import { CollectButton } from "../common/CollectButton";
 import type { ProjectConfig } from "../../types";
 import type { Issue, IssueSummary } from "../../types/analytics";
 
@@ -72,7 +73,7 @@ export function IssueDashboard() {
           maxTagCount="responsive" />
         <Select placeholder="Статус" allowClear style={{ width: 140 }} value={stateFilter} onChange={setStateFilter}
           options={[{ value: "opened", label: "Opened" }, { value: "closed", label: "Closed" }]} />
-        <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать"}</Button>
+        <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} />
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

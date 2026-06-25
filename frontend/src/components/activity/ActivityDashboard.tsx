@@ -4,6 +4,7 @@ import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
 import { collectActivity, fetchActivity } from "../../api/activity-client";
 import { delay } from "../../utils/collect";
+import { CollectButton } from "../common/CollectButton";
 import { Line } from "@ant-design/charts";
 import { chartColors } from "../../utils/chartTheme";
 import type { ProjectConfig } from "../../types";
@@ -131,8 +132,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
         <Select value={groupBy} onChange={(v) => setGroupBy(v)} style={{ width: 120 }}
           options={[{ value: "day", label: "По дням" }, { value: "week", label: "По неделям" }]} />
         <Space>
-          {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
-            style={{ background: "#c47a5a", borderColor: "#c47a5a" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать данные"}</Button>}
+          {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#c47a5a" label="Собрать данные" />}
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         </Space>
       </div>

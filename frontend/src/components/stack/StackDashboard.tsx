@@ -6,6 +6,7 @@ import { ProjectLabel } from "../common/ProjectLabel";
 import { collectStack, fetchLanguageSummary, fetchLanguages } from "../../api/stack-client";
 import { getTagColor } from "../../utils/tagColors";
 import { delay } from "../../utils/collect";
+import { CollectButton } from "../common/CollectButton";
 import type { ProjectConfig } from "../../types";
 import type { LanguageSummary, StackFilters } from "../../types/stack";
 import type { Role } from "../../types";
@@ -135,8 +136,7 @@ export function StackDashboard({ userRole }: Props) {
             }}
             maxTagCount="responsive" />
         )}
-        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect}
-          style={{ background: "#13c2c2", borderColor: "#13c2c2" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать стек"}</Button>}
+        {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#13c2c2" label="Собрать стек" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

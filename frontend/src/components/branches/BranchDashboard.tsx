@@ -3,6 +3,7 @@ import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePic
 import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
+import { CollectButton } from "../common/CollectButton";
 import { delay } from "../../utils/collect";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
@@ -181,7 +182,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
             { value: "merged", label: "Замерженные" },
           ]} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать"}</Button>}
+        {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#667eea" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

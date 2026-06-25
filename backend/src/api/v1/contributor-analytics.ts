@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectProject } from "../../services/contributor-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
+import { startCollect, finishCollect } from "../../utils/collect-tracker.js";
 import {
   getContributors,
   getHeatmapData,
@@ -18,10 +19,13 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
       return reply.status(400).send({ ok: false, error: "project_id is required" });
     }
 
+    startCollect(project_id, "contributors", 1);
     try {
       const result = await collectProject(project_id, date_from, date_to);
+      finishCollect(project_id, "contributors");
       return { ok: true, data: result };
     } catch (err) {
+      finishCollect(project_id, "contributors", err instanceof Error ? err.message : String(err));
       logCollectionError("collect_contributors", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
       return reply.status(500).send({
         ok: false,

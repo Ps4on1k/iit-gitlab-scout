@@ -293,3 +293,17 @@ export async function scanProjects(tokenId: number): Promise<ApiResponse<{ added
 export async function removeProjectToken(projectId: number): Promise<ApiResponse<{ cleared: boolean }>> {
   return fetchJson(`/v1/projects/${projectId}/remove-token`, { method: "PUT" });
 }
+
+export interface CollectJob {
+  project_id: number;
+  collector: string;
+  started_at: number;
+  current: number;
+  total: number;
+  status: "running" | "done" | "error" | "stuck";
+  error?: string;
+}
+
+export async function fetchCollectStatus(): Promise<ApiResponse<CollectJob[]>> {
+  return fetchJson<CollectJob[]>("/v1/collect/status");
+}

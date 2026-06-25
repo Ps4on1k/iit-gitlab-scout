@@ -3,6 +3,7 @@ import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typogra
 import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchDependencies, collectDependencies, fetchProjects } from "../../api/client";
 import { delay } from "../../utils/collect";
+import { CollectButton } from "../common/CollectButton";
 import type { ProjectConfig } from "../../types";
 import type { DependencyAudit, DependencySummary } from "../../types/analytics";
 
@@ -70,7 +71,7 @@ export function DependencyDashboard() {
           maxTagCount="responsive" />
         <Select placeholder="Источник" allowClear style={{ width: 140 }} value={sourceFilter} onChange={setSourceFilter}
           options={[{ value: "npm", label: "npm" }, { value: "pip", label: "pip" }, { value: "go", label: "go" }]} />
-        <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать"}</Button>
+        <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} />
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

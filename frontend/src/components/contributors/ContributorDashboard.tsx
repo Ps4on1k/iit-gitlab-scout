@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Select, DatePicker, Button, Space, message, Tag, Progress } from "antd";
 import dayjs from "dayjs";
-import { ReloadOutlined, DatabaseOutlined } from "@ant-design/icons";
+import { ReloadOutlined } from "@ant-design/icons";
 import { MetricsCards } from "./MetricsCards";
 import { ContributorTable } from "./ContributorTable";
 import { HeatmapChart } from "./HeatmapChart";
 import { CommitTimelineChart } from "./CommitTimelineChart";
 import { getTagColor } from "../../utils/tagColors";
 import { delay } from "../../utils/collect";
+import { CollectButton } from "../common/CollectButton";
 import {
   fetchContributorsList,
   fetchContributorMetrics,
@@ -210,7 +211,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         {userRole === "admin" && (
-          <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#667eea", borderColor: "#667eea" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать данные"}</Button>
+          <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#667eea" label="Собрать данные" />
         )}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>

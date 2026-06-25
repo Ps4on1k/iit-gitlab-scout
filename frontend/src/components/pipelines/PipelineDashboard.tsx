@@ -6,6 +6,7 @@ import { fetchProjects } from "../../api/client";
 import { collectPipelines } from "../../api/pipeline-client";
 import { chartColors } from "../../utils/chartTheme";
 import { delay } from "../../utils/collect";
+import { CollectButton } from "../common/CollectButton";
 import type { ProjectConfig, Role } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
 
@@ -87,7 +88,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        {userRole === "admin" && <Button type="primary" icon={<DatabaseOutlined />} loading={collecting} onClick={handleCollect} style={{ background: "#722ed1" }}>{collectProgress ? `Сбор ${collectProgress.current}/${collectProgress.total}` : "Собрать"}</Button>}
+        {userRole === "admin" && <CollectButton onClick={handleCollect} collecting={collecting} collectProgress={collectProgress} color="#722ed1" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         {data && <Button size="small" icon={<DownloadOutlined />} onClick={() => {
           const headers = ["Статус", "Кол-во", "%"];

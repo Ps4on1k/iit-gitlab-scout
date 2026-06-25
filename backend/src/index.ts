@@ -26,6 +26,8 @@ import { auditLogRoutes } from "./api/v1/audit-log.js";
 import { personalTokenRoutes } from "./api/v1/personal-tokens.js";
 import { securityPlugin } from "./utils/security.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
+import { getActiveJobs } from "./utils/collect-tracker.js";
+import { requireAuth } from "./utils/auth.js";
 
 const env = getEnv();
 const app = Fastify({ logger: true });
@@ -74,6 +76,10 @@ app.setErrorHandler((error, request, reply) => {
 });
 
 app.get("/health", async () => ({ status: "ok" }));
+
+app.get("/api/v1/collect/status", { preHandler: [requireAuth] }, async () => {
+  return { ok: true, data: getActiveJobs() };
+});
 
 await app.register(authRoutes);
 await app.register(projectsRoutes);
