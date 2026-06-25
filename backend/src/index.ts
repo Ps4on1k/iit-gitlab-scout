@@ -23,6 +23,7 @@ import { contributorResolveRoutes } from "./api/v1/contributor-resolve.js";
 import { commitDetailRoutes } from "./api/v1/commit-detail.js";
 import { pipelineAnalyticsRoutes } from "./api/v1/pipeline-analytics.js";
 import { auditLogRoutes } from "./api/v1/audit-log.js";
+import { personalTokenRoutes } from "./api/v1/personal-tokens.js";
 import { securityPlugin } from "./utils/security.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 
@@ -94,6 +95,7 @@ await app.register(contributorResolveRoutes);
 await app.register(commitDetailRoutes);
 await app.register(pipelineAnalyticsRoutes);
 await app.register(auditLogRoutes);
+await app.register(personalTokenRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

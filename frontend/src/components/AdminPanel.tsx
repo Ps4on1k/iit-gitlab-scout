@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Table, Button, Modal, Form, Input, Select, Space, Typography, Popconfirm, message, Tag, Collapse } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
-import { fetchProjects, createProject, updateProject, deleteProject, importProjectsYaml, exportProjects } from "../api/client";
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, KeyOutlined } from "@ant-design/icons";
+import { fetchProjects, createProject, updateProject, deleteProject, importProjectsYaml, exportProjects, removeProjectToken } from "../api/client";
 import { getTagColor } from "../utils/tagColors";
 import type { ProjectConfig } from "../types";
 
@@ -101,10 +101,16 @@ export function AdminPanel() {
     { title: "Label", dataIndex: "label", key: "label" },
     { title: "Base URL", dataIndex: "base_url", key: "base_url", render: (v: string) => <Text type="secondary" style={{ fontSize: 12 }}>{v}</Text> },
     {
-      title: "Действия", key: "actions", width: 120, align: "right" as const,
+      title: "Действия", key: "actions", width: 150, align: "right" as const,
       render: (_: any, record: ProjectConfig) => (
         <Space>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          <Popconfirm title="Удалить токен проекта?" description="Проект будет работать через персональный токен" onConfirm={async () => {
+            const res = await removeProjectToken(record.id);
+            if (res.ok) { message.success("Токен удалён"); load(); } else { message.error(res.error!); }
+          }} okText="Да" cancelText="Нет">
+            <Button type="link" size="small" icon={<KeyOutlined />} />
+          </Popconfirm>
           <Popconfirm title="Удалить проект?" onConfirm={() => handleDelete(record.id)} okText="Да" cancelText="Нет">
             <Button type="link" size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>

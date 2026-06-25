@@ -267,3 +267,23 @@ export async function fetchAuditLog(limit?: number, offset?: number, action?: st
   if (action) qs.set("action", action);
   return fetchJson(`/v1/audit-log${qs.toString() ? "?" + qs.toString() : ""}`);
 }
+
+export async function fetchPersonalTokens(): Promise<ApiResponse<any[]>> {
+  return fetchJson("/v1/personal-tokens");
+}
+
+export async function createPersonalToken(data: { base_url: string; token: string; label?: string }): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/personal-tokens", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function deletePersonalToken(id: number): Promise<ApiResponse<{ deleted: boolean }>> {
+  return fetchJson(`/v1/personal-tokens/${id}`, { method: "DELETE" });
+}
+
+export async function scanProjects(tokenId: number): Promise<ApiResponse<{ added: number; skipped: number; total: number }>> {
+  return fetchJson(`/v1/personal-tokens/${tokenId}/scan`, { method: "POST" });
+}
+
+export async function removeProjectToken(projectId: number): Promise<ApiResponse<{ cleared: boolean }>> {
+  return fetchJson(`/v1/projects/${projectId}/remove-token`, { method: "PUT" });
+}
