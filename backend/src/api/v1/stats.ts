@@ -34,7 +34,7 @@ export async function batchStatsRoutes(app: FastifyInstance) {
     const results: ProjectStats[] = [];
 
     for (const proj of projects) {
-      const token = decrypt(proj.token_encrypted);
+      const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
       const client = new GitLabClient({
         token,
         baseUrl: proj.base_url,

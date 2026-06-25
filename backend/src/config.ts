@@ -5,6 +5,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   GITLAB_BASE_URL: z.string().url().default("https://gitlab.com/api/v4"),
+  GITLAB_PERSONAL_TOKEN: z.string().optional(),
   PORT: z.coerce.number().int().positive().default(3000),
   HOST: z.string().default("0.0.0.0"),
   REQUEST_TIMEOUT: z.coerce.number().int().positive().default(30000),

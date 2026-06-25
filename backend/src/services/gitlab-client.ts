@@ -20,7 +20,7 @@ export class GitLabClient {
 
   constructor(options: { token: string; baseUrl?: string }) {
     const env = getEnv();
-    this.token = options.token;
+    this.token = options.token || env.GITLAB_PERSONAL_TOKEN || "";
     this.baseUrl = options.baseUrl || env.GITLAB_BASE_URL;
     this.timeout = env.REQUEST_TIMEOUT;
     this.rps = env.RATE_LIMIT_RPS;

@@ -34,7 +34,7 @@ export async function collectProject(
   const proj = projResult.rows[0];
   if (!proj) throw new Error(`Project ${projectId} not found`);
 
-  const token = decrypt(proj.token_encrypted);
+  const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
   const client = new GitLabClient({ token, baseUrl: proj.base_url });
 
   const projectData = await client.getProject(proj.path);
