@@ -104,7 +104,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const topContributors = Array.from(contribMap.values()).sort((a, b) => b.changes - a.changes).slice(0, 10);
 
     const langResult = await pool.query(
-      `SELECT language, SUM(percentage)::numeric(5,2) as total_pct
+      `SELECT language, ROUND(SUM(percentage), 2) as total_pct
        FROM project_languages WHERE project_id = ANY($1)
        GROUP BY language ORDER BY total_pct DESC LIMIT 10`,
       [projectIds]
