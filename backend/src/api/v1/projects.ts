@@ -72,6 +72,12 @@ export async function projectsRoutes(app: FastifyInstance) {
       return reply.status(400).send({ ok: false, error: "Nothing to update" });
     }
 
+    const auditFields = updates.map((u, i) => {
+      const field = u.replace(/ = \$\d+/, "");
+      const val = values[i];
+      return `${field}=${typeof val === "object" ? JSON.stringify(val) : String(val).slice(0, 100)}`;
+    });
+
     updates.push(`updated_at = now()`);
     values.push(id);
 
@@ -81,7 +87,7 @@ export async function projectsRoutes(app: FastifyInstance) {
       values
     );
     const user = (request as any).user as JwtPayload;
-    logAuditAction(user.userId, "project_update", `Updated project ${id}: ${updates.map((u) => u.replace(/ = \$\d+/, "")).join(", ")}`);
+    logAuditAction(user.userId, "project_update", `Updated project ${id}: ${auditFields.join("; ")}`);
     return { ok: true, data: result.rows[0] };
   });
 

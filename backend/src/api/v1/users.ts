@@ -81,6 +81,12 @@ export async function userManagementRoutes(app: FastifyInstance) {
       return reply.status(400).send({ ok: false, error: "Nothing to update" });
     }
 
+    const auditFields = updates.map((u, i) => {
+      const field = u.replace(/ = \$\d+/, "");
+      const val = values[i];
+      return `${field}=${typeof val === "object" ? JSON.stringify(val) : String(val).slice(0, 100)}`;
+    });
+
     values.push(id);
     const result = await pool.query(
       `UPDATE app_users SET ${updates.join(", ")} WHERE id = $${idx}
@@ -88,7 +94,7 @@ export async function userManagementRoutes(app: FastifyInstance) {
       values
     );
     const admin = (request as any).user as JwtPayload;
-    logAuditAction(admin.userId, "user_update", `Updated user ${id}: ${updates.map((u) => u.replace(/ = \$\d+/, "")).join(", ")}`);
+    logAuditAction(admin.userId, "user_update", `Updated user ${id}: ${auditFields.join("; ")}`);
     return { ok: true, data: result.rows[0] };
 
     return { ok: true, data: result.rows[0] };
