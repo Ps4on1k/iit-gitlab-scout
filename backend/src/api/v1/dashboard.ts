@@ -38,8 +38,9 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const branchResult = await pool.query(
       `SELECT pb.merged, pb.last_commit_date, p.label as project_label
        FROM project_branches pb JOIN projects p ON p.id = pb.project_id
-       WHERE pb.project_id = ANY($1)`,
-      [projectIds]
+       WHERE pb.project_id = ANY($1)
+         AND pb.last_commit_date >= $2`,
+      [projectIds, date90]
     );
 
     const now = Date.now();
