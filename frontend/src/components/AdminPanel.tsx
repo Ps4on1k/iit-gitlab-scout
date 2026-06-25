@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Table, Button, Modal, Form, Input, Select, Space, Typography, Popconfirm, message, Tag, Collapse } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined } from "@ant-design/icons";
-import { fetchProjects, createProject, updateProject, deleteProject, importProjectsYaml } from "../api/client";
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { fetchProjects, createProject, updateProject, deleteProject, importProjectsYaml, exportProjects } from "../api/client";
 import { getTagColor } from "../utils/tagColors";
 import type { ProjectConfig } from "../types";
 
@@ -113,12 +113,24 @@ export function AdminPanel() {
     },
   ];
 
+  const handleExport = async () => {
+    const res = await exportProjects();
+    if (res.ok) {
+      const blob = new Blob(["\uFEFF" + res.data!.yaml], { type: "text/yaml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "projects.yaml"; a.click();
+      URL.revokeObjectURL(url);
+      message.success("YAML экспортирован");
+    } else { message.error(res.error!); }
+  };
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>Управление проектами</Typography.Title>
         <Space>
           <Button icon={<UploadOutlined />} onClick={() => setYamlModalOpen(true)}>Импорт YAML</Button>
+          <Button icon={<DownloadOutlined />} onClick={handleExport}>Экспорт YAML</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Добавить проект</Button>
         </Space>
       </div>

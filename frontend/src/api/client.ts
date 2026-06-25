@@ -216,6 +216,10 @@ export async function importContributorDirectory(yaml: string): Promise<ApiRespo
   return fetchJson("/v1/contributor-directory/import", { method: "POST", body: JSON.stringify({ yaml }) });
 }
 
+export async function exportProjects(): Promise<ApiResponse<{ yaml: string }>> {
+  return fetchJson("/v1/projects/export");
+}
+
 export async function exportContributorDirectory(): Promise<ApiResponse<{ yaml: string }>> {
   return fetchJson("/v1/contributor-directory/export");
 }

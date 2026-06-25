@@ -105,6 +105,23 @@ export async function projectsRoutes(app: FastifyInstance) {
     return { ok: true, data: { deleted: true } };
   });
 
+  app.get("/api/v1/projects/export", { preHandler: [requireAdmin] }, async () => {
+    const pool = getPool();
+    const result = await pool.query("SELECT path, label, tags, base_url, description FROM projects ORDER BY label");
+    const data = {
+      projects: result.rows.map((r: any) => ({
+        path: r.path,
+        label: r.label,
+        token: "",
+        tags: r.tags || [],
+        base_url: r.base_url || "",
+        description: r.description || "",
+      })),
+    };
+    const yaml = yamlLib.dump(data, { lineWidth: -1 });
+    return { ok: true, data: { yaml } };
+  });
+
   app.get<{
     Params: { id: string };
   }>("/api/v1/projects/:id/token", { preHandler: [requireAdmin] }, async (request, reply) => {
