@@ -281,7 +281,7 @@ export async function deletePersonalToken(id: number): Promise<ApiResponse<{ del
 }
 
 export async function scanProjects(tokenId: number): Promise<ApiResponse<{ added: number; skipped: number; total: number }>> {
-  return fetchJson(`/v1/personal-tokens/${tokenId}/scan`, { method: "POST" });
+  return fetchJson(`/v1/personal-tokens/${tokenId}/scan`, { method: "POST", body: "{}" });
 }
 
 export async function removeProjectToken(projectId: number): Promise<ApiResponse<{ cleared: boolean }>> {
