@@ -1,5 +1,5 @@
 import { getPool } from "../db/pool.js";
-import { decrypt } from "../utils/crypto.js";
+import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
 
 interface GitLabLanguage {
@@ -14,20 +14,14 @@ export interface CollectStackResult {
 
 export async function collectStack(projectId: number): Promise<CollectStackResult> {
   const pool = getPool();
-  const projResult = await pool.query(
-    "SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1",
-    [projectId]
-  );
-  const proj = projResult.rows[0];
-  if (!proj) throw new Error(`Project ${projectId} not found`);
+  const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
 
-  const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
-  const client = new GitLabClient({ token, baseUrl: proj.base_url });
+  const client = new GitLabClient({ token, baseUrl });
 
   let languages: { language: string; percentage: number }[] = [];
   try {
     const langData = await client.request<GitLabLanguage>(
-      `/projects/${encodeURIComponent(proj.path)}/languages`
+      `/projects/${encodeURIComponent(projectPath)}/languages`
     );
     languages = Object.entries(langData)
       .map(([language, percentage]) => ({
@@ -47,5 +41,5 @@ export async function collectStack(projectId: number): Promise<CollectStackResul
     );
   }
 
-  return { project_id: projectId, path: proj.path, languages };
+  return { project_id: projectId, path: projectPath, languages };
 }

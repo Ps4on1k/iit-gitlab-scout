@@ -1,5 +1,5 @@
 import { getPool } from "../db/pool.js";
-import { decrypt } from "../utils/crypto.js";
+import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
 import { upsertCommit, refreshContributors } from "../db/contributor-repository.js";
 
@@ -25,18 +25,12 @@ interface GitLabCommitDetail {
 
 export async function collectBranches(projectId: number): Promise<{ total: number; active: number; stale: number; merged: number; protected: number; unprotected: number }> {
   const pool = getPool();
-  const projResult = await pool.query(
-    "SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1",
-    [projectId]
-  );
-  const proj = projResult.rows[0];
-  if (!proj) throw new Error(`Project ${projectId} not found`);
+  const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
 
-  const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
-  const client = new GitLabClient({ token, baseUrl: proj.base_url });
+  const client = new GitLabClient({ token, baseUrl });
 
   const branches = await client.requestPaginated<GitLabBranch>(
-    `/projects/${encodeURIComponent(proj.path)}/repository/branches?per_page=100`
+    `/projects/${encodeURIComponent(projectPath)}/repository/branches?per_page=100`
   );
 
   // Delete existing branches for this project before re-inserting
@@ -66,7 +60,7 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
     if (branch.commit?.id) {
       try {
         const detail = await client.request<GitLabCommitDetail>(
-          `/projects/${encodeURIComponent(proj.path)}/repository/commits/${branch.commit.id}`
+          `/projects/${encodeURIComponent(projectPath)}/repository/commits/${branch.commit.id}`
         );
         additions = detail.stats?.additions || 0;
         deletions = detail.stats?.deletions || 0;

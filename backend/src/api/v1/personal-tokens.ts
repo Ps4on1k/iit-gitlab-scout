@@ -4,6 +4,14 @@ import { getPool } from "../../db/pool.js";
 import { encrypt, decrypt } from "../../utils/crypto.js";
 import { GitLabClient } from "../../services/gitlab-client.js";
 
+function normalizeBaseUrl(url: string): string {
+  let u = url.trim().replace(/\/+$/, "");
+  if (!u.includes("/api/v4")) {
+    u = u + "/api/v4";
+  }
+  return u;
+}
+
 export async function personalTokenRoutes(app: FastifyInstance) {
   // List personal tokens
   app.get("/api/v1/personal-tokens", { preHandler: [requireAdmin] }, async () => {
@@ -22,11 +30,12 @@ export async function personalTokenRoutes(app: FastifyInstance) {
     if (!base_url || !token) {
       return reply.status(400).send({ ok: false, error: "base_url and token are required" });
     }
+    const normalizedUrl = normalizeBaseUrl(base_url);
     const encrypted = encrypt(token);
     const pool = getPool();
     const result = await pool.query(
       "INSERT INTO personal_tokens (base_url, token_encrypted, label) VALUES ($1, $2, $3) RETURNING id, base_url, label, created_at",
-      [base_url, encrypted, label || ""]
+      [normalizedUrl, encrypted, label || ""]
     );
     return { ok: true, data: result.rows[0] };
   });
@@ -61,7 +70,7 @@ export async function personalTokenRoutes(app: FastifyInstance) {
     const client = new GitLabClient({ token, baseUrl: pt.base_url });
 
     try {
-      const glProjects = await client.request<any[]>("/projects?membership=true&per_page=100&order_by=id&sort=asc");
+      const glProjects = await client.requestPaginated<any>("/projects?membership=true&per_page=100&order_by=id&sort=asc");
 
       let added = 0;
       let skipped = 0;

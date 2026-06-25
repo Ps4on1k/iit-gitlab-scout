@@ -3,6 +3,7 @@ import { getPool } from "../../db/pool.js";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { encrypt, decrypt } from "../../utils/crypto.js";
 import { logAuditAction } from "../../utils/audit.js";
+import { resolveBaseUrl } from "../../utils/project-token.js";
 import yamlLib from "js-yaml";
 
 export async function projectsRoutes(app: FastifyInstance) {
@@ -27,11 +28,12 @@ export async function projectsRoutes(app: FastifyInstance) {
     const pool = getPool();
 
     try {
+      const normalizedBase = resolveBaseUrl(base_url || "https://gitlab.com/api/v4");
       const result = await pool.query(
         `INSERT INTO projects (path, label, token_encrypted, base_url, tags, description)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, path, label, tags, base_url, description, created_at`,
-        [path, label, encrypted, base_url || "https://gitlab.com/api/v4", tags || [], description || ""]
+        [path, label, encrypted, normalizedBase, tags || [], description || ""]
       );
       const user = (request as any).user as JwtPayload;
       logAuditAction(user.userId, "project_create", `Created project: ${label} (${path})`);
@@ -64,7 +66,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     if (path !== undefined) { updates.push(`path = $${idx++}`); values.push(path); }
     if (label !== undefined) { updates.push(`label = $${idx++}`); values.push(label); }
     if (token !== undefined && token.trim().length > 0) { updates.push(`token_encrypted = $${idx++}`); values.push(encrypt(token)); }
-    if (base_url !== undefined) { updates.push(`base_url = $${idx++}`); values.push(base_url); }
+    if (base_url !== undefined) { updates.push(`base_url = $${idx++}`); values.push(resolveBaseUrl(base_url)); }
     if (tags !== undefined) { updates.push(`tags = $${idx++}`); values.push(tags); }
     if (description !== undefined) { updates.push(`description = $${idx++}`); values.push(description); }
 

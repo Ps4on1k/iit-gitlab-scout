@@ -1,18 +1,12 @@
 import { getPool } from "../db/pool.js";
-import { decrypt } from "../utils/crypto.js";
+import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
 
 export async function collectDependenciesAudit(projectId: number): Promise<{ total: number; outdated: number }> {
   const pool = getPool();
-  const projResult = await pool.query(
-    "SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1",
-    [projectId]
-  );
-  const proj = projResult.rows[0];
-  if (!proj) throw new Error(`Project ${projectId} not found`);
+  const { token, baseUrl } = await resolveProjectToken(projectId);
 
-  const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
-  const client = new GitLabClient({ token, baseUrl: proj.base_url });
+  const client = new GitLabClient({ token, baseUrl });
 
   // Get tree to find dependency files
   const tree = await client.getTree(projectId, "", "main", true);

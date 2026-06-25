@@ -1,5 +1,5 @@
 import { getPool } from "../db/pool.js";
-import { decrypt } from "../utils/crypto.js";
+import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
 
 interface GitLabEvent {
@@ -23,15 +23,9 @@ export interface ActivityDay {
 
 export async function collectActivity(projectId: number, since?: string, until?: string): Promise<ActivityDay[]> {
   const pool = getPool();
-  const projResult = await pool.query(
-    "SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1",
-    [projectId]
-  );
-  const proj = projResult.rows[0];
-  if (!proj) throw new Error(`Project ${projectId} not found`);
+  const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
 
-  const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
-  const client = new GitLabClient({ token, baseUrl: proj.base_url });
+  const client = new GitLabClient({ token, baseUrl });
 
   const sinceDate = since || "2020-01-01";
   const untilDate = until || new Date().toISOString().slice(0, 10);
@@ -40,7 +34,7 @@ export async function collectActivity(projectId: number, since?: string, until?:
   const commitsByDay: Record<string, number> = {};
   try {
     const events = await client.requestPaginated<GitLabEvent>(
-      `/projects/${encodeURIComponent(proj.path)}/events?action=pushed&after=${sinceDate}&before=${untilDate}&per_page=100`
+      `/projects/${encodeURIComponent(projectPath)}/events?action=pushed&after=${sinceDate}&before=${untilDate}&per_page=100`
     );
     for (const event of events) {
       if (event.push_data?.commit_count) {
@@ -56,7 +50,7 @@ export async function collectActivity(projectId: number, since?: string, until?:
   const mrsByDay: Record<string, number> = {};
   try {
     const mrs = await client.requestPaginated<any>(
-      `/projects/${encodeURIComponent(proj.path)}/merge_requests?state=all&updated_after=${sinceDate}T00:00:00Z&updated_before=${untilDate}T23:59:59Z&per_page=100`
+      `/projects/${encodeURIComponent(projectPath)}/merge_requests?state=all&updated_after=${sinceDate}T00:00:00Z&updated_before=${untilDate}T23:59:59Z&per_page=100`
     );
     for (const mr of mrs) {
       const day = (mr.merged_at || mr.created_at || "").slice(0, 10);
@@ -72,7 +66,7 @@ export async function collectActivity(projectId: number, since?: string, until?:
   const pipelinesByDay: Record<string, number> = {};
   try {
     const pipelines = await client.requestPaginated<GitLabPipeline>(
-      `/projects/${encodeURIComponent(proj.path)}/pipelines?updated_after=${sinceDate}T00:00:00Z&updated_before=${untilDate}T23:59:59Z&per_page=100`
+      `/projects/${encodeURIComponent(projectPath)}/pipelines?updated_after=${sinceDate}T00:00:00Z&updated_before=${untilDate}T23:59:59Z&per_page=100`
     );
     for (const p of pipelines) {
       const day = (p.created_at || "").slice(0, 10);

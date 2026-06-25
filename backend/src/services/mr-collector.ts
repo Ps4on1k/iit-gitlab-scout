@@ -1,5 +1,5 @@
 import { getPool } from "../db/pool.js";
-import { decrypt } from "../utils/crypto.js";
+import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
 
 interface GitLabMR {
@@ -25,15 +25,11 @@ interface GitLabApproval {
 
 export async function collectMergeRequests(projectId: number): Promise<{ total: number; merged: number; opened: number; closed: number }> {
   const pool = getPool();
-  const projResult = await pool.query("SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1", [projectId]);
-  const proj = projResult.rows[0];
-  if (!proj) throw new Error(`Project ${projectId} not found`);
-
-  const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
-  const client = new GitLabClient({ token, baseUrl: proj.base_url });
+  const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
+  const client = new GitLabClient({ token, baseUrl });
 
   const mrs = await client.requestPaginated<GitLabMR>(
-    `/projects/${encodeURIComponent(proj.path)}/merge_requests?state=all&per_page=100&order_by=created_at&sort=desc`
+    `/projects/${encodeURIComponent(projectPath)}/merge_requests?state=all&per_page=100&order_by=created_at&sort=desc`
   );
 
   await pool.query("DELETE FROM project_merge_requests WHERE project_id = $1", [projectId]);
@@ -49,7 +45,7 @@ export async function collectMergeRequests(projectId: number): Promise<{ total: 
     let reviewerNames: string[] = [];
     try {
       const approval = await client.request<GitLabApproval>(
-        `/projects/${encodeURIComponent(proj.path)}/merge_requests/${mr.iid}/approvals`
+        `/projects/${encodeURIComponent(projectPath)}/merge_requests/${mr.iid}/approvals`
       );
       if (approval) {
         approvals = approval.approved_by?.length || 0;

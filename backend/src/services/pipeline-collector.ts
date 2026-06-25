@@ -1,5 +1,5 @@
 import { getPool } from "../db/pool.js";
-import { decrypt } from "../utils/crypto.js";
+import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
 
 interface GitLabPipeline {
@@ -16,18 +16,12 @@ interface GitLabPipeline {
 
 export async function collectPipelines(projectId: number): Promise<{ total: number; success: number; failed: number; running: number }> {
   const pool = getPool();
-  const projResult = await pool.query(
-    "SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1",
-    [projectId]
-  );
-  const proj = projResult.rows[0];
-  if (!proj) throw new Error(`Project ${projectId} not found`);
+  const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
 
-  const token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
-  const client = new GitLabClient({ token, baseUrl: proj.base_url });
+  const client = new GitLabClient({ token, baseUrl });
 
   const pipelines = await client.requestPaginated<GitLabPipeline>(
-    `/projects/${encodeURIComponent(proj.path)}/pipelines?per_page=100&order_by=id&sort=desc`
+    `/projects/${encodeURIComponent(projectPath)}/pipelines?per_page=100&order_by=id&sort=desc`
   );
 
   let success = 0, failed = 0, running = 0;
