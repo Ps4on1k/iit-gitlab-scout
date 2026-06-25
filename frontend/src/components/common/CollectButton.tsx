@@ -17,13 +17,13 @@ interface Props {
 const DEBOUNCE_MS = 3000;
 
 export function CollectButton({ collector, projectIds, dateFrom, dateTo, onComplete, color = "#667eea", label = "Собрать" }: Props) {
-  const { activeJobs, isAnyRunning, stuckJobs, poll } = useCollectStatus(onComplete);
+  const { activeJobs, isAnyRunning, stuckJobs, poll, ready } = useCollectStatus(onComplete);
   const [localStarting, setLocalStarting] = useState(false);
   const lastClickRef = useRef(0);
 
   const currentJob = activeJobs.find((j) => j.collector === collector && j.status === "running");
   const backendCollecting = !!currentJob;
-  const isDisabled = localStarting || isAnyRunning;
+  const isDisabled = !ready || localStarting || isAnyRunning;
 
   const handleClick = async () => {
     const now = Date.now();
