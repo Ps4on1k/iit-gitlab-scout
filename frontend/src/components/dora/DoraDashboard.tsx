@@ -202,21 +202,51 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
             </Col>
           </Row>
 
-          <Row gutter={12} style={{ marginBottom: 16 }}>
+          <Row gutter={12} style={{ marginBottom: 16 }} align="stretch">
             <Col span={4}><Card size="small"><Statistic title="Всего" value={s.total} /></Card></Col>
             <Col span={4}><Card size="small"><Statistic title="Успешных" value={s.success} valueStyle={{ color: "#3f8600" }} /></Card></Col>
             <Col span={4}><Card size="small"><Statistic title="Провалено" value={s.failed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
             <Col span={4}><Card size="small"><Statistic title="Отменено" value={s.canceled} valueStyle={{ color: "#999" }} /></Card></Col>
-            <Col span={4}><Card size="small"><Statistic title="Другие" value={s.other || 0} valueStyle={{ color: "#999", fontSize: 14 }}
-              suffix={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>({s.total > 0 ? Math.round(((s.total - s.success - s.failed - s.canceled) / s.total) * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Другие" value={s.other || 0} valueStyle={{ color: "#999" }}
+              suffix={<span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>({s.total > 0 ? Math.round(((s.total - s.success - s.failed - s.canceled) / s.total) * 100) : 0}%)</span>} /></Card></Col>
             <Col span={4}><Card size="small"><Statistic title="Ср. деплоев/день" value={s.deployFrequency} /></Card></Col>
           </Row>
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={16}>
-              <Card title="Деплои" size="small" style={CARD_STYLE}>
+              <Card title="Деплои" size="small" style={CARD_STYLE}
+                extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>успешные / провалены</span>}>
                 {trend.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о деплоях" /> : (
-                  <MiniBarChart data={chartData} height={140} valueKey="deploys" color="#667eea" label="деплоев" />
+                  <div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 140, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
+                      {chartData.map((t: any, i: number) => {
+                        const maxVal = Math.max(1, ...chartData.map((c: any) => c.deploys));
+                        return (
+                          <div key={i} title={`${t.date}: ${t.deploys} (${t.success} OK, ${t.failed} FAIL)`}
+                            style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
+                            <div style={{ display: "flex", flexDirection: "column", height: `${(t.deploys / maxVal) * 100}%` }}>
+                              {t.failed > 0 && <div style={{ flex: t.failed, background: "#cf1322", borderRadius: "2px 2px 0 0" }} />}
+                              {t.success > 0 && <div style={{ flex: t.success, background: "#3f8600" }} />}
+                              {t.deploys - t.success - t.failed > 0 && <div style={{ flex: t.deploys - t.success - t.failed, background: "#d9d9d9" }} />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ position: "relative", height: 18, marginTop: 2 }}>
+                      {chartData.map((d: any, i: number) => {
+                        const step = Math.max(1, Math.floor(chartData.length / 6));
+                        if (i % step !== 0 && i !== chartData.length - 1) return null;
+                        const leftPct = (i / Math.max(1, chartData.length - 1)) * 100;
+                        return <span key={i} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "var(--ant-color-textTertiary)", whiteSpace: "nowrap" }}>{d.date.slice(5)}</span>;
+                      })}
+                    </div>
+                    <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "var(--ant-color-textTertiary)" }}>
+                      <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#3f8600", marginRight: 4, verticalAlign: "middle" }} />Успешные</span>
+                      <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#cf1322", marginRight: 4, verticalAlign: "middle" }} />Провалены</span>
+                      <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#d9d9d9", marginRight: 4, verticalAlign: "middle" }} />Другие</span>
+                    </div>
+                  </div>
                 )}
               </Card>
             </Col>
