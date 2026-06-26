@@ -126,6 +126,64 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
       [projectIds]
     );
 
+    const dailyMetrics: Record<string, { deploys: number; success: number; failed: number; leadTimes: number[]; mttrMinutes: number[] }> = {};
+    for (const d of deploys) {
+      const day = new Date(d.created_at).toISOString().slice(0, 10);
+      if (!dailyMetrics[day]) dailyMetrics[day] = { deploys: 0, success: 0, failed: 0, leadTimes: [], mttrMinutes: [] };
+      dailyMetrics[day].deploys++;
+      if (d.status === "success") dailyMetrics[day].success++;
+      if (d.status === "failed" || d.pipeline_status === "failed") dailyMetrics[day].failed++;
+
+      if (d.status === "success") {
+        let commitDate: string | null = null;
+        if (d.raw_json?.deployable?.commit?.committed_date) commitDate = d.raw_json.deployable.commit.committed_date;
+        else if (d.raw_json?.deployable?.pipeline?.created_at) commitDate = d.raw_json.deployable.pipeline.created_at;
+        if (commitDate) {
+          const lt = (new Date(d.created_at).getTime() - new Date(commitDate).getTime()) / 1000;
+          if (lt >= 0 && lt < 30 * 24 * 3600) dailyMetrics[day].leadTimes.push(lt);
+        }
+      }
+    }
+
+    const sortedDays = Object.keys(dailyMetrics).sort();
+    let failStart: Date | null = null;
+    for (const day of sortedDays) {
+      const dm = dailyMetrics[day];
+      for (let i = 0; i < dm.failed; i++) {
+        failStart = new Date(day);
+      }
+      if (dm.success > 0 && failStart) {
+        const restore = (new Date(day).getTime() - failStart.getTime()) / (1000 * 60);
+        if (restore > 0 && restore < 24 * 60) dm.mttrMinutes.push(restore);
+        failStart = null;
+      }
+    }
+
+    const dailyTrend = sortedDays.map((day) => {
+      const dm = dailyMetrics[day];
+      const avgLt = dm.leadTimes.length > 0 ? Math.round(dm.leadTimes.reduce((a, b) => a + b, 0) / dm.leadTimes.length) : null;
+      const avgMttr = dm.mttrMinutes.length > 0 ? Math.round(dm.mttrMinutes.reduce((a, b) => a + b, 0) / dm.mttrMinutes.length) : null;
+      const failRate = dm.deploys > 0 ? Math.round((dm.failed / dm.deploys) * 100) : null;
+      return { date: day, deploys: dm.deploys, success: dm.success, failed: dm.failed, failureRate: failRate, avgLeadTimeSec: avgLt, avgMttrMin: avgMttr };
+    });
+
+    const weeklyMap: Record<string, { deploys: number; success: number; failed: number; leadTimes: number[]; mttrMinutes: number[] }> = {};
+    for (const entry of dailyTrend) {
+      const d = new Date(entry.date);
+      const weekStart = new Date(d);
+      weekStart.setDate(d.getDate() - d.getDay());
+      const wk = weekStart.toISOString().slice(0, 10);
+      if (!weeklyMap[wk]) weeklyMap[wk] = { deploys: 0, success: 0, failed: 0, leadTimes: [], mttrMinutes: [] };
+      weeklyMap[wk].deploys += entry.deploys;
+      weeklyMap[wk].success += entry.success;
+      weeklyMap[wk].failed += entry.failed;
+    }
+    const weeklyTrend = Object.entries(weeklyMap).sort(([a], [b]) => a.localeCompare(b)).map(([week, v]) => {
+      const avgLt = v.leadTimes.length > 0 ? Math.round(v.leadTimes.reduce((a, b) => a + b, 0) / v.leadTimes.length) : null;
+      const failRate = v.deploys > 0 ? Math.round((v.failed / v.deploys) * 100) : null;
+      return { date: week, deploys: v.deploys, success: v.success, failed: v.failed, failureRate: failRate, avgLeadTimeSec: avgLt, avgMttrMin: null };
+    });
+
     return {
       ok: true,
       data: {
@@ -140,6 +198,8 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
           avgMttrMin: avgMttr,
         },
         trend,
+        dailyTrend,
+        weeklyTrend,
         byProject: byProjectList,
         environments: environments.rows.map((r: any) => r.environment),
         dateRange: { from: dateFrom, to: dateTo },

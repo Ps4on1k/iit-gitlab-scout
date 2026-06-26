@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ConfigProvider, Layout, Menu, Button, Typography } from "antd";
 import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined, BulbOutlined, BulbFilled } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -48,13 +48,52 @@ function getInitialDarkMode(): boolean {
   try { return localStorage.getItem("darkMode") === "true"; } catch { return false; }
 }
 
+function readUrlState(): { tab: TabKey; analyticsTab: AnalyticsTab; filters: Partial<GlobalFilters> } {
+  const params = new URLSearchParams(window.location.search);
+  const tab = (params.get("tab") as TabKey) || "dashboard";
+  const aTab = (params.get("view") as AnalyticsTab) || "contributors";
+  const filters: Partial<GlobalFilters> = {};
+  const projectIds = params.get("projects");
+  if (projectIds) filters.projectIds = projectIds.split(",").map(Number).filter(Boolean);
+  const tags = params.get("tags");
+  if (tags) filters.tags = tags.split(",").filter(Boolean);
+  const contributors = params.get("contributors");
+  if (contributors) filters.contributors = contributors.split(",").filter(Boolean);
+  const dateFrom = params.get("dateFrom");
+  if (dateFrom) filters.dateFrom = dateFrom;
+  const dateTo = params.get("dateTo");
+  if (dateTo) filters.dateTo = dateTo;
+  return { tab, analyticsTab: aTab, filters };
+}
+
+function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalFilters) {
+  const params = new URLSearchParams();
+  params.set("tab", tab);
+  if (tab === "analytics") {
+    params.set("view", analyticsTab);
+    if (filters.projectIds.length > 0) params.set("projects", filters.projectIds.join(","));
+    if (filters.tags.length > 0) params.set("tags", filters.tags.join(","));
+    if (filters.contributors.length > 0) params.set("contributors", filters.contributors.join(","));
+    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+    if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  }
+  const qs = params.toString();
+  const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+  window.history.replaceState(null, "", newUrl);
+}
+
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<TabKey>("dashboard");
-  const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>("contributors");
-  const [filters, setFilters] = useState<GlobalFilters>(defaultFilters);
+  const urlState = useRef(readUrlState());
+  const [tab, setTab] = useState<TabKey>(urlState.current.tab);
+  const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>(urlState.current.analyticsTab);
+  const [filters, setFilters] = useState<GlobalFilters>(() => ({
+    ...defaultFilters,
+    ...urlState.current.filters,
+  }));
   const [darkMode, setDarkMode] = useState<boolean>(getInitialDarkMode);
+  const isInitialLoad = useRef(true);
 
   useEffect(() => {
     getMe().then((res) => { if (res.ok) setUser(res.data!); setLoading(false); });
@@ -64,10 +103,14 @@ export default function App() {
     try { localStorage.setItem("darkMode", String(darkMode)); } catch {}
   }, [darkMode]);
 
-  // Clear data cache when filters change to ensure fresh data
   useEffect(() => {
     clearCache();
   }, [filters]);
+
+  useEffect(() => {
+    if (isInitialLoad.current) { isInitialLoad.current = false; return; }
+    writeUrlState(tab, analyticsTab, filters);
+  }, [tab, analyticsTab, filters]);
 
   const handleLogout = () => { clearToken(); setUser(null); };
 
@@ -79,6 +122,8 @@ export default function App() {
       ...prev,
       contributors: prev.contributors.includes(resolved) ? prev.contributors : [...prev.contributors, resolved],
     }));
+    setTab("analytics");
+    setAnalyticsTab("contributors");
   }, []);
 
   const themeConfig = darkMode ? darkThemeConfig : lightThemeConfig;
@@ -100,7 +145,7 @@ export default function App() {
     { key: "contributors", label: "Контрибьюторы" },
     { key: "activity", label: "Активность" },
     { key: "branches", label: "Ветки" },
-    { key: "pipelines", label: <span>CI/CD <span style={{ fontSize: 10, background: "rgba(255,255,255,0.15)", padding: "1px 6px", borderRadius: 4, marginLeft: 4 }}>Beta</span></span> },
+    { key: "pipelines", label: "CI/CD" },
     { key: "dora", label: <span>DORA</span> },
   ];
 
@@ -111,7 +156,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v2.0.0</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v2.1.0</span>
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
             onClick={({ key }) => setTab(key as TabKey)}

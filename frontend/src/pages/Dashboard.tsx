@@ -112,7 +112,8 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           </Card>
         </Col>
         <Col span={10}>
-          <Card title="Здоровье проектов (top 10)" size="small" style={CARD_STYLE}>
+          <Card title="Здоровье проектов (top 10)" size="small" style={CARD_STYLE}
+            extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>% активных веток от не-замерженных</span>}>
             {projectHealth.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
                 {projectHealth.sort((a: any, b: any) => a.healthPct - b.healthPct).slice(0, 8).map((p: any) => (
@@ -146,7 +147,8 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="MR по проектам (top 10)" size="small" style={CARD_STYLE}>
+          <Card title="MR по проектам (top 10)" size="small" style={CARD_STYLE}
+            extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>открытых / замерженных / закрытых</span>}>
             {(mrByProject || []).length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
                 {mrByProject.map((p: any) => {
@@ -172,7 +174,8 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="Пайплайны (top 10)" size="small" style={CARD_STYLE}>
+          <Card title="Пайплайны (top 10)" size="small" style={CARD_STYLE}
+            extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>успешных / всего (%успеха)</span>}>
             {pipelinesByProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных" /> : (
               <div>
                 {pipelinesByProject.map((p: any) => {

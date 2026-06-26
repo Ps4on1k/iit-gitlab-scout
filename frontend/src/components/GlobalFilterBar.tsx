@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { DatePicker, Tag, Button, Input, Select } from "antd";
-import { ReloadOutlined, CloseCircleFilled } from "@ant-design/icons";
+import { DatePicker, Tag, Button, Input, Select, Modal, Typography, message } from "antd";
+import { ReloadOutlined, CloseCircleFilled, ShareAltOutlined, CopyOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fetchProjects, fetchContributorsList } from "../api/client";
 import { getTagColor } from "../utils/tagColors";
@@ -34,6 +34,7 @@ const defaultFilters: GlobalFilters = {
 export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }: Props) {
   const [allProjects, setAllProjects] = useState<ProjectConfig[]>([]);
   const [allContributors, setAllContributors] = useState<DbContributor[]>([]);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const projects = useMemo(() => {
     if (userRole === "admin" || !userAllowedTags || userAllowedTags.length === 0) return allProjects;
@@ -141,6 +142,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
         />
 
         <Button icon={<ReloadOutlined />} onClick={reset} style={{ flex: "0 0 auto" }}>Сбросить</Button>
+        <Button icon={<ShareAltOutlined />} onClick={() => setShareOpen(true)} style={{ flex: "0 0 auto" }}>Share</Button>
         {hasActive && (
           <span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)", flex: "0 0 auto" }}>{totalActive} активно</span>
         )}
@@ -187,6 +189,27 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
           })}
         </div>
       )}
+
+      <Modal
+        title="Поделиться ссылкой"
+        open={shareOpen}
+        onCancel={() => setShareOpen(false)}
+        footer={[
+          <Button key="copy" type="primary" icon={<CopyOutlined />} onClick={() => {
+            const url = window.location.origin + window.location.pathname + window.location.search;
+            navigator.clipboard.writeText(url).then(() => message.success("Скопировано в буфер обмена"));
+          }}>Копировать</Button>,
+        ]}
+        width={600}
+      >
+        <Typography.Paragraph copyable style={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-all", padding: 12, background: "var(--ant-color-fill-secondary)", borderRadius: 8 }}>
+          {window.location.origin + window.location.pathname + window.location.search}
+        </Typography.Paragraph>
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          Ссылка содержит текущую вкладку, фильтры и даты. При открытии — восстанавливает вид.
+          Доступ определяется ролью пользователя.
+        </Typography.Text>
+      </Modal>
     </div>
   );
 }
