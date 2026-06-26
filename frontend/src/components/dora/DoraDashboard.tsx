@@ -74,12 +74,13 @@ function MiniBarChart({ data, height = 120, valueKey, color, label }: {
   );
 }
 
-function LineChart({ data, height = 120, valueKey, color, label, unit = "" }: {
-  data: any[]; height?: number; valueKey: string; color: string; label: string; unit?: string;
+function LineChart({ data, height = 120, valueKey, color, label, unit = "", formatValue }: {
+  data: any[]; height?: number; valueKey: string; color: string; label: string; unit?: string; formatValue?: (v: number) => string;
 }) {
   const vals = data.map((d: any) => d[valueKey] ?? 0).filter((v) => v !== null);
   if (vals.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`Нет данных: ${label}`} />;
   const maxVal = Math.max(1, ...vals);
+
   const points = data.map((d: any, i: number) => {
     const v = d[valueKey];
     if (v === null || v === undefined) return null;
@@ -88,21 +89,43 @@ function LineChart({ data, height = 120, valueKey, color, label, unit = "" }: {
     return `${x},${y}`;
   }).filter(Boolean).join(" ");
 
+  const areaPoints = points ? `0,100 ${points} 100,100` : "";
+
+  const formatVal = (v: number) => formatValue ? formatValue(v) : `${v}${unit}`;
+
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((pct) => ({
+    y: 100 - pct * 100,
+    label: formatVal(Math.round(maxVal * pct)),
+  }));
+
   return (
     <div>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height, display: "block" }}>
-        <polyline points={points} fill="none" stroke={color} strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+        <defs>
+          <linearGradient id={`grad-${valueKey}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {ticks.map((t, i) => (
+          <g key={i}>
+            <line x1="0" y1={t.y} x2="100" y2={t.y} stroke="var(--ant-color-border-secondary)" strokeWidth="0.15" />
+            <text x="-1" y={t.y + 1} fill="var(--ant-color-textTertiary)" fontSize="2.8" textAnchor="end" dominantBaseline="middle">{t.label}</text>
+          </g>
+        ))}
+        <polygon points={areaPoints} fill={`url(#grad-${valueKey})`} />
+        <polyline points={points} fill="none" stroke={color} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
         {data.map((d: any, i: number) => {
           const v = d[valueKey];
           if (v === null || v === undefined) return null;
           const cx = (i / Math.max(1, data.length - 1)) * 100;
           const cy = 100 - (v / maxVal) * 100;
-          return <circle key={i} cx={`${cx}`} cy={`${cy}`} r="0.8" fill={color} opacity="0.7">
-            <title>{`${d.date}: ${v}${unit}`}</title>
+          return <circle key={i} cx={`${cx}`} cy={`${cy}`} r="1" fill={color} stroke="#fff" strokeWidth="0.3">
+            <title>{`${d.date}: ${formatVal(v)}`}</title>
           </circle>;
         })}
       </svg>
-      <div style={{ position: "relative", height: 18, marginTop: 2 }}>
+      <div style={{ position: "relative", height: 20, marginTop: 2 }}>
         {data.map((d: any, i: number) => {
           const step = Math.max(1, Math.floor(data.length / 6));
           if (i % step !== 0 && i !== data.length - 1) return null;
@@ -276,19 +299,16 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
           </Row>
 
           <Row gutter={16} style={{ marginBottom: 16 }}>
-            <Col span={8}>
-              <Card title="Lead Time (динамика)" size="small" style={CARD_STYLE}>
-                <LineChart data={chartData} height={120} valueKey="avgLeadTimeSec" color="#1677ff" label="Lead Time" unit="с" />
+            <Col span={12}>
+              <Card title="Lead Time (динамика)" size="small" style={CARD_STYLE}
+                extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>коммит → деплой</span>}>
+                <LineChart data={chartData} height={200} valueKey="avgLeadTimeSec" color="#1677ff" label="Lead Time" unit="с" formatValue={formatDuration} />
               </Card>
             </Col>
-            <Col span={8}>
-              <Card title="% Сбоев (динамика)" size="small" style={CARD_STYLE}>
-                <MiniBarChart data={chartData} height={120} valueKey="failureRate" color="#cf1322" label="% сбоев" />
-              </Card>
-            </Col>
-            <Col span={8}>
-              <Card title="MTTR (динамика)" size="small" style={CARD_STYLE}>
-                <LineChart data={chartData} height={120} valueKey="avgMttrMin" color="#fa541c" label="MTTR" unit="мин" />
+            <Col span={12}>
+              <Card title="MTTR (динамика)" size="small" style={CARD_STYLE}
+                extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>сбой → восстановление</span>}>
+                <LineChart data={chartData} height={200} valueKey="avgMttrMin" color="#fa541c" label="MTTR" unit="мин" formatValue={formatMttr} />
               </Card>
             </Col>
           </Row>
