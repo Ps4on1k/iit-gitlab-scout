@@ -119,6 +119,16 @@ export function ContributorDirectoryPanel() {
     }
   };
 
+  const handleExportFlat = () => {
+    const flat = entries.map((e) => ({ name: e.display_name, email: e.emails[0] || "" }));
+    const yaml = "contributors:\n" + flat.map((f) => `  - name: "${f.name}"\n    email: "${f.email}"`).join("\n");
+    const blob = new Blob(["\uFEFF" + yaml], { type: "text/yaml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "contributors-flat.yaml"; a.click();
+    URL.revokeObjectURL(url);
+    message.success("Плоский список экспортирован");
+  };
+
   const handleDownloadYaml = () => {
     const blob = new Blob([exportYaml], { type: "text/yaml" });
     const url = URL.createObjectURL(blob);
@@ -135,6 +145,7 @@ export function ContributorDirectoryPanel() {
         <Typography.Title level={4} style={{ margin: 0 }}>Справочник контрибьюторов</Typography.Title>
         <Space>
           <Button icon={<DownloadOutlined />} onClick={handleExport}>Экспорт YAML</Button>
+          <Button icon={<DownloadOutlined />} onClick={handleExportFlat}>Плоский список</Button>
           <Button icon={<UploadOutlined />} onClick={() => setYamlModalOpen(true)}>Импорт YAML</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Добавить</Button>
         </Space>
