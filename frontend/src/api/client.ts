@@ -230,6 +230,10 @@ export async function exportContributorDirectory(): Promise<ApiResponse<{ yaml: 
   return fetchJson("/v1/contributor-directory/export");
 }
 
+export async function fetchFlatContributors(): Promise<ApiResponse<{ contributors: { name: string; email: string }[]; total: number }>> {
+  return fetchJson("/v1/contributor-directory/flat-export");
+}
+
 export async function fetchDashboard(): Promise<ApiResponse<{
   summary: { projects: number; contributors: number; branches: number; activeBranches: number; staleBranches: number; mergedBranches: number; commits: number; activeDays: number };
   topContributors: { email: string; name: string; commits: number; changes: number }[];

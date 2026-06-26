@@ -153,4 +153,49 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     }
     return { ok: true, data: mapping };
   });
+
+  // Flat export: all unique contributors from analytics + directory names
+  app.get("/api/v1/contributor-directory/flat-export", { preHandler: [requireAdmin] }, async () => {
+    const pool = getPool();
+
+    const commitsResult = await pool.query(
+      `SELECT DISTINCT author_email FROM commits`
+    );
+
+    const profilesResult = await pool.query(
+      `SELECT DISTINCT author_email, MAX(author_name) as author_name FROM contributor_profiles GROUP BY author_email`
+    );
+
+    const branchesResult = await pool.query(
+      `SELECT DISTINCT last_commit_author_email, last_commit_author
+       FROM project_branches
+       WHERE last_commit_author_email IS NOT NULL AND last_commit_author_email != ''`
+    );
+
+    const emailToName: Record<string, string> = {};
+    const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+    for (const row of dirResult.rows) {
+      for (const email of row.emails) {
+        emailToName[email] = row.display_name;
+      }
+    }
+
+    const allEmails = new Set<string>();
+    for (const r of commitsResult.rows) allEmails.add(r.author_email);
+    for (const r of profilesResult.rows) allEmails.add(r.author_email);
+    for (const r of branchesResult.rows) if (r.last_commit_author_email) allEmails.add(r.last_commit_author_email);
+
+    const profilesMap: Record<string, string> = {};
+    for (const r of profilesResult.rows) profilesMap[r.author_email] = r.author_name;
+
+    const branchesMap: Record<string, string> = {};
+    for (const r of branchesResult.rows) if (r.last_commit_author_email) branchesMap[r.last_commit_author_email] = r.last_commit_author;
+
+    const contributors = Array.from(allEmails).map((email) => ({
+      name: emailToName[email] || profilesMap[email] || branchesMap[email] || email,
+      email,
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    return { ok: true, data: { contributors, total: contributors.length } };
+  });
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Table, Button, Modal, Form, Input, Space, Typography, Popconfirm, message, Tag, Collapse, Upload } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
-import { fetchContributorDirectory, createContributorDirectoryEntry, updateContributorDirectoryEntry, deleteContributorDirectoryEntry, importContributorDirectory, exportContributorDirectory } from "../../api/client";
+import { fetchContributorDirectory, createContributorDirectoryEntry, updateContributorDirectoryEntry, deleteContributorDirectoryEntry, importContributorDirectory, exportContributorDirectory, fetchFlatContributors } from "../../api/client";
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -119,14 +119,16 @@ export function ContributorDirectoryPanel() {
     }
   };
 
-  const handleExportFlat = () => {
-    const flat = entries.map((e) => ({ name: e.display_name, email: e.emails[0] || "" }));
+  const handleExportFlat = async () => {
+    const res = await fetchFlatContributors();
+    if (!res.ok) { message.error(res.error!); return; }
+    const flat = res.data!.contributors;
     const yaml = "contributors:\n" + flat.map((f) => `  - name: "${f.name}"\n    email: "${f.email}"`).join("\n");
     const blob = new Blob(["\uFEFF" + yaml], { type: "text/yaml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = "contributors-flat.yaml"; a.click();
     URL.revokeObjectURL(url);
-    message.success("Плоский список экспортирован");
+    message.success(`Плоский список экспортирован (${res.data!.total} записей)`);
   };
 
   const handleDownloadYaml = () => {
