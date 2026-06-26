@@ -69,7 +69,7 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
 
     const dailyDeploys: Record<string, { total: number; success: number; failed: number }> = {};
     for (const d of deploys) {
-      const day = d.created_at.slice(0, 10);
+      const day = new Date(d.created_at).toISOString().slice(0, 10);
       if (!dailyDeploys[day]) dailyDeploys[day] = { total: 0, success: 0, failed: 0 };
       dailyDeploys[day].total++;
       if (d.status === "success") dailyDeploys[day].success++;
