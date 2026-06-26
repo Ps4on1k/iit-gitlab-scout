@@ -97,21 +97,25 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
       `/projects/${encodeURIComponent(projectPath)}/deployments?per_page=100&order_by=id&sort=desc`
     );
 
-    for (const d of deployments) {
-      await pool.query(
-        `INSERT INTO project_deployments (project_id, gitlab_deployment_id, status, ref, environment, pipeline_id, pipeline_status, created_at, finished_at, raw_json)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         ON CONFLICT (project_id, gitlab_deployment_id) DO UPDATE SET
-           status = EXCLUDED.status, pipeline_status = EXCLUDED.pipeline_status,
-           finished_at = EXCLUDED.finished_at`,
-        [
-          projectId, d.id, d.status, d.ref || "",
-          d.environment?.name || "",
-          d.pipeline?.id || null, d.pipeline?.status || null,
-          d.created_at, d.finished_at, JSON.stringify(d),
-        ]
-      );
-    }
+      for (const d of deployments) {
+        const pipelineId = d.pipeline?.id || d.deployable?.pipeline?.id || null;
+        const pipelineStatus = d.pipeline?.status || d.deployable?.pipeline?.status || null;
+        const finishedAt = d.finished_at || d.deployable?.finished_at || null;
+
+        await pool.query(
+          `INSERT INTO project_deployments (project_id, gitlab_deployment_id, status, ref, environment, pipeline_id, pipeline_status, created_at, finished_at, raw_json)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ON CONFLICT (project_id, gitlab_deployment_id) DO UPDATE SET
+             status = EXCLUDED.status, pipeline_id = EXCLUDED.pipeline_id,
+             pipeline_status = EXCLUDED.pipeline_status, finished_at = EXCLUDED.finished_at`,
+          [
+            projectId, d.id, d.status, d.ref || "",
+            d.environment?.name || "",
+            pipelineId, pipelineStatus,
+            d.created_at, finishedAt, JSON.stringify(d),
+          ]
+        );
+      }
   } catch {
     // deployments endpoint may not be available on all GitLab instances
   }

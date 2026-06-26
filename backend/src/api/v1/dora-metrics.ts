@@ -39,7 +39,7 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
     if (env !== "__all__") params.push(env);
 
     const deploysResult = await pool.query(
-      `SELECT d.status, d.created_at, d.finished_at, d.environment, d.pipeline_status,
+      `SELECT d.status, d.created_at, d.finished_at, d.environment, d.pipeline_status, d.raw_json,
               p.label as project_label, p.tags as project_tags
        FROM project_deployments d
        JOIN projects p ON p.id = d.project_id
@@ -60,8 +60,24 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
 
     const leadTimes: number[] = [];
     for (const d of deploys) {
-      if (d.status === "success" && d.finished_at && d.created_at) {
-        const lt = (new Date(d.finished_at).getTime() - new Date(d.created_at).getTime()) / 1000;
+      if (d.status !== "success") continue;
+      let commitDate: string | null = null;
+      let deployDate: string | null = null;
+
+      if (d.raw_json?.deployable?.commit?.committed_date) {
+        commitDate = d.raw_json.deployable.commit.committed_date;
+      } else if (d.raw_json?.deployable?.pipeline?.created_at) {
+        commitDate = d.raw_json.deployable.pipeline.created_at;
+      }
+
+      if (d.raw_json?.created_at) {
+        deployDate = d.raw_json.created_at;
+      } else {
+        deployDate = d.created_at;
+      }
+
+      if (commitDate && deployDate) {
+        const lt = (new Date(deployDate).getTime() - new Date(commitDate).getTime()) / 1000;
         if (lt >= 0 && lt < 30 * 24 * 3600) leadTimes.push(lt);
       }
     }
