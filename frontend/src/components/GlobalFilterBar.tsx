@@ -94,7 +94,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
 
   return (
     <div style={{ borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-bg-container)" }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: hasActive ? 8 : 0 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "nowrap", marginBottom: hasActive ? 8 : 0 }}>
         <RangePicker
           value={filters.dateFrom && filters.dateTo ? [dayjs(filters.dateFrom), dayjs(filters.dateTo)] : null}
           onChange={(dates) => {
@@ -104,13 +104,13 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
               update({ dateFrom: dates[0].format("YYYY-MM-DD"), dateTo: dates[1].format("YYYY-MM-DD") });
             }
           }}
-          style={{ width: 280 }}
+          style={{ flex: "0 0 auto" }}
         />
 
         <Select
           placeholder="Теги"
           allowClear showSearch optionFilterProp="label"
-          style={{ minWidth: 160, maxWidth: 250 }}
+          style={{ flex: 1 }}
           value={null}
           onChange={(v) => { if (v) addTag(v); }}
           options={availableTags.filter((t) => !filters.tags.includes(t)).map((t) => ({ value: t, label: t }))}
@@ -119,7 +119,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
         <Select
           placeholder="Проекты"
           allowClear showSearch optionFilterProp="label"
-          style={{ minWidth: 200, maxWidth: 350 }}
+          style={{ flex: 1 }}
           value={null}
           onChange={(v) => { if (v) addProject(v); }}
           options={projects.filter((p) => !filters.projectIds.includes(p.id)).map((p) => ({
@@ -131,7 +131,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
         <Select
           placeholder="Контрибьюторы"
           allowClear showSearch optionFilterProp="label"
-          style={{ minWidth: 200, maxWidth: 350 }}
+          style={{ flex: 1 }}
           value={null}
           onChange={(v) => { if (v) addContributor(v); }}
           filterOption={(input, option) => (option?.label as string)?.toLowerCase().includes(input.toLowerCase())}
@@ -140,9 +140,9 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }
             .map(([email, name]) => ({ value: email, label: name !== email ? `${name} (${email})` : email }))}
         />
 
-        <Button icon={<ReloadOutlined />} onClick={reset}>Сбросить</Button>
+        <Button icon={<ReloadOutlined />} onClick={reset} style={{ flex: "0 0 auto" }}>Сбросить</Button>
         {hasActive && (
-          <span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>{totalActive} активно</span>
+          <span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)", flex: "0 0 auto" }}>{totalActive} активно</span>
         )}
       </div>
 
