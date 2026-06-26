@@ -315,3 +315,12 @@ export async function startBatchCollect(collector: string, projectIds: number[],
   if (dateTo) body.date_to = dateTo;
   return fetchJson<{ started: boolean; total: number }>("/v1/collect/batch", { method: "POST", body: JSON.stringify(body) });
 }
+
+export async function fetchDoraMetrics(projectIds?: number[], environment?: string, dateFrom?: string, dateTo?: string): Promise<ApiResponse<any>> {
+  const qs = new URLSearchParams();
+  if (projectIds && projectIds.length > 0) qs.set("project_ids", projectIds.join(","));
+  if (environment) qs.set("environment", environment);
+  if (dateFrom) qs.set("date_from", dateFrom);
+  if (dateTo) qs.set("date_to", dateTo);
+  return fetchJson(`/v1/dora-metrics${qs.toString() ? "?" + qs.toString() : ""}`);
+}

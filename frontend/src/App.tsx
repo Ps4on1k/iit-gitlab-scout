@@ -9,6 +9,7 @@ import { StackDashboard } from "./components/stack/StackDashboard";
 import { ActivityDashboard } from "./components/activity/ActivityDashboard";
 import { BranchDashboard } from "./components/branches/BranchDashboard";
 import { PipelineDashboard } from "./components/pipelines/PipelineDashboard";
+import { DoraDashboard } from "./components/dora/DoraDashboard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
 import { getMe, clearToken, resolveContributor } from "./api/client";
@@ -41,7 +42,7 @@ const defaultFilters: GlobalFilters = {
 };
 
 type TabKey = "dashboard" | "analytics" | "stack" | "settings";
-type AnalyticsTab = "contributors" | "activity" | "branches" | "pipelines";
+type AnalyticsTab = "contributors" | "activity" | "branches" | "pipelines" | "dora";
 
 function getInitialDarkMode(): boolean {
   try { return localStorage.getItem("darkMode") === "true"; } catch { return false; }
@@ -100,6 +101,7 @@ export default function App() {
     { key: "activity", label: "Активность" },
     { key: "branches", label: "Ветки" },
     { key: "pipelines", label: <span>CI/CD <span style={{ fontSize: 10, background: "rgba(255,255,255,0.15)", padding: "1px 6px", borderRadius: 4, marginLeft: 4 }}>Beta</span></span> },
+    { key: "dora", label: <span>DORA</span> },
   ];
 
   return (
@@ -148,6 +150,7 @@ export default function App() {
           {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
+          {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>

@@ -14,6 +14,17 @@ interface GitLabPipeline {
   user: { name: string; username: string } | null;
 }
 
+interface GitLabDeployment {
+  id: number;
+  status: string;
+  ref: string;
+  created_at: string;
+  updated_at: string;
+  finished_at: string | null;
+  environment: { name: string };
+  pipeline: { id: number; status: string } | null;
+}
+
 export async function collectPipelines(projectId: number): Promise<{ total: number; success: number; failed: number; running: number }> {
   const pool = getPool();
   const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
@@ -53,7 +64,6 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
     );
   }
 
-  // Estimate duration for pipelines without duration using next pipeline on same ref
   await pool.query(`
     WITH ranked AS (
       SELECT id, ref, created_at, status, duration,
@@ -69,7 +79,6 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
       AND EXTRACT(EPOCH FROM (r.next_created - r.created_at)) < 7200
   `, [projectId]);
 
-  // For the remaining pipelines without duration, estimate average from same-ref completed pipelines
   await pool.query(`
     WITH ref_avg AS (
       SELECT ref, AVG(duration)::int as avg_dur
@@ -82,6 +91,30 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
     FROM ref_avg ra
     WHERE pp.project_id = $1 AND pp.ref = ra.ref AND pp.duration IS NULL AND pp.status IN ('success', 'failed')
   `, [projectId]);
+
+  try {
+    const deployments = await client.requestPaginated<GitLabDeployment>(
+      `/projects/${encodeURIComponent(projectPath)}/deployments?per_page=100&order_by=id&sort=desc`
+    );
+
+    for (const d of deployments) {
+      await pool.query(
+        `INSERT INTO project_deployments (project_id, gitlab_deployment_id, status, ref, environment, pipeline_id, pipeline_status, created_at, finished_at, raw_json)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+         ON CONFLICT (project_id, gitlab_deployment_id) DO UPDATE SET
+           status = EXCLUDED.status, pipeline_status = EXCLUDED.pipeline_status,
+           finished_at = EXCLUDED.finished_at`,
+        [
+          projectId, d.id, d.status, d.ref || "",
+          d.environment?.name || "",
+          d.pipeline?.id || null, d.pipeline?.status || null,
+          d.created_at, d.finished_at, JSON.stringify(d),
+        ]
+      );
+    }
+  } catch {
+    // deployments endpoint may not be available on all GitLab instances
+  }
 
   return { total: pipelines.length, success, failed, running };
 }

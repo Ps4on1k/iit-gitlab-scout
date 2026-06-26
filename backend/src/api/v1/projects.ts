@@ -125,6 +125,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     await pool.query("DELETE FROM project_packages");
     await pool.query("DELETE FROM project_dependencies_audit");
     await pool.query("DELETE FROM project_languages");
+    await pool.query("DELETE FROM project_deployments");
     await pool.query("DELETE FROM analysis_runs");
     await pool.query("DELETE FROM scheduler_errors");
     await pool.query("DELETE FROM projects");
