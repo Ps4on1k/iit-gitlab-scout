@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { Card, Row, Col, Statistic, Spin, Empty, Table, Tag } from "antd";
 import { ProjectOutlined, TeamOutlined, FireOutlined, CheckCircleOutlined, BranchesOutlined, MergeOutlined, RocketOutlined, WarningOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { Line } from "@ant-design/charts";
 import { fetchDashboard } from "../api/client";
 import { getTagColor } from "../utils/tagColors";
+import { chartColors } from "../utils/chartTheme";
 
 const CARD_STYLE = { height: "100%" as const };
 const statSmall = { fontSize: 14 };
@@ -30,12 +32,9 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   const { summary, topContributors, projectHealth, recentActivity, branchStatusDistribution, branchesByProject, pipelinesByProject, mrByProject } = data;
   const stalePct = summary.branches > 0 ? Math.round(summary.staleBranches / summary.branches * 100) : 0;
   const maxActivity = Math.max(1, ...recentActivity.map((a: any) => a.commits));
-  const deploySuccessRate = summary.deploysTotal > 0 ? Math.round(summary.deploysSuccess / summary.deploysTotal * 100) : null;
-  const mrMergeRate = (summary.mrOpened + summary.mrMerged + summary.mrClosed) > 0
-    ? Math.round(summary.mrMerged / (summary.mrOpened + summary.mrMerged + summary.mrClosed) * 100) : null;
-  const pipelineSuccessRate = pipelinesByProject.length > 0
-    ? Math.round(pipelinesByProject.reduce((s: number, p: any) => s + p.success, 0) / Math.max(1, pipelinesByProject.reduce((s: number, p: any) => s + p.total, 0)) * 100)
-    : null;
+  const cc = chartColors();
+
+  const activityChartData = recentActivity.map((a: any) => ({ date: a.date, commits: a.commits }));
 
   const contributorColumns = [
     { title: "#", width: 30, render: (_: any, __: any, i: number) => i + 1 },
@@ -48,6 +47,13 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
     { title: "Коммиты", dataIndex: "commits", key: "commits", width: 80 },
     { title: "Изменения", dataIndex: "changes", key: "changes", width: 100, render: (v: number) => v.toLocaleString() },
   ];
+
+  const deploySuccessRate = summary.deploysTotal > 0 ? Math.round(summary.deploysSuccess / summary.deploysTotal * 100) : null;
+  const mrMergeRate = (summary.mrOpened + summary.mrMerged + summary.mrClosed) > 0
+    ? Math.round(summary.mrMerged / (summary.mrOpened + summary.mrMerged + summary.mrClosed) * 100) : null;
+  const pipelineSuccessRate = pipelinesByProject.length > 0
+    ? Math.round(pipelinesByProject.reduce((s: number, p: any) => s + p.success, 0) / Math.max(1, pipelinesByProject.reduce((s: number, p: any) => s + p.total, 0)) * 100)
+    : null;
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
@@ -81,32 +87,16 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         <Col span={14}>
           <Card title="Активность за 30 дней" size="small" style={CARD_STYLE}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 180, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
-                  {recentActivity.map((a: any) => {
-                    const day = new Date(a.date).getDay();
-                    const isWeekend = day === 0 || day === 6;
-                    return (
-                      <div key={a.date} title={`${a.date}: ${a.commits} коммитов`}
-                        style={{ flex: 1, background: isWeekend ? "linear-gradient(180deg, #f093fb, #f5576c)" : "linear-gradient(180deg, #667eea, #764ba2)",
-                          borderRadius: "2px 2px 0 0", height: `${(a.commits / maxActivity) * 100}%`, minHeight: a.commits > 0 ? 2 : 0, minWidth: 1, opacity: a.commits > 0 ? 1 : 0.3 }} />
-                    );
-                  })}
-                </div>
-                <div style={{ position: "relative", height: 20, marginTop: 4 }}>
-                  {recentActivity.map((a: any, i: number) => {
-                    const step = Math.max(1, Math.floor(recentActivity.length / 6));
-                    const show = i === 0 || i % step === 0 || i === recentActivity.length - 1;
-                    if (!show) return null;
-                    const leftPct = (i / Math.max(1, recentActivity.length - 1)) * 100;
-                    const [, m, d] = a.date.split("-");
-                    return <span key={a.date} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "var(--ant-color-textTertiary)", whiteSpace: "nowrap" }}>{d}.{m}</span>;
-                  })}
-                </div>
-                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "var(--ant-color-textTertiary)" }}>
-                  <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #667eea, #764ba2)", marginRight: 4, verticalAlign: "middle" }} />Рабочие дни</span>
-                  <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "linear-gradient(180deg, #f093fb, #f5576c)", marginRight: 4, verticalAlign: "middle" }} />Выходные</span>
-                </div>
+              <div style={{ height: 180 }}>
+                <Line data={activityChartData} xField="date" yField="commits"
+                  point={{ size: 2 }} style={{ lineWidth: 2, stroke: "#667eea" }}
+                  axis={{
+                    x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
+                    y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
+                  }}
+                  tooltip={{ title: "date", items: [{ field: "commits", name: "Коммиты" }] }}
+                  legend={false}
+                />
               </div>
             )}
           </Card>

@@ -161,25 +161,26 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
             <Col span={4}><Card size="small"><Statistic title="Ср. деплоев/день" value={s.deployFrequency} /></Card></Col>
           </Row>
 
-          <Row gutter={16} style={{ marginBottom: 16 }}>
+          <Row gutter={16} style={{ marginBottom: 16, minHeight: 500 }}>
             <Col span={16}>
-              <Card title="Деплои" size="small" style={CARD_STYLE}
+              <Card title="Деплои" size="small" style={{ height: "100%" }}
                 extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>успешные / провалены</span>}>
                 {deployChartData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о деплоях" /> : (
-                  <div style={{ height: 200 }}>
+                  <div style={{ height: "calc(100% - 40px)" }}>
                     <Column data={deployChartData} xField="date" yField="count" colorField="type"
                       stack={true} style={{ radiusTopLeft: 2, radiusTopRight: 2 }}
                       axis={axisStyle}
                       scale={{ color: { range: ["#3f8600", "#cf1322"] } }}
                       tooltip={{ title: "date", items: [{ field: "count", name: "Кол-во" }] }}
                       legend={{ color: { position: "top", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
+                      autoFit
                     />
                   </div>
                 )}
               </Card>
             </Col>
             <Col span={8}>
-              <Card title="По проектам (top 10)" size="small" style={{ ...CARD_STYLE, paddingBottom: 32 }}
+              <Card title="По проектам (top 10)" size="small" style={{ height: "100%" }}
                 extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>всего / (% успеха)</span>}>
                 {byProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
