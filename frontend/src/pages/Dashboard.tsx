@@ -1,30 +1,20 @@
 import { useState, useEffect } from "react";
-import { Card, Row, Col, Statistic, Spin, Empty } from "antd";
-import { ProjectOutlined, TeamOutlined, BranchesOutlined, FireOutlined, CheckCircleOutlined } from "@ant-design/icons";
-import { Pie } from "@ant-design/charts";
+import { Card, Row, Col, Statistic, Spin, Empty, Table, Tag } from "antd";
+import { ProjectOutlined, TeamOutlined, FireOutlined, CheckCircleOutlined, BranchesOutlined, MergeOutlined, RocketOutlined, WarningOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { fetchDashboard } from "../api/client";
-import { chartColors } from "../utils/chartTheme";
+import { getTagColor } from "../utils/tagColors";
 
-const PIE_COLORS = ["#667eea", "#764ba2", "#f093fb", "#f5576c", "#4facfe", "#00f2fe", "#43e97b", "#fa709a", "#fee140", "#30cfd0"];
-
-function donutConfig(data: { type: string; value: number }[], colors?: string[]) {
-  const cc = chartColors();
-  return {
-    data,
-    angleField: "value",
-    colorField: "type",
-    radius: 0.9,
-    innerRadius: 0.55,
-    color: colors || PIE_COLORS,
-    label: false as const,
-    legend: { color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } },
-    statistic: false,
-    tooltip: { title: "type", items: [{ field: "value", name: "Значение" }] },
-  };
-}
-
-const ROW_HEIGHT = 400;
 const CARD_STYLE = { height: "100%" as const };
+const statSmall = { fontSize: 14 };
+
+function formatDuration(seconds: number): string {
+  if (seconds === 0) return "—";
+  if (seconds < 60) return `${seconds}с`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}мин`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return `${h}ч ${m}мин`;
+}
 
 export function Dashboard({ onContributorClick }: { onContributorClick?: (name: string) => void }) {
   const [loading, setLoading] = useState(true);
@@ -37,37 +27,62 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   if (loading) return <div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>;
   if (!data) return <Empty description="Ошибка загрузки" />;
 
-  const { summary, topContributors, projectHealth, recentActivity, languageDistribution, branchStatusDistribution, branchesByProject, pipelinesByProject } = data;
+  const { summary, topContributors, projectHealth, recentActivity, branchStatusDistribution, branchesByProject, pipelinesByProject, mrByProject } = data;
   const stalePct = summary.branches > 0 ? Math.round(summary.staleBranches / summary.branches * 100) : 0;
   const maxActivity = Math.max(1, ...recentActivity.map((a: any) => a.commits));
+  const deploySuccessRate = summary.deploysTotal > 0 ? Math.round(summary.deploysSuccess / summary.deploysTotal * 100) : null;
+  const mrMergeRate = (summary.mrOpened + summary.mrMerged + summary.mrClosed) > 0
+    ? Math.round(summary.mrMerged / (summary.mrOpened + summary.mrMerged + summary.mrClosed) * 100) : null;
+  const pipelineSuccessRate = pipelinesByProject.length > 0
+    ? Math.round(pipelinesByProject.reduce((s: number, p: any) => s + p.success, 0) / Math.max(1, pipelinesByProject.reduce((s: number, p: any) => s + p.total, 0)) * 100)
+    : null;
 
-  const contributorsPie = topContributors.map((c: any) => ({ type: c.name || c.email, value: c.changes }));
-  const langsPie = languageDistribution.map((l: any) => ({ type: l.language, value: l.percentage }));
+  const contributorColumns = [
+    { title: "#", width: 30, render: (_: any, __: any, i: number) => i + 1 },
+    {
+      title: "Контрибьютор", dataIndex: "name", key: "name",
+      render: (v: string, r: any) => (
+        <a onClick={() => onContributorClick?.(r.email)} style={{ cursor: "pointer" }}>{v}</a>
+      ),
+    },
+    { title: "Коммиты", dataIndex: "commits", key: "commits", width: 80 },
+    { title: "Изменения", dataIndex: "changes", key: "changes", width: 100, render: (v: number) => v.toLocaleString() },
+  ];
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
       <div style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Обзор</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Сводная статистика за последние 90 дней</div>
+        <div style={{ opacity: 0.9, fontSize: 14 }}>Сводная статистика за последние 30 дней</div>
       </div>
 
-      {/* Summary cards */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Проектов" value={summary.projects} prefix={<ProjectOutlined />} /></Card></Col>
-        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Контрибьюторов" value={summary.contributors} prefix={<TeamOutlined />} /></Card></Col>
-        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Коммитов" value={summary.commits} prefix={<FireOutlined />} /></Card></Col>
-        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Дней активности" value={summary.activeDays} /></Card></Col>
-        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Активные ветки" value={summary.activeBranches} valueStyle={{ color: "#3f8600" }} prefix={<CheckCircleOutlined />} /></Card></Col>
-        <Col span={4}><Card style={CARD_STYLE}><Statistic title="Заброшенные" value={summary.staleBranches} valueStyle={{ color: stalePct > 50 ? "#cf1322" : "#d4b106" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({stalePct}%)</span>} /></Card></Col>
+      {/* Summary cards row 1: core metrics */}
+      <Row gutter={12} style={{ marginBottom: 12 }}>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Проектов" value={summary.projects} prefix={<ProjectOutlined />} valueStyle={statSmall} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Контрибьюторов" value={summary.contributors} prefix={<TeamOutlined />} valueStyle={statSmall} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Коммитов" value={summary.commits} prefix={<FireOutlined />} valueStyle={statSmall} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Дней активности" value={summary.activeDays} valueStyle={statSmall} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Активные ветки" value={summary.activeBranches} valueStyle={{ color: "#3f8600", ...statSmall }} prefix={<CheckCircleOutlined />} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Заброшенные" value={summary.staleBranches} valueStyle={{ color: stalePct > 50 ? "#cf1322" : "#d4b106", ...statSmall }} suffix={<span style={{ fontSize: 11, color: "#999" }}>({stalePct}%)</span>} /></Card></Col>
       </Row>
 
-      {/* Row 1: Activity chart + Health */}
+      {/* Summary cards row 2: MR + Pipeline + Deploy */}
+      <Row gutter={12} style={{ marginBottom: 16 }}>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Открытых" value={summary.mrOpened} valueStyle={{ color: "#1677ff", ...statSmall }} prefix={<MergeOutlined />} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Замержено" value={summary.mrMerged} valueStyle={{ color: "#3f8600", ...statSmall }} prefix={<CheckCircleOutlined />} suffix={mrMergeRate !== null && <span style={{ fontSize: 11, color: "#999" }}>({mrMergeRate}%)</span>} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Закрыто" value={summary.mrClosed} valueStyle={{ color: "#cf1322", ...statSmall }} prefix={<WarningOutlined />} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Пайплайнов" value={summary.deploysTotal || pipelinesByProject.reduce((s: number, p: any) => s + p.total, 0)} valueStyle={statSmall} prefix={<RocketOutlined />} suffix={pipelineSuccessRate !== null && <span style={{ fontSize: 11, color: "#3f8600" }}>({pipelineSuccessRate}%)</span>} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев" value={summary.deploysTotal} valueStyle={statSmall} prefix={<RocketOutlined />} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев OK" value={summary.deploysSuccess} valueStyle={{ color: "#3f8600", ...statSmall }} suffix={deploySuccessRate !== null && <span style={{ fontSize: 11, color: "#999" }}>({deploySuccessRate}%)</span>} /></Card></Col>
+      </Row>
+
+      {/* Row 1: Activity chart + Project health */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={12}>
-          <Card title="Активность за 90 дней" size="small" style={CARD_STYLE}>
+        <Col span={14}>
+          <Card title="Активность за 30 дней" size="small" style={CARD_STYLE}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 200, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
+                <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 180, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
                   {recentActivity.map((a: any) => {
                     const day = new Date(a.date).getDay();
                     const isWeekend = day === 0 || day === 6;
@@ -80,7 +95,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                 </div>
                 <div style={{ position: "relative", height: 20, marginTop: 4 }}>
                   {recentActivity.map((a: any, i: number) => {
-                    const step = Math.max(1, Math.floor(recentActivity.length / 8));
+                    const step = Math.max(1, Math.floor(recentActivity.length / 6));
                     const show = i === 0 || i % step === 0 || i === recentActivity.length - 1;
                     if (!show) return null;
                     const leftPct = (i / Math.max(1, recentActivity.length - 1)) * 100;
@@ -96,17 +111,17 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
             )}
           </Card>
         </Col>
-        <Col span={12}>
+        <Col span={10}>
           <Card title="Здоровье проектов (top 10)" size="small" style={CARD_STYLE}>
             {projectHealth.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div>
-                {projectHealth.sort((a: any, b: any) => a.healthPct - b.healthPct).map((p: any) => (
-                  <div key={p.label} style={{ marginBottom: 8 }}>
+                {projectHealth.sort((a: any, b: any) => a.healthPct - b.healthPct).slice(0, 8).map((p: any) => (
+                  <div key={p.label} style={{ marginBottom: 6 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{p.label}</span>
-                      <span style={{ color: p.healthPct >= 70 ? "#3f8600" : p.healthPct >= 40 ? "#d4b106" : "#cf1322", fontWeight: 600 }}>{p.healthPct}%</span>
+                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>{p.label}</span>
+                      <span style={{ color: p.healthPct >= 70 ? "#3f8600" : p.healthPct >= 40 ? "#d4b106" : "#cf1322", fontWeight: 600, fontSize: 12 }}>{p.healthPct}%</span>
                     </div>
-                    <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>
+                    <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>
                       <div style={{ width: `${p.healthPct}%`, background: p.healthPct >= 70 ? "#3f8600" : p.healthPct >= 40 ? "#d4b106" : "#cf1322" }} />
                     </div>
                   </div>
@@ -117,75 +132,91 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         </Col>
       </Row>
 
-      {/* Row 2: 3 Pie charts */}
+      {/* Row 2: Top contributors + MR by project + Pipelines by project */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={8}>
           <Card title="Топ-10 контрибьюторов" size="small" style={CARD_STYLE}>
-            {contributorsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: ROW_HEIGHT }}><Pie {...donutConfig(contributorsPie)} height={ROW_HEIGHT} /></div>
+            {topContributors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+              <Table
+                dataSource={topContributors} columns={contributorColumns}
+                rowKey="email" size="small" pagination={false}
+                onRow={(record) => ({ onClick: () => onContributorClick?.(record.email), style: { cursor: "pointer" } })}
+              />
             )}
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="Языки (top 10)" size="small" style={CARD_STYLE}>
-            {langsPie.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: ROW_HEIGHT }}><Pie {...donutConfig(langsPie)} height={ROW_HEIGHT} /></div>
+          <Card title="MR по проектам (top 10)" size="small" style={CARD_STYLE}>
+            {(mrByProject || []).length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
+              <div>
+                {mrByProject.map((p: any) => {
+                  const pct = p.total > 0 ? Math.round(p.merged / p.total * 100) : 0;
+                  return (
+                    <div key={p.label} style={{ marginBottom: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
+                        <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.label}</span>
+                        <span style={{ color: "var(--ant-color-textSecondary)", fontSize: 10 }}>
+                          <span style={{ color: "#1677ff" }}>{p.opened}</span> / <span style={{ color: "#3f8600" }}>{p.merged}</span> / <span style={{ color: "#cf1322" }}>{p.closed}</span>
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", height: 5, borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ width: `${p.total > 0 ? (p.opened / p.total * 100) : 0}%`, background: "#1677ff" }} />
+                        <div style={{ width: `${pct}%`, background: "#3f8600" }} />
+                        <div style={{ width: `${p.total > 0 ? (p.closed / p.total * 100) : 0}%`, background: "#cf1322" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </Card>
         </Col>
         <Col span={8}>
-          <Card title="Статус веток" size="small" style={CARD_STYLE}>
-            {summary.branches === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: ROW_HEIGHT }}><Pie {...donutConfig(branchStatusDistribution, ["#3f8600", "#cf1322", "#667eea"])} height={ROW_HEIGHT} /></div>
+          <Card title="Пайплайны (top 10)" size="small" style={CARD_STYLE}>
+            {pipelinesByProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных" /> : (
+              <div>
+                {pipelinesByProject.map((p: any) => {
+                  const pct = p.total > 0 ? Math.round(p.success / p.total * 100) : 0;
+                  return (
+                    <div key={p.label} style={{ marginBottom: 6 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
+                        <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{p.label}</span>
+                        <span style={{ color: "var(--ant-color-textSecondary)", fontSize: 10 }}>
+                          <span style={{ color: "#3f8600" }}>{p.success}</span>/{p.total} ({pct}%)
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", height: 5, borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, background: "#3f8600" }} />
+                        {p.failed > 0 && <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#cf1322" }} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </Card>
         </Col>
       </Row>
 
-      {/* Row 3: Branches by project + Pipelines by project */}
+      {/* Row 3: Branches by project */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={12}>
+        <Col span={24}>
           <Card title="Ветки по проектам (top 10)" size="small" style={CARD_STYLE}>
             {branchesByProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(400px, 1fr))", gap: 8 }}>
                 {branchesByProject.map((p: any) => (
-                  <div key={p.label} style={{ marginBottom: 8 }}>
+                  <div key={p.label}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}</span>
+                      <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{p.label}</span>
                       <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 11 }}>{p.active} акт / {p.stale} забр / {p.merged} мердж</span>
                     </div>
-                    <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
                       <div style={{ width: `${(p.active / p.total) * 100}%`, background: "#3f8600" }} />
                       <div style={{ width: `${(p.stale / p.total) * 100}%`, background: "#cf1322" }} />
                       <div style={{ width: `${(p.merged / p.total) * 100}%`, background: "#667eea" }} />
                     </div>
                   </div>
                 ))}
-              </div>
-            )}
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card title="Пайплайны по проектам (top 10)" size="small" style={CARD_STYLE}>
-            {(pipelinesByProject || []).length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о пайплайнах" /> : (
-              <div>
-                {pipelinesByProject.map((p: any) => {
-                  const pct = p.total > 0 ? Math.round(p.success / p.total * 100) : 0;
-                  return (
-                    <div key={p.label} style={{ marginBottom: 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                        <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}</span>
-                        <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 11 }}>
-                          <span style={{ color: "#3f8600" }}>{p.success}</span>/{p.total} ({pct}%)
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, background: "#3f8600" }} />
-                        <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#cf1322" }} />
-                      </div>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </Card>
