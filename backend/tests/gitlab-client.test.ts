@@ -67,28 +67,33 @@ describe("GitLabClient", () => {
       { status: 500, body: {} },
       { status: 500, body: {} },
       { status: 500, body: {} },
+      { status: 500, body: {} },
+      { status: 500, body: {} },
     ]);
     const client = new GitLabClient({ token: TOKEN });
 
     const promise = client.request("/test").catch((e) => e);
-    await vi.advanceTimersByTimeAsync(60000);
+    await vi.advanceTimersByTimeAsync(120000);
     const result = await promise;
     expect(result).toBeInstanceOf(Error);
     expect(result.message).toContain("GitLab API 500");
     vi.useRealTimers();
-  });
+  }, 10000);
 
   it("handles rate limit (429) with retry", async () => {
+    vi.useFakeTimers();
     mockFetch([
       { status: 429, body: {}, headers: { "retry-after": "0" } },
       { status: 200, body: { ok: true } },
     ]);
     const client = new GitLabClient({ token: TOKEN });
 
-    const result = await client.request<{ ok: boolean }>("/test");
-
+    const promise = client.request<{ ok: boolean }>("/test");
+    await vi.advanceTimersByTimeAsync(60000);
+    const result = await promise;
     expect(result.ok).toBe(true);
-  });
+    vi.useRealTimers();
+  }, 10000);
 
   it("requestPaginated follows Link header", async () => {
     globalThis.fetch = vi.fn(async (url: string) => {

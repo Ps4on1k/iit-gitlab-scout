@@ -90,7 +90,7 @@ export function DoraDashboard({ filters }: Props) {
     <div style={{ width: "90%", margin: "0 auto" }}>
       <div style={{ background: "linear-gradient(135deg, #0052cc 0%, #36b37e 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>DORA Метрики</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Чотыре ключевые метрики DevOps-производительности</div>
+        <div style={{ opacity: 0.9, fontSize: 14 }}>Четыре ключевые метрики DevOps-производительности</div>
       </div>
 
       <div style={{ marginBottom: 16 }}>
