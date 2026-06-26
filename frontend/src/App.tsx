@@ -176,7 +176,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v2.1.0</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v2.2.0</span>
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
             onClick={({ key }) => setTab(key as TabKey)}
