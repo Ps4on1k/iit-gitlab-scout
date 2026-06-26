@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Select, Spin, Empty, Tooltip } from "antd";
 import { RocketOutlined, ClockCircleOutlined, WarningOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { Line, Column } from "@ant-design/charts";
 import { fetchProjects, fetchDoraMetrics } from "../../api/client";
 import { chartColors } from "../../utils/chartTheme";
 import type { ProjectConfig } from "../../types";
@@ -45,98 +46,6 @@ function leadTimeColor(seconds: number): string {
   return "#cf1322";
 }
 
-function MiniBarChart({ data, height = 120, valueKey, color, label }: {
-  data: any[]; height?: number; valueKey: string; color: string; label: string;
-}) {
-  const vals = data.map((d: any) => d[valueKey] ?? 0);
-  const maxVal = Math.max(1, ...vals);
-  return (
-    <div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
-        {data.map((d: any, i: number) => {
-          const v = d[valueKey] ?? 0;
-          return (
-            <div key={i} title={`${d.date}: ${v} ${label}`}
-              style={{ flex: 1, background: v > 0 ? color : "transparent",
-                borderRadius: "2px 2px 0 0", height: `${(v / maxVal) * 100}%`, minHeight: v > 0 ? 2 : 0, minWidth: 1 }} />
-          );
-        })}
-      </div>
-      <div style={{ position: "relative", height: 18, marginTop: 2 }}>
-        {data.map((d: any, i: number) => {
-          const step = Math.max(1, Math.floor(data.length / 6));
-          if (i % step !== 0 && i !== data.length - 1) return null;
-          const leftPct = (i / Math.max(1, data.length - 1)) * 100;
-          return <span key={i} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "var(--ant-color-textTertiary)", whiteSpace: "nowrap" }}>{d.date.slice(5)}</span>;
-        })}
-      </div>
-    </div>
-  );
-}
-
-function LineChart({ data, height = 120, valueKey, color, label, unit = "", formatValue }: {
-  data: any[]; height?: number; valueKey: string; color: string; label: string; unit?: string; formatValue?: (v: number) => string;
-}) {
-  const vals = data.map((d: any) => d[valueKey] ?? 0).filter((v) => v !== null);
-  if (vals.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={`Нет данных: ${label}`} />;
-  const maxVal = Math.max(1, ...vals);
-
-  const points = data.map((d: any, i: number) => {
-    const v = d[valueKey];
-    if (v === null || v === undefined) return null;
-    const x = (i / Math.max(1, data.length - 1)) * 100;
-    const y = 100 - (v / maxVal) * 100;
-    return `${x},${y}`;
-  }).filter(Boolean).join(" ");
-
-  const areaPoints = points ? `0,100 ${points} 100,100` : "";
-
-  const formatVal = (v: number) => formatValue ? formatValue(v) : `${v}${unit}`;
-
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((pct) => ({
-    y: 100 - pct * 100,
-    label: formatVal(Math.round(maxVal * pct)),
-  }));
-
-  return (
-    <div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: "100%", height, display: "block" }}>
-        <defs>
-          <linearGradient id={`grad-${valueKey}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        {ticks.map((t, i) => (
-          <g key={i}>
-            <line x1="0" y1={t.y} x2="100" y2={t.y} stroke="var(--ant-color-border-secondary)" strokeWidth="0.15" />
-            <text x="-1" y={t.y + 1} fill="var(--ant-color-textTertiary)" fontSize="2.8" textAnchor="end" dominantBaseline="middle">{t.label}</text>
-          </g>
-        ))}
-        <polygon points={areaPoints} fill={`url(#grad-${valueKey})`} />
-        <polyline points={points} fill="none" stroke={color} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
-        {data.map((d: any, i: number) => {
-          const v = d[valueKey];
-          if (v === null || v === undefined) return null;
-          const cx = (i / Math.max(1, data.length - 1)) * 100;
-          const cy = 100 - (v / maxVal) * 100;
-          return <circle key={i} cx={`${cx}`} cy={`${cy}`} r="1" fill={color} stroke="#fff" strokeWidth="0.3">
-            <title>{`${d.date}: ${formatVal(v)}`}</title>
-          </circle>;
-        })}
-      </svg>
-      <div style={{ position: "relative", height: 20, marginTop: 2 }}>
-        {data.map((d: any, i: number) => {
-          const step = Math.max(1, Math.floor(data.length / 6));
-          if (i % step !== 0 && i !== data.length - 1) return null;
-          const leftPct = (i / Math.max(1, data.length - 1)) * 100;
-          return <span key={i} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "var(--ant-color-textTertiary)", whiteSpace: "nowrap" }}>{d.date.slice(5)}</span>;
-        })}
-      </div>
-    </div>
-  );
-}
-
 export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
@@ -176,7 +85,24 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
   const chartData = granularity === "week" ? (data?.weeklyTrend || []) : (data?.dailyTrend || []);
   const byProject = data?.byProject || [];
   const environments = data?.environments || [];
-  const maxDeploys = Math.max(1, ...trend.map((t: any) => t.total));
+
+  const deployChartData = chartData.flatMap((d: any) => [
+    { date: d.date, count: d.success, type: "Успешные" },
+    { date: d.date, count: d.failed, type: "Провалены" },
+  ]);
+
+  const leadTimeData = chartData.filter((d: any) => d.avgLeadTimeSec !== null).map((d: any) => ({
+    date: d.date, value: d.avgLeadTimeSec, label: formatDuration(d.avgLeadTimeSec),
+  }));
+
+  const mttrData = chartData.filter((d: any) => d.avgMttrMin !== null).map((d: any) => ({
+    date: d.date, value: d.avgMttrMin, label: formatMttr(d.avgMttrMin),
+  }));
+
+  const axisStyle = {
+    x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
+    y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
+  };
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
@@ -239,42 +165,22 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
             <Col span={16}>
               <Card title="Деплои" size="small" style={CARD_STYLE}
                 extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>успешные / провалены</span>}>
-                {trend.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о деплоях" /> : (
-                  <div>
-                    <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 140, borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
-                      {chartData.map((t: any, i: number) => {
-                        const maxVal = Math.max(1, ...chartData.map((c: any) => c.deploys));
-                        return (
-                          <div key={i} title={`${t.date}: ${t.deploys} (${t.success} OK, ${t.failed} FAIL)`}
-                            style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-                            <div style={{ display: "flex", flexDirection: "column", height: `${(t.deploys / maxVal) * 100}%` }}>
-                              {t.failed > 0 && <div style={{ flex: t.failed, background: "#cf1322", borderRadius: "2px 2px 0 0" }} />}
-                              {t.success > 0 && <div style={{ flex: t.success, background: "#3f8600" }} />}
-                              {t.deploys - t.success - t.failed > 0 && <div style={{ flex: t.deploys - t.success - t.failed, background: "#d9d9d9" }} />}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{ position: "relative", height: 18, marginTop: 2 }}>
-                      {chartData.map((d: any, i: number) => {
-                        const step = Math.max(1, Math.floor(chartData.length / 6));
-                        if (i % step !== 0 && i !== chartData.length - 1) return null;
-                        const leftPct = (i / Math.max(1, chartData.length - 1)) * 100;
-                        return <span key={i} style={{ position: "absolute", left: `${leftPct}%`, transform: "translateX(-50%)", fontSize: 9, color: "var(--ant-color-textTertiary)", whiteSpace: "nowrap" }}>{d.date.slice(5)}</span>;
-                      })}
-                    </div>
-                    <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 6, fontSize: 11, color: "var(--ant-color-textTertiary)" }}>
-                      <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#3f8600", marginRight: 4, verticalAlign: "middle" }} />Успешные</span>
-                      <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#cf1322", marginRight: 4, verticalAlign: "middle" }} />Провалены</span>
-                      <span><span style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: "#d9d9d9", marginRight: 4, verticalAlign: "middle" }} />Другие</span>
-                    </div>
+                {deployChartData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о деплоях" /> : (
+                  <div style={{ height: 200 }}>
+                    <Column data={deployChartData} xField="date" yField="count" colorField="type"
+                      stack={true} style={{ radiusTopLeft: 2, radiusTopRight: 2 }}
+                      axis={axisStyle}
+                      scale={{ color: { range: ["#3f8600", "#cf1322"] } }}
+                      tooltip={{ title: "date", items: [{ field: "count", name: "Кол-во" }] }}
+                      legend={{ color: { position: "top", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
+                    />
                   </div>
                 )}
               </Card>
             </Col>
             <Col span={8}>
-              <Card title="По проектам (top 10)" size="small" style={{ ...CARD_STYLE, paddingBottom: 32 }} extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>всего / (% успеха)</span>}>
+              <Card title="По проектам (top 10)" size="small" style={{ ...CARD_STYLE, paddingBottom: 32 }}
+                extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>всего / (% успеха)</span>}>
                 {byProject.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
                   <div>
                     {byProject.map((p: any) => {
@@ -302,13 +208,31 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
             <Col span={12}>
               <Card title="Lead Time (динамика)" size="small" style={CARD_STYLE}
                 extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>коммит → деплой</span>}>
-                <LineChart data={chartData} height={200} valueKey="avgLeadTimeSec" color="#1677ff" label="Lead Time" unit="с" formatValue={formatDuration} />
+                {leadTimeData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных" /> : (
+                  <div style={{ height: 200 }}>
+                    <Line data={leadTimeData} xField="date" yField="value"
+                      point={{ size: 3 }} style={{ lineWidth: 2, stroke: "#1677ff" }}
+                      axis={axisStyle}
+                      tooltip={{ title: "date", items: [{ field: "value", name: "Lead Time", valueFormatter: (v: any) => formatDuration(v) }] }}
+                      legend={false}
+                    />
+                  </div>
+                )}
               </Card>
             </Col>
             <Col span={12}>
               <Card title="MTTR (динамика)" size="small" style={CARD_STYLE}
                 extra={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>сбой → восстановление</span>}>
-                <LineChart data={chartData} height={200} valueKey="avgMttrMin" color="#fa541c" label="MTTR" unit="мин" formatValue={formatMttr} />
+                {mttrData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных" /> : (
+                  <div style={{ height: 200 }}>
+                    <Line data={mttrData} xField="date" yField="value"
+                      point={{ size: 3 }} style={{ lineWidth: 2, stroke: "#fa541c" }}
+                      axis={axisStyle}
+                      tooltip={{ title: "date", items: [{ field: "value", name: "MTTR", valueFormatter: (v: any) => formatMttr(v) }] }}
+                      legend={false}
+                    />
+                  </div>
+                )}
               </Card>
             </Col>
           </Row>
