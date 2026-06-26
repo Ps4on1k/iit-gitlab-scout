@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, Button, Modal, Form, Input, Select, Space, Typography, Popconfirm, message, Tag, Collapse } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, KeyOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, KeyOutlined, SearchOutlined } from "@ant-design/icons";
 import { fetchProjects, createProject, updateProject, deleteProject, deleteAllProjects, importProjectsYaml, exportProjects, removeProjectToken } from "../api/client";
 import { getTagColor } from "../utils/tagColors";
 import type { ProjectConfig } from "../types";
@@ -17,9 +17,16 @@ export function AdminPanel() {
   const [yamlModalOpen, setYamlModalOpen] = useState(false);
   const [yamlText, setYamlText] = useState("");
   const [yamlImporting, setYamlImporting] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const [form] = Form.useForm();
 
   const allTagOptions = Array.from(new Set(projects.flatMap((p) => p.tags || []))).sort().map((t) => ({ value: t, label: t }));
+
+  const filteredProjects = useMemo(() => {
+    if (!searchText) return projects;
+    const q = searchText.toLowerCase();
+    return projects.filter((p) => p.path.toLowerCase().includes(q) || p.label.toLowerCase().includes(q) || p.tags?.some((t) => t.toLowerCase().includes(q)));
+  }, [projects, searchText]);
 
   const load = async () => {
     setLoading(true);
@@ -160,8 +167,19 @@ export function AdminPanel() {
 
       <Collapse defaultActiveKey={["projects"]} items={[{
         key: "projects",
-        label: <span style={{ fontSize: 14 }}>Проекты ({projects.length})</span>,
-        children: <Table columns={columns} dataSource={projects} rowKey="id" loading={loading} pagination={false} />,
+        label: <span style={{ fontSize: 14 }}>Проекты ({projects.length}{searchText ? `, найдено: ${filteredProjects.length}` : ""})</span>,
+        children: (
+          <div>
+            <Input
+              prefix={<SearchOutlined style={{ color: "var(--ant-color-textTertiary)" }} />}
+              placeholder="Поиск по названию, path или тегам..."
+              allowClear value={searchText} onChange={(e) => setSearchText(e.target.value)}
+              style={{ marginBottom: 12 }}
+            />
+            <Table columns={columns} dataSource={filteredProjects} rowKey="id" loading={loading}
+              pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ["10", "20", "50", "100"], showTotal: (total) => `Всего: ${total}` }} />
+          </div>
+        ),
       }]} />
 
       <Modal title={editingId ? "Редактировать проект" : "Добавить проект"} open={modalOpen}
