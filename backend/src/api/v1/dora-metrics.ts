@@ -147,17 +147,24 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
     }
 
     const sortedDays = Object.keys(dailyMetrics).sort();
-    let failStart: Date | null = null;
-    for (const day of sortedDays) {
-      const dm = dailyMetrics[day];
-      for (let i = 0; i < dm.failed; i++) {
-        failStart = new Date(day);
+
+    const mttrByDay: Record<string, number[]> = {};
+    let lastFailedAt: Date | null = null;
+    for (const d of deploys) {
+      if (d.status === "failed" || d.pipeline_status === "failed") {
+        lastFailedAt = new Date(d.created_at);
+      } else if (d.status === "success" && lastFailedAt) {
+        const restoreMin = (new Date(d.created_at).getTime() - lastFailedAt.getTime()) / 60000;
+        if (restoreMin > 0 && restoreMin < 24 * 60) {
+          const day = new Date(d.created_at).toISOString().slice(0, 10);
+          if (!mttrByDay[day]) mttrByDay[day] = [];
+          mttrByDay[day].push(Math.round(restoreMin));
+        }
+        lastFailedAt = null;
       }
-      if (dm.success > 0 && failStart) {
-        const restore = (new Date(day).getTime() - failStart.getTime()) / (1000 * 60);
-        if (restore > 0 && restore < 24 * 60) dm.mttrMinutes.push(restore);
-        failStart = null;
-      }
+    }
+    for (const [day, mins] of Object.entries(mttrByDay)) {
+      if (dailyMetrics[day]) dailyMetrics[day].mttrMinutes = mins;
     }
 
     const dailyTrend = sortedDays.map((day) => {
