@@ -88,7 +88,16 @@ export async function refreshContributors(projectId: number): Promise<void> {
        WHERE project_id = $1
        GROUP BY project_id, author_email, author_name, additions, deletions, total_changes, committed_date
      ) sub
-     GROUP BY project_id, author_email`,
+     GROUP BY project_id, author_email
+     ON CONFLICT (project_id, author_email) DO UPDATE SET
+       author_name = EXCLUDED.author_name,
+       total_commits = EXCLUDED.total_commits,
+       total_additions = EXCLUDED.total_additions,
+       total_deletions = EXCLUDED.total_deletions,
+       total_changes = EXCLUDED.total_changes,
+       first_commit_date = EXCLUDED.first_commit_date,
+       last_commit_date = EXCLUDED.last_commit_date,
+       frequency = EXCLUDED.frequency`,
     [projectId]
   );
 }
