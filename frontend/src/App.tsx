@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ConfigProvider, Layout, Menu, Button, Typography } from "antd";
-import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined, BulbOutlined, BulbFilled } from "@ant-design/icons";
+import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { Dashboard } from "./pages/Dashboard";
@@ -10,6 +10,7 @@ import { ActivityDashboard } from "./components/activity/ActivityDashboard";
 import { BranchDashboard } from "./components/branches/BranchDashboard";
 import { PipelineDashboard } from "./components/pipelines/PipelineDashboard";
 import { DoraDashboard } from "./components/dora/DoraDashboard";
+import { BenchmarkDashboard } from "./components/benchmark/BenchmarkDashboard";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
 import { getMe, clearToken, resolveContributor } from "./api/client";
@@ -41,7 +42,7 @@ const defaultFilters: GlobalFilters = {
   contributors: [],
 };
 
-type TabKey = "dashboard" | "analytics" | "stack" | "settings";
+type TabKey = "dashboard" | "analytics" | "stack" | "benchmark" | "settings";
 type AnalyticsTab = "contributors" | "activity" | "branches" | "pipelines" | "dora";
 
 function getInitialDarkMode(): boolean {
@@ -156,6 +157,7 @@ export default function App() {
     { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
     { key: "analytics", icon: <TeamOutlined />, label: "Аналитика" },
     { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
+    ...(user.role === "admin" || user.role === "manager" ? [{ key: "benchmark", icon: <BarChartOutlined />, label: "Бенчмарк" }] : []),
     ...(user.role === "admin" ? [{ key: "settings", icon: <SettingOutlined />, label: "Настройки" }] : []),
   ];
 
@@ -215,6 +217,7 @@ export default function App() {
           {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
           {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
+          {tab === "benchmark" && <BenchmarkDashboard filters={filters} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
       </Layout>

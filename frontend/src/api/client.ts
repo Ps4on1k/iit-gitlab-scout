@@ -309,6 +309,14 @@ export async function fetchCollectStatus(): Promise<ApiResponse<CollectJob[]>> {
   return fetchJson<CollectJob[]>("/v1/collect/status");
 }
 
+export async function fetchBenchmark(tags: string[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<any>> {
+  const qs = new URLSearchParams();
+  qs.set("tags", tags.join(","));
+  if (dateFrom) qs.set("date_from", dateFrom);
+  if (dateTo) qs.set("date_to", dateTo);
+  return fetchJson(`/v1/benchmark?${qs.toString()}`);
+}
+
 export async function startBatchCollect(collector: string, projectIds: number[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<{ started: boolean; total: number }>> {
   const body: any = { collector, project_ids: projectIds };
   if (dateFrom) body.date_from = dateFrom;
