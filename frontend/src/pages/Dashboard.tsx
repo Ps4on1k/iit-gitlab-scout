@@ -83,11 +83,11 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       </Row>
 
       {/* Row 1: Activity chart + Project health */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={16} style={{ marginBottom: 16, minHeight: 400 }} align="stretch">
         <Col span={14}>
-          <Card title="Активность за 30 дней" size="small" style={CARD_STYLE}>
+          <Card title="Активность за 30 дней" size="small" style={{ height: "100%" }}>
             {recentActivity.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <div style={{ height: 180 }}>
+              <div style={{ height: "calc(100% - 40px)" }}>
                 <Line data={activityChartData} xField="date" yField="commits"
                   point={{ size: 2 }} style={{ lineWidth: 2, stroke: "#667eea" }}
                   axis={{
@@ -96,6 +96,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                   }}
                   tooltip={{ title: "date", items: [{ field: "commits", name: "Коммиты" }] }}
                   legend={false}
+                  autoFit
                 />
               </div>
             )}
