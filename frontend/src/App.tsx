@@ -48,7 +48,7 @@ function getInitialDarkMode(): boolean {
   try { return localStorage.getItem("darkMode") === "true"; } catch { return false; }
 }
 
-function readUrlState(): { tab: TabKey; analyticsTab: AnalyticsTab; filters: Partial<GlobalFilters> } {
+function readUrlState(): { tab: TabKey; analyticsTab: AnalyticsTab; filters: Partial<GlobalFilters>; tabParams: Record<string, string> } {
   const params = new URLSearchParams(window.location.search);
   const tab = (params.get("tab") as TabKey) || "dashboard";
   const aTab = (params.get("view") as AnalyticsTab) || "contributors";
@@ -63,10 +63,15 @@ function readUrlState(): { tab: TabKey; analyticsTab: AnalyticsTab; filters: Par
   if (dateFrom) filters.dateFrom = dateFrom;
   const dateTo = params.get("dateTo");
   if (dateTo) filters.dateTo = dateTo;
-  return { tab, analyticsTab: aTab, filters };
+  const tabParams: Record<string, string> = {};
+  for (const [k, v] of params.entries()) {
+    if (["tab", "view", "projects", "tags", "contributors", "dateFrom", "dateTo"].includes(k)) continue;
+    tabParams[k] = v;
+  }
+  return { tab, analyticsTab: aTab, filters, tabParams };
 }
 
-function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalFilters) {
+function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalFilters, tabParams: Record<string, string>) {
   const params = new URLSearchParams();
   params.set("tab", tab);
   if (tab === "analytics") {
@@ -76,6 +81,9 @@ function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalF
     if (filters.contributors.length > 0) params.set("contributors", filters.contributors.join(","));
     if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  }
+  for (const [k, v] of Object.entries(tabParams)) {
+    if (v) params.set(k, v);
   }
   const qs = params.toString();
   const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
@@ -92,8 +100,18 @@ export default function App() {
     ...defaultFilters,
     ...urlState.current.filters,
   }));
+  const [tabParams, setTabParams] = useState<Record<string, string>>(urlState.current.tabParams);
   const [darkMode, setDarkMode] = useState<boolean>(getInitialDarkMode);
   const isInitialLoad = useRef(true);
+
+  const setTabParam = useCallback((key: string, value: string | undefined) => {
+    setTabParams((prev) => {
+      const next = { ...prev };
+      if (value === undefined || value === "") delete next[key];
+      else next[key] = value;
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     getMe().then((res) => { if (res.ok) setUser(res.data!); setLoading(false); });
@@ -109,8 +127,8 @@ export default function App() {
 
   useEffect(() => {
     if (isInitialLoad.current) { isInitialLoad.current = false; return; }
-    writeUrlState(tab, analyticsTab, filters);
-  }, [tab, analyticsTab, filters]);
+    writeUrlState(tab, analyticsTab, filters, tabParams);
+  }, [tab, analyticsTab, filters, tabParams]);
 
   const handleLogout = () => { clearToken(); setUser(null); };
 
@@ -189,13 +207,13 @@ export default function App() {
           </div>
         )}
         <Content style={{ padding: "12px 24px 24px", background: contentBg, border: "none" }}>
-          {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} />}
+          {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} extraParams={tabParams} />}
           {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
-          {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} />}
+          {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
           {tab === "stack" && <StackDashboard userRole={user.role} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>

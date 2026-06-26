@@ -55,6 +55,7 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
     const success = deploys.filter((d: any) => d.status === "success").length;
     const failed = deploys.filter((d: any) => d.status === "failed" || d.pipeline_status === "failed").length;
     const canceled = deploys.filter((d: any) => d.status === "canceled").length;
+    const other = total - success - failed - canceled;
 
     const failureRate = total > 0 ? Math.round((failed / total) * 10000) / 100 : 0;
 
@@ -192,6 +193,7 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
           success,
           failed,
           canceled,
+          other,
           failureRate,
           deployFrequency,
           avgLeadTimeSec: Math.round(avgLeadTime),
@@ -210,7 +212,7 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
 
 function emptyDora() {
   return {
-    summary: { total: 0, success: 0, failed: 0, canceled: 0, failureRate: 0, deployFrequency: 0, avgLeadTimeSec: 0, avgMttrMin: 0 },
+    summary: { total: 0, success: 0, failed: 0, canceled: 0, other: 0, failureRate: 0, deployFrequency: 0, avgLeadTimeSec: 0, avgMttrMin: 0 },
     trend: [],
     byProject: [],
     environments: [],

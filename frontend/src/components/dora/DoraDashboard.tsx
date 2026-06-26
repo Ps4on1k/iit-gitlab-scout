@@ -6,7 +6,7 @@ import { chartColors } from "../../utils/chartTheme";
 import type { ProjectConfig } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
 
-interface Props { filters: GlobalFilters; }
+interface Props { filters: GlobalFilters; onParamChange?: (key: string, value: string | undefined) => void; tabParams?: Record<string, string>; }
 
 const CARD_STYLE = { height: "100%" as const };
 
@@ -114,12 +114,12 @@ function LineChart({ data, height = 120, valueKey, color, label, unit = "" }: {
   );
 }
 
-export function DoraDashboard({ filters }: Props) {
+export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
-  const [selectedEnv, setSelectedEnv] = useState<string | undefined>();
-  const [granularity, setGranularity] = useState<"day" | "week">("day");
+  const [selectedEnv, setSelectedEnv] = useState<string | undefined>(tabParams?.dora_env);
+  const [granularity, setGranularity] = useState<"day" | "week">(tabParams?.dora_granularity as "day" | "week" || "day");
   const cc = chartColors();
 
   useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); }); }, []);
@@ -163,11 +163,11 @@ export function DoraDashboard({ filters }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <Select placeholder="Окружение" allowClear style={{ width: 200 }} value={selectedEnv} onChange={setSelectedEnv}>
+        <Select placeholder="Окружение" allowClear style={{ width: 200 }} value={selectedEnv} onChange={(v) => { setSelectedEnv(v); onParamChange?.("dora_env", v); }}>
           <Select.Option key="__all__" value="__all__">Все окружения</Select.Option>
           {environments.map((e: string) => <Select.Option key={e} value={e}>{e}</Select.Option>)}
         </Select>
-        <Select value={granularity} onChange={(v) => setGranularity(v)} style={{ width: 160 }}>
+        <Select value={granularity} onChange={(v) => { setGranularity(v); onParamChange?.("dora_granularity", v); }} style={{ width: 160 }}>
           <Select.Option value="day">По дням</Select.Option>
           <Select.Option value="week">По неделям</Select.Option>
         </Select>
@@ -202,11 +202,14 @@ export function DoraDashboard({ filters }: Props) {
             </Col>
           </Row>
 
-          <Row gutter={16} style={{ marginBottom: 16 }}>
-            <Col span={6}><Card size="small"><Statistic title="Всего деплоев" value={s.total} /></Card></Col>
-            <Col span={6}><Card size="small"><Statistic title="Успешных" value={s.success} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-            <Col span={6}><Card size="small"><Statistic title="Провалено" value={s.failed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
-            <Col span={6}><Card size="small"><Statistic title="Отменено" value={s.canceled} valueStyle={{ color: "#999" }} /></Card></Col>
+          <Row gutter={12} style={{ marginBottom: 16 }}>
+            <Col span={4}><Card size="small"><Statistic title="Всего" value={s.total} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Успешных" value={s.success} valueStyle={{ color: "#3f8600" }} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Провалено" value={s.failed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Отменено" value={s.canceled} valueStyle={{ color: "#999" }} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Другие" value={s.other || 0} valueStyle={{ color: "#999", fontSize: 14 }}
+              suffix={<span style={{ fontSize: 10, color: "var(--ant-color-textTertiary)" }}>({s.total > 0 ? Math.round(((s.total - s.success - s.failed - s.canceled) / s.total) * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Ср. деплоев/день" value={s.deployFrequency} /></Card></Col>
           </Row>
 
           <Row gutter={16} style={{ marginBottom: 16 }}>

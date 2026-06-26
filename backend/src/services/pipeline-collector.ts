@@ -23,6 +23,7 @@ interface GitLabDeployment {
   finished_at: string | null;
   environment: { name: string };
   pipeline: { id: number; status: string } | null;
+  deployable?: { pipeline?: { id: number; status: string }; finished_at?: string; commit?: { committed_date?: string } };
 }
 
 export async function collectPipelines(projectId: number): Promise<{ total: number; success: number; failed: number; running: number }> {

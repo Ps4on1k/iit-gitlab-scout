@@ -21,6 +21,7 @@ interface Props {
   onChange: (filters: GlobalFilters) => void;
   userRole?: string;
   userAllowedTags?: string[];
+  extraParams?: Record<string, string>;
 }
 
 const defaultFilters: GlobalFilters = {
@@ -31,7 +32,7 @@ const defaultFilters: GlobalFilters = {
   contributors: [],
 };
 
-export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags }: Props) {
+export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags, extraParams }: Props) {
   const [allProjects, setAllProjects] = useState<ProjectConfig[]>([]);
   const [allContributors, setAllContributors] = useState<DbContributor[]>([]);
   const [shareOpen, setShareOpen] = useState(false);
