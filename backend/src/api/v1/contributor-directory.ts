@@ -154,7 +154,7 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     return { ok: true, data: mapping };
   });
 
-  // Flat export: all unique contributors from analytics + directory names
+  // Flat export: all unique contributors from analytics, deduplicated by name via directory
   app.get("/api/v1/contributor-directory/flat-export", { preHandler: [requireAdmin] }, async () => {
     const pool = getPool();
 
@@ -172,18 +172,19 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
        WHERE last_commit_author_email IS NOT NULL AND last_commit_author_email != ''`
     );
 
-    const emailToName: Record<string, string> = {};
     const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+
+    const emailToName: Record<string, string> = {};
+    const nameToEmails: Record<string, Set<string>> = {};
+
     for (const row of dirResult.rows) {
+      const name = row.display_name;
+      if (!nameToEmails[name]) nameToEmails[name] = new Set();
       for (const email of row.emails) {
-        emailToName[email] = row.display_name;
+        emailToName[email] = name;
+        nameToEmails[name].add(email);
       }
     }
-
-    const allEmails = new Set<string>();
-    for (const r of commitsResult.rows) allEmails.add(r.author_email);
-    for (const r of profilesResult.rows) allEmails.add(r.author_email);
-    for (const r of branchesResult.rows) if (r.last_commit_author_email) allEmails.add(r.last_commit_author_email);
 
     const profilesMap: Record<string, string> = {};
     for (const r of profilesResult.rows) profilesMap[r.author_email] = r.author_name;
@@ -191,10 +192,28 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     const branchesMap: Record<string, string> = {};
     for (const r of branchesResult.rows) if (r.last_commit_author_email) branchesMap[r.last_commit_author_email] = r.last_commit_author;
 
-    const contributors = Array.from(allEmails).map((email) => ({
-      name: emailToName[email] || profilesMap[email] || branchesMap[email] || email,
-      email,
-    })).sort((a, b) => a.name.localeCompare(b.name));
+    const allEmails = new Set<string>();
+    for (const r of commitsResult.rows) allEmails.add(r.author_email);
+    for (const r of profilesResult.rows) allEmails.add(r.author_email);
+    for (const r of branchesResult.rows) if (r.last_commit_author_email) allEmails.add(r.last_commit_author_email);
+
+    const nameToPrimaryEmail: Record<string, string> = {};
+    const allNames = new Set<string>();
+
+    for (const email of allEmails) {
+      const name = emailToName[email] || profilesMap[email] || branchesMap[email] || email;
+      allNames.add(name);
+      if (!nameToPrimaryEmail[name]) nameToPrimaryEmail[name] = email;
+      if (nameToEmails[name]) nameToEmails[name].add(email);
+    }
+
+    for (const name of allNames) {
+      if (!nameToEmails[name]) nameToEmails[name] = new Set([nameToPrimaryEmail[name]]);
+    }
+
+    const contributors = Array.from(allNames)
+      .map((name) => ({ name, email: nameToPrimaryEmail[name] }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
     return { ok: true, data: { contributors, total: contributors.length } };
   });
