@@ -6,17 +6,21 @@ import { fetchDashboard } from "../api/client";
 import { chartColors } from "../utils/chartTheme";
 import { getTagColor } from "../utils/tagColors";
 
-const CARD_STYLE = { height: "100%" as const };
-const statSmall = { fontSize: 14 };
-
 function formatDuration(seconds: number): string {
   if (seconds === 0) return "—";
   if (seconds < 60) return `${seconds}с`;
   if (seconds < 3600) return `${Math.round(seconds / 60)}мин`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
-  return `${h}ч ${m}мин`;
+  return `${Math.floor(seconds / 3600)}ч ${Math.round((seconds % 3600) / 60)}м`;
 }
+
+function formatMttr(minutes: number): string {
+  if (minutes === 0) return "—";
+  if (minutes < 60) return `${minutes}мин`;
+  return `${Math.floor(minutes / 60)}ч ${minutes % 60}м`;
+}
+
+const CARD_STYLE = { height: "100%" as const };
+const statSmall = { fontSize: 14 };
 
 export function Dashboard({ onContributorClick }: { onContributorClick?: (name: string) => void }) {
   const [loading, setLoading] = useState(true);
@@ -37,7 +41,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   if (loading) return <div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>;
   if (!data) return <Empty description="Ошибка загрузки" />;
 
-  const { summary, topContributors, inactiveContributors, activeProjects, inactiveProjects, recentActivity, mrByProject } = data;
+  const { summary, dora, topContributors, inactiveContributors, activeProjects, inactiveProjects, recentActivity, mrByProject } = data;
 
   const deploySuccessRate = summary.deploysTotal > 0 ? Math.round(summary.deploysSuccess / summary.deploysTotal * 100) : null;
   const mrMergeRate = (summary.mrOpened + summary.mrMerged + summary.mrClosed) > 0
@@ -125,6 +129,16 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев OK" value={summary.deploysSuccess || 0} valueStyle={{ color: "#21B573", ...statSmall }} suffix={deploySuccessRate !== null && <span style={{ fontSize: 11, color: "#999" }}>({deploySuccessRate}%)</span>} /></Card></Col>
         <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев Failed" value={summary.deploysFailed || 0} valueStyle={{ color: "#E5484D", ...statSmall }} /></Card></Col>
       </Row>
+
+      {/* DORA metrics row */}
+      {dora && (
+        <Row gutter={12} style={{ marginBottom: 16 }}>
+          <Col span={6}><Card size="small" style={CARD_STYLE}><Statistic title="Частота деплоев" value={dora.deployFrequency} suffix="в день" valueStyle={{ color: dora.deployFrequency >= 1 ? "#21B573" : dora.deployFrequency >= 0.1 ? "#FFB020" : "#E5484D", ...statSmall }} prefix={<RocketOutlined />} /></Card></Col>
+          <Col span={6}><Card size="small" style={CARD_STYLE}><Statistic title="Lead Time" value={formatDuration(dora.avgLeadTimeSec)} valueStyle={{ color: dora.avgLeadTimeSec < 3600 ? "#21B573" : dora.avgLeadTimeSec < 86400 ? "#FFB020" : "#E5484D", ...statSmall }} prefix={<ClockCircleOutlined />} /></Card></Col>
+          <Col span={6}><Card size="small" style={CARD_STYLE}><Statistic title="Failure Rate" value={dora.failureRate} suffix="%" valueStyle={{ color: dora.failureRate <= 15 ? "#21B573" : dora.failureRate <= 30 ? "#FFB020" : "#E5484D", ...statSmall }} prefix={<WarningOutlined />} /></Card></Col>
+          <Col span={6}><Card size="small" style={CARD_STYLE}><Statistic title="MTTR" value={formatMttr(dora.avgMttrMin)} valueStyle={{ color: dora.avgMttrMin <= 60 ? "#21B573" : dora.avgMttrMin <= 1440 ? "#FFB020" : "#E5484D", ...statSmall }} /></Card></Col>
+        </Row>
+      )}
 
       {/* Activity chart */}
       <Row gutter={16} style={{ marginBottom: 16, minHeight: 350 }} align="stretch">

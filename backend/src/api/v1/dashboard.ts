@@ -195,6 +195,31 @@ export async function dashboardRoutes(app: FastifyInstance) {
     ) : { rows: [{ total: 0, success: 0, failed: 0 }] };
     const deploys = deployResult.rows[0];
 
+    const doraLeadTime = projectIds.length > 0 ? await pool.query(
+      `SELECT AVG(EXTRACT(EPOCH FROM (d.created_at - (d.raw_json->'deployable'->'commit'->>'committed_date')::timestamptz)))::int as avg_sec
+       FROM project_deployments d
+       WHERE d.project_id = ANY($1) AND d.status = 'success' AND d.created_at >= $2
+         AND d.raw_json->'deployable'->'commit'->>'committed_date' IS NOT NULL`,
+      [projectIds, dateFrom]
+    ) : { rows: [{ avg_sec: 0 }] };
+
+    const doraMttr = projectIds.length > 0 ? await pool.query(
+      `WITH ordered AS (
+         SELECT created_at, status,
+                LAG(created_at) OVER (ORDER BY created_at) as prev_created,
+                LAG(status) OVER (ORDER BY created_at) as prev_status
+         FROM project_deployments
+         WHERE project_id = ANY($1) AND created_at >= $2
+       )
+       SELECT AVG(EXTRACT(EPOCH FROM (created_at - prev_created)) / 60)::int as avg_min
+       FROM ordered
+       WHERE prev_status = 'failed' AND status = 'success'
+         AND EXTRACT(EPOCH FROM (created_at - prev_created)) / 60 BETWEEN 0 AND 1440`,
+      [projectIds, dateFrom]
+    ) : { rows: [{ avg_min: 0 }] };
+
+    const doraFreq = deploys.total > 0 ? Math.round((deploys.total / Math.max(1, Math.ceil((new Date(todayStr).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1)) * 100) / 100 : 0;
+
     return {
       ok: true,
       data: {
@@ -210,6 +235,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
           deploysTotal: deploys.total,
           deploysSuccess: deploys.success,
           deploysFailed: deploys.failed,
+        },
+        dora: {
+          deployFrequency: doraFreq,
+          avgLeadTimeSec: doraLeadTime.rows[0]?.avg_sec || 0,
+          failureRate: deploys.total > 0 ? Math.round((deploys.failed / deploys.total) * 10000) / 100 : 0,
+          avgMttrMin: doraMttr.rows[0]?.avg_min || 0,
         },
         topContributors,
         inactiveContributors,
