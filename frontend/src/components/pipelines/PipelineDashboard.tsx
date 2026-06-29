@@ -161,7 +161,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                         { type: "Отменено", value: data.summary.canceled || 0 },
                       ]}
                       angleField="value" colorField="type" radius={0.9} innerRadius={0.55}
-                      color={["#21B573", "#E5484D", "#3A8DFF", "#FFB020"]}
+                      scale={{ color: { domain: ["Успешно", "Провалено", "Выполняется", "Отменено"], range: ["#21B573", "#E5484D", "#3A8DFF", "#FFB020"] } }}
                       label={false as const}
                       legend={{ color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
                       statistic={false}
