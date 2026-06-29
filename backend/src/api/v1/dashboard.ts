@@ -42,6 +42,21 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const now = Date.now();
     const todayStr = new Date().toISOString().slice(0, 10);
 
+    const branchResult = projectIds.length > 0 ? await pool.query(
+      `SELECT pb.merged, pb.last_commit_date
+       FROM project_branches pb
+       WHERE pb.project_id = ANY($1)`,
+      [projectIds]
+    ) : { rows: [] };
+
+    let totalBranches = 0, activeBranches = 0, staleBranches = 0, mergedBranches = 0;
+    for (const r of branchResult.rows) {
+      totalBranches++;
+      if (r.merged) { mergedBranches++; continue; }
+      if (r.last_commit_date && (now - new Date(r.last_commit_date).getTime()) <= staleMs) activeBranches++;
+      else staleBranches++;
+    }
+
     const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
     const emailToName: Record<string, string> = {};
     const nameToFirstEmail: Record<string, string> = {};
@@ -227,6 +242,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         summary: {
           projects: projects.length,
           contributors: totalContributorCount.rows[0]?.cnt || 0,
+          branches: totalBranches,
+          activeBranches,
+          staleBranches,
+          mergedBranches,
           commits: activityResult.rows.reduce((s: number, r: any) => s + r.cnt, 0),
           activeDays: activityResult.rows.length,
           mrOpened: mr.opened,
