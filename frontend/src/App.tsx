@@ -234,8 +234,8 @@ export default function App() {
         </Content>
         <footer style={{
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: "24px 16px", borderTop: `1px solid ${darkMode ? "#2A3A4A" : "#EEF1F4"}`,
-          background: darkMode ? "#111827" : "#F5F7FA",
+          padding: "24px 16px", borderTop: "1px solid #2A3A4A",
+          background: "#111315",
           position: "relative", zIndex: 1,
         }}>
           <a href="https://inn-it.pro/" target="_blank" rel="noopener noreferrer">
@@ -243,7 +243,7 @@ export default function App() {
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")} />
           </a>
-          <span style={{ fontSize: 11, color: darkMode ? "#8A94A6" : "#AEB7C4", marginTop: 8, letterSpacing: 0.3 }}>
+          <span style={{ fontSize: 11, color: "#8A94A6", marginTop: 8, letterSpacing: 0.3 }}>
             &copy; {new Date().getFullYear()} Инновация ИТ
           </span>
         </footer>

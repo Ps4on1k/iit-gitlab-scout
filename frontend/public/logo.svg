@@ -9,10 +9,10 @@
   <circle cx="120" cy="170" r="16" fill="#111315"/>
   <circle cx="172" cy="104" r="16" fill="#111315"/>
 
-  <!-- Magnifying glass - bigger and more expressive -->
-  <circle cx="188" cy="188" r="36" stroke="#3A8DFF" stroke-width="10" fill="none"/>
-  <circle cx="188" cy="188" r="30" stroke="#3A8DFF" stroke-width="2" fill="rgba(58,141,255,0.08)"/>
-  <line x1="214" y1="214" x2="248" y2="248" stroke="#3A8DFF" stroke-width="10" stroke-linecap="round"/>
+  <!-- Magnifying glass - 2x bigger -->
+  <circle cx="178" cy="178" r="56" stroke="#3A8DFF" stroke-width="12" fill="none"/>
+  <circle cx="178" cy="178" r="48" stroke="#3A8DFF" stroke-width="3" fill="rgba(58,141,255,0.06)"/>
+  <line x1="219" y1="219" x2="252" y2="252" stroke="#3A8DFF" stroke-width="14" stroke-linecap="round"/>
   <!-- Glass reflection -->
-  <path d="M176 172 Q180 168 186 172" stroke="rgba(58,141,255,0.4)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <path d="M160 160 Q168 152 178 160" stroke="rgba(58,141,255,0.35)" stroke-width="3" fill="none" stroke-linecap="round"/>
 </svg>
