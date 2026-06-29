@@ -178,7 +178,7 @@ export default function App() {
           overflow: "hidden", pointerEvents: "none", zIndex: 0,
           opacity: darkMode ? 0.035 : 0.055,
         }}>
-          <img src="/asterics_color.svg" alt="" style={{
+          <img src="/asterics_bg.svg" alt="" style={{
             position: "absolute", top: 0, left: 0,
             width: "80vw", height: "auto",
           }} />
