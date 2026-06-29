@@ -114,7 +114,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
         });
       }
     }
-    const topContributors = Array.from(contribMap.values()).sort((a, b) => b.changes - a.changes).slice(0, 10);
+    const topContributors = Array.from(contribMap.values()).sort((a, b) => b.changes - a.changes).slice(0, 15);
 
     const inactiveContribResult = await pool.query(
       `SELECT DISTINCT c.author_email, MAX(c.author_name) as name,
