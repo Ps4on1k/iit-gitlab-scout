@@ -148,9 +148,9 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       </Row>
 
       {/* Active vs Inactive Projects */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={16} style={{ marginBottom: 16 }} align="stretch">
         <Col span={12}>
-          <Card size="small" style={{ height: "auto" }}
+          <Card size="small" style={{ height: "100%" }}
             title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные проекты ({activeProjects.length})</span>}
             extra={activeProjects.length > TOP_N && (
               <Button size="small" type="link" icon={showAllActive ? <UpOutlined /> : <DownOutlined />}
@@ -165,7 +165,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           </Card>
         </Col>
         <Col span={12}>
-          <Card size="small" style={{ height: "auto" }}
+          <Card size="small" style={{ height: "100%" }}
             title={<span><MinusOutlined style={{ color: "#999", marginRight: 6 }} />Неактивные проекты ({inactiveProjects.length})</span>}
             extra={inactiveProjects.length > TOP_N && (
               <Button size="small" type="link" icon={showAllInactive ? <UpOutlined /> : <DownOutlined />}
@@ -182,9 +182,9 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       </Row>
 
       {/* Active vs Inactive Contributors */}
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={16} style={{ marginBottom: 16 }} align="stretch">
         <Col span={12}>
-          <Card size="small" style={{ height: "auto" }}
+          <Card size="small" style={{ height: "100%" }}
             title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные контрибьюторы ({topContributors.length})</span>}
             extra={topContributors.length > TOP_N && (
               <Button size="small" type="link" icon={showAllActiveContrib ? <UpOutlined /> : <DownOutlined />}
@@ -199,7 +199,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
           </Card>
         </Col>
         <Col span={12}>
-          <Card size="small" style={{ height: "auto" }}
+          <Card size="small" style={{ height: "100%" }}
             title={<span><ArrowDownOutlined style={{ color: "#cf1322", marginRight: 6 }} />Неактивные контрибьюторы ({inactiveContributors.length})</span>}
             extra={inactiveContributors.length > TOP_N && (
               <Button size="small" type="link" icon={showAllInactiveContrib ? <UpOutlined /> : <DownOutlined />}
