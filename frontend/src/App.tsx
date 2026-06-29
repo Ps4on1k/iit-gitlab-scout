@@ -194,7 +194,7 @@ export default function App() {
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
         <Watermark dark={darkMode} />
-        <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315" }}>
+        <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315", position: "relative", zIndex: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
@@ -215,7 +215,7 @@ export default function App() {
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)" }}>Выйти</Button>
         </Header>
         {tab === "analytics" && (
-          <div style={{ background: subMenuBg, padding: "0 24px", display: "flex", gap: 0, borderBottom: darkMode ? "1px solid #2A3A4A" : "none" }}>
+          <div style={{ background: subMenuBg, padding: "0 24px", display: "flex", gap: 0, borderBottom: darkMode ? "1px solid #2A3A4A" : "none", position: "relative", zIndex: 10 }}>
             {analyticsSubTabs.map((t) => (
               <div key={t.key}
                 onClick={() => setAnalyticsTab(t.key as AnalyticsTab)}
@@ -230,7 +230,7 @@ export default function App() {
             ))}
           </div>
         )}
-        <Content style={{ padding: "12px 24px 24px", background: contentBg, border: "none" }}>
+        <Content style={{ padding: "12px 24px 24px", background: contentBg, border: "none", position: "relative", zIndex: 1 }}>
           {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} extraParams={tabParams} />}
           {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
           {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
@@ -246,6 +246,7 @@ export default function App() {
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           padding: "24px 16px", borderTop: `1px solid ${darkMode ? "#2A3A4A" : "#EEF1F4"}`,
           background: darkMode ? "#111827" : "#F5F7FA",
+          position: "relative", zIndex: 1,
         }}>
           <a href="https://inn-it.pro/" target="_blank" rel="noopener noreferrer">
             <img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 56, opacity: 0.7, transition: "opacity 0.15s" }}
