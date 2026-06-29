@@ -369,12 +369,14 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
        FROM commits
        GROUP BY author_email
      )
-     SELECT p.path as project_path, c.author_email, cn.author_name, TO_CHAR(c.committed_date, 'YYYY-MM-DD') as day, COUNT(*)::int as cnt
+     SELECT CONCAT(p.path, ' || ', p.base_url) as project_key,
+            p.path as project_path, p.label as project_label,
+            c.author_email, cn.author_name, TO_CHAR(c.committed_date, 'YYYY-MM-DD') as day, COUNT(*)::int as cnt
      FROM commits c
      JOIN projects p ON p.id = c.project_id
      JOIN canonical_names cn ON cn.author_email = c.author_email
      ${where}
-     GROUP BY p.path, c.author_email, cn.author_name, day
+     GROUP BY p.path, p.base_url, p.label, c.author_email, cn.author_name, day
      ORDER BY day`,
     params
   );
@@ -398,21 +400,24 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
   const byProjectContributor: Record<string, Record<string, Record<string, number>>> = {};
 
   for (const row of result.rows) {
-    if (!byProject[row.project_path]) byProject[row.project_path] = {};
-    byProject[row.project_path][row.day] = (byProject[row.project_path][row.day] || 0) + row.cnt;
+    const projKey = row.project_key;
+    const projLabel = row.project_label || row.project_path;
+
+    if (!byProject[projKey]) byProject[projKey] = {};
+    byProject[projKey][row.day] = (byProject[projKey][row.day] || 0) + row.cnt;
 
     const displayName = emailToName[row.author_email] || row.author_email;
     const primaryEmail = nameToFirstEmail[displayName] || row.author_email;
 
-    if (!projectContributors[row.project_path]) projectContributors[row.project_path] = new Set();
-    projectContributors[row.project_path].add(displayName);
+    if (!projectContributors[projKey]) projectContributors[projKey] = new Set();
+    projectContributors[projKey].add(displayName);
 
     const contributorLabel = `${primaryEmail} (${displayName})`;
 
-    if (!byProjectContributor[row.project_path]) byProjectContributor[row.project_path] = {};
-    if (!byProjectContributor[row.project_path][contributorLabel]) byProjectContributor[row.project_path][contributorLabel] = {};
-    byProjectContributor[row.project_path][contributorLabel][row.day] =
-      (byProjectContributor[row.project_path][contributorLabel][row.day] || 0) + row.cnt;
+    if (!byProjectContributor[projKey]) byProjectContributor[projKey] = {};
+    if (!byProjectContributor[projKey][contributorLabel]) byProjectContributor[projKey][contributorLabel] = {};
+    byProjectContributor[projKey][contributorLabel][row.day] =
+      (byProjectContributor[projKey][contributorLabel][row.day] || 0) + row.cnt;
 
     if (!byContributor[contributorLabel]) byContributor[contributorLabel] = {};
     byContributor[contributorLabel][row.day] = (byContributor[contributorLabel][row.day] || 0) + row.cnt;

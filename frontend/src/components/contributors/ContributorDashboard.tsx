@@ -170,13 +170,13 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
   const projectTags = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of projects) { if (p.tags) map[p.path] = p.tags.join(", "); }
+    for (const p of projects) { if (p.tags) map[`${p.path} || ${p.base_url || ""}`] = p.tags.join(", "); }
     return map;
   }, [projects]);
 
   const projectDescriptions = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const p of projects) { if (p.description) { map[p.label] = p.description; map[p.path] = p.description; } }
+    for (const p of projects) { if (p.description) { const key = `${p.path} || ${p.base_url || ""}`; map[key] = p.description; } }
     return map;
   }, [projects]);
 
