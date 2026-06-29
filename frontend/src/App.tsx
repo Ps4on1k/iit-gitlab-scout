@@ -20,6 +20,23 @@ import type { User } from "./types";
 
 const { Header, Content } = Layout;
 
+function Watermark({ dark }: { dark: boolean }) {
+  const color = dark ? "rgba(174,183,200,0.08)" : "rgba(17,19,21,0.04)";
+  return (
+    <div style={{
+      position: "fixed", top: 56, left: 0,
+      width: 360, height: 360,
+      overflow: "hidden", pointerEvents: "none", zIndex: 0,
+    }}>
+      <svg viewBox="0 0 120 120" style={{ width: "100%", height: "100%", position: "absolute", top: -20, left: -60 }}>
+        <path d="M60 8.18164V111.818" stroke={color} strokeWidth="13.63" />
+        <path d="M105 34.0908L15 85.909" stroke={color} strokeWidth="13.63" />
+        <path d="M15 34.0908L105 85.909" stroke={color} strokeWidth="13.63" />
+      </svg>
+    </div>
+  );
+}
+
 function Logo({ isDark }: { isDark: boolean }) {
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -46,7 +63,11 @@ type TabKey = "dashboard" | "analytics" | "stack" | "benchmark" | "settings";
 type AnalyticsTab = "contributors" | "activity" | "branches" | "pipelines" | "dora";
 
 function getInitialDarkMode(): boolean {
-  try { return localStorage.getItem("darkMode") === "true"; } catch { return false; }
+  try {
+    const stored = localStorage.getItem("darkMode");
+    if (stored !== null) return stored === "true";
+  } catch {}
+  return true;
 }
 
 function readUrlState(): { tab: TabKey; analyticsTab: AnalyticsTab; filters: Partial<GlobalFilters>; tabParams: Record<string, string> } {
@@ -172,17 +193,7 @@ export default function App() {
   return (
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
-        <div style={{
-          position: "fixed", top: 60, left: 0,
-          width: "40vw", height: "40vh",
-          overflow: "hidden", pointerEvents: "none", zIndex: 0,
-          opacity: darkMode ? 0.12 : 0.06,
-        }}>
-          <img src="/asterics_bg.svg" alt="" style={{
-            position: "absolute", top: -20, left: -40,
-            width: "120vw", height: "auto",
-          }} />
-        </div>
+        <Watermark dark={darkMode} />
         <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
