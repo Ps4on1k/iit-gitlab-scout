@@ -334,3 +334,35 @@ export async function fetchDoraMetrics(projectIds?: number[], environment?: stri
   if (dateTo) qs.set("date_to", dateTo);
   return fetchJson(`/v1/dora-metrics${qs.toString() ? "?" + qs.toString() : ""}`);
 }
+
+export interface TimeEntry {
+  id: number;
+  contributor_email: string;
+  hours: number;
+  period_from: string;
+  period_to: string;
+  note: string;
+  created_at: string;
+}
+
+export async function fetchTimeEntries(email?: string): Promise<ApiResponse<TimeEntry[]>> {
+  const qs = new URLSearchParams();
+  if (email) qs.set("email", email);
+  return fetchJson<TimeEntry[]>(`/v1/time-entries${qs.toString() ? "?" + qs.toString() : ""}`);
+}
+
+export async function createTimeEntries(entries: { email: string; hours: number; period_from: string; period_to: string; note?: string }[]): Promise<ApiResponse<{ imported: any[]; errors: any[]; total: number }>> {
+  return fetchJson("/v1/time-entries", { method: "POST", body: JSON.stringify({ entries }) });
+}
+
+export async function deleteTimeEntry(id: number): Promise<ApiResponse<{ deleted: boolean }>> {
+  return fetchJson(`/v1/time-entries/${id}`, { method: "DELETE" });
+}
+
+export async function fetchTimeEntrySummary(): Promise<ApiResponse<any[]>> {
+  return fetchJson("/v1/time-entries/summary");
+}
+
+export async function fetchTimeEntryTemplate(): Promise<ApiResponse<{ csv: string }>> {
+  return fetchJson("/v1/time-entries/template");
+}

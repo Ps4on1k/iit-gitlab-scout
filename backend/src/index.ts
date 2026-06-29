@@ -27,6 +27,7 @@ import { personalTokenRoutes } from "./api/v1/personal-tokens.js";
 import { batchCollectRoutes } from "./api/v1/batch-collect.js";
 import { doraMetricsRoutes } from "./api/v1/dora-metrics.js";
 import { benchmarkRoutes } from "./api/v1/benchmark.js";
+import { timeEntriesRoutes } from "./api/v1/time-entries.js";
 import { securityPlugin } from "./utils/security.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { getActiveJobs } from "./utils/collect-tracker.js";
@@ -108,6 +109,7 @@ await app.register(personalTokenRoutes);
 await app.register(batchCollectRoutes);
 await app.register(doraMetricsRoutes);
 await app.register(benchmarkRoutes);
+await app.register(timeEntriesRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);
