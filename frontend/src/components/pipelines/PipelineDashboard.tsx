@@ -21,8 +21,6 @@ function downloadCsv(filename: string, headers: string[], rows: any[][]) {
   URL.revokeObjectURL(url);
 }
 
-const PIE_COLORS = ["#21B573", "#E5484D", "#3A8DFF", "#FFB020", "#42D9C8"];
-
 function formatDuration(secs: number | null): string {
   if (secs === null || secs === undefined) return "N/A";
   if (secs < 60) return `${secs}с`;
@@ -154,21 +152,21 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             <Col span={10}>
               <Card title="Распределение по статусу" size="small" style={{ height: "100%" }}>
                 {data.summary.total === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-                  <div style={{ height: 320 }}>
+                  <div>
                     <Pie
                       data={[
                         { type: "Успешно", value: data.summary.success },
                         { type: "Провалено", value: data.summary.failed },
                         { type: "Выполняется", value: data.summary.running },
                         { type: "Отменено", value: data.summary.canceled || 0 },
-                      ].filter((d) => d.value > 0)}
+                      ]}
                       angleField="value" colorField="type" radius={0.9} innerRadius={0.55}
-                      color={PIE_COLORS}
+                      color={["#21B573", "#E5484D", "#3A8DFF", "#FFB020"]}
                       label={false as const}
                       legend={{ color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
                       statistic={false}
                       tooltip={{ title: "type", items: [{ field: "value", name: "Количество" }] }}
-                      height={320}
+                      autoFit
                     />
                   </div>
                 )}
