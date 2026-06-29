@@ -152,7 +152,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
   };
 
   return (
-    <div style={{ width: "90%", margin: "0 auto" }}>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2, background: "var(--ant-color-bg-container)" }}>
       <div style={{ background: "linear-gradient(135deg, #8BC8A8 0%, #B8D8C0 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Ветки проектов</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Оценка состояния веток: активность, заброшенность, здоровье проектов</div>

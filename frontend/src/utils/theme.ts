@@ -8,6 +8,7 @@ const DARK_BORDER = "#2A3A4A";
 
 export const darkThemeConfig = {
   algorithm: theme.darkAlgorithm,
+  cssVar: {},
   token: {
     colorPrimary: "#3A8DFF",
     colorBgContainer: DARK_BG,
@@ -55,6 +56,7 @@ const LIGHT_BG = "#FFFFFF";
 
 export const lightThemeConfig = {
   algorithm: theme.defaultAlgorithm,
+  cssVar: {},
   token: {
     colorPrimary: "#3A8DFF",
     borderRadius: 2,

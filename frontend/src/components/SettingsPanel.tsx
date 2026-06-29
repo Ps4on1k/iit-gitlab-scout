@@ -9,7 +9,7 @@ import { PersonalTokensPanel } from "./PersonalTokensPanel";
 
 export function SettingsPanel() {
   return (
-    <div style={{ padding: "0 24px" }}>
+    <div style={{ padding: "0 24px", background: "var(--ant-color-bg-container)", borderRadius: 2, minHeight: 400 }}>
       <Tabs
         defaultActiveKey="projects"
         items={[

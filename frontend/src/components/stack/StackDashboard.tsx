@@ -84,7 +84,7 @@ export function StackDashboard({ userRole }: Props) {
   );
 
   return (
-    <div style={{ width: "90%", margin: "0 auto" }}>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2, background: "var(--ant-color-bg-container)" }}>
       <div style={{ background: "linear-gradient(135deg, #98C8D8 0%, #8BAADB 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Стек технологий</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Языки программирования по проектам</div>

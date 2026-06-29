@@ -185,7 +185,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
   }, [effectiveProjectIds, projects]);
 
   return (
-    <div style={{ width: "90%", margin: "0 auto" }}>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2, background: "var(--ant-color-bg-container)" }}>
       <div style={{ background: "linear-gradient(135deg, #8BAADB 0%, #B8A8D8 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Аналитика контрибьюторов</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сбор и визуализация статистики коммитов из GitLab</div>
