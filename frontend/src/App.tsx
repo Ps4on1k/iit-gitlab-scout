@@ -38,17 +38,7 @@ function Watermark({ dark }: { dark: boolean }) {
 }
 
 function Logo({ isDark }: { isDark: boolean }) {
-  return (
-    <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="4" fill={isDark ? "#3A8DFF" : "#fff"} opacity="0.9"/>
-      <circle cx="12" cy="26" r="4" fill={isDark ? "#3A8DFF" : "#fff"} opacity="0.9"/>
-      <circle cx="24" cy="19" r="4" fill={isDark ? "#3A8DFF" : "#fff"} opacity="0.9"/>
-      <path d="M12 16v6" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
-      <path d="M12 12c0-4 6-6 12-4" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.8"/>
-      <circle cx="26" cy="26" r="6" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2" fill="none" opacity="0.85"/>
-      <line x1="30.5" y1="30.5" x2="34" y2="34" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2.5" strokeLinecap="round" opacity="0.85"/>
-    </svg>
-  );
+  return <img src="/logo.svg" alt="GitLab Scout" style={{ width: 28, height: 28 }} />;
 }
 
 const defaultFilters: GlobalFilters = {
