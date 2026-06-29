@@ -176,7 +176,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v2.2.0</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginLeft: 4 }}>v2.3.0</span>
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
             onClick={({ key }) => setTab(key as TabKey)}
@@ -226,7 +226,7 @@ export default function App() {
           background: darkMode ? "#111827" : "#F5F7FA",
         }}>
           <a href="https://inn-it.pro/" target="_blank" rel="noopener noreferrer">
-            <img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 28, opacity: 0.7, transition: "opacity 0.15s" }}
+            <img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 56, opacity: 0.7, transition: "opacity 0.15s" }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
               onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")} />
           </a>
