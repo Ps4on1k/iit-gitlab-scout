@@ -25,10 +25,10 @@ function Watermark({ dark }: { dark: boolean }) {
   return (
     <div style={{
       position: "fixed", top: 56, left: 0,
-      width: 360, height: 360,
+      width: 720, height: 720,
       overflow: "hidden", pointerEvents: "none", zIndex: 0,
     }}>
-      <svg viewBox="0 0 120 120" style={{ width: "100%", height: "100%", position: "absolute", top: -20, left: -60 }}>
+      <svg viewBox="0 0 120 120" style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
         <path d="M60 8.18164V111.818" stroke={color} strokeWidth="13.63" />
         <path d="M105 34.0908L15 85.909" stroke={color} strokeWidth="13.63" />
         <path d="M15 34.0908L105 85.909" stroke={color} strokeWidth="13.63" />
