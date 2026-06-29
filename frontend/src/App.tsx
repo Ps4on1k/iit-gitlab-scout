@@ -172,6 +172,17 @@ export default function App() {
   return (
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
+        <div style={{
+          position: "fixed", top: 60, left: 0,
+          width: "40vw", height: "40vh",
+          overflow: "hidden", pointerEvents: "none", zIndex: 0,
+          opacity: darkMode ? 0.035 : 0.055,
+        }}>
+          <img src="/asterics_color.svg" alt="" style={{
+            position: "absolute", top: 0, left: 0,
+            width: "80vw", height: "auto",
+          }} />
+        </div>
         <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
