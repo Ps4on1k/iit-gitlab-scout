@@ -24,7 +24,7 @@ function Watermark({ dark }: { dark: boolean }) {
   const color = dark ? "rgba(174,183,200,0.08)" : "rgba(17,19,21,0.04)";
   return (
     <div style={{
-      position: "fixed", top: -180, left: -480,
+      position: "fixed", top: -180, left: -640,
       width: 1440, height: 1440,
       overflow: "hidden", pointerEvents: "none", zIndex: 0,
     }}>
