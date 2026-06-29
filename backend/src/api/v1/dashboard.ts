@@ -131,7 +131,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
          )
        GROUP BY c.author_email
        ORDER BY MAX(c.committed_date) DESC
-       LIMIT 10`,
+       LIMIT 50`,
       [projectIds, dateFrom, new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)]
     );
 

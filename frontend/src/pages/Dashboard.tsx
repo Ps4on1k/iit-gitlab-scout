@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, Row, Col, Statistic, Spin, Empty, Table, Tag, Segmented } from "antd";
-import { ProjectOutlined, TeamOutlined, FireOutlined, CheckCircleOutlined, MergeOutlined, RocketOutlined, WarningOutlined, ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Statistic, Spin, Empty, Table, Tag, Segmented, Button } from "antd";
+import { ProjectOutlined, TeamOutlined, FireOutlined, CheckCircleOutlined, MergeOutlined, RocketOutlined, WarningOutlined, ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, UpOutlined, DownOutlined } from "@ant-design/icons";
 import { Line } from "@ant-design/charts";
 import { fetchDashboard } from "../api/client";
 import { chartColors } from "../utils/chartTheme";
@@ -22,7 +22,12 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [period, setPeriod] = useState<number>(30);
+  const [showAllActive, setShowAllActive] = useState(false);
+  const [showAllInactive, setShowAllInactive] = useState(false);
+  const [showAllActiveContrib, setShowAllActiveContrib] = useState(false);
+  const [showAllInactiveContrib, setShowAllInactiveContrib] = useState(false);
   const cc = chartColors();
+  const TOP_N = 15;
 
   useEffect(() => {
     setLoading(true);
@@ -145,16 +150,32 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       {/* Active vs Inactive Projects */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={12}>
-          <Card title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные проекты ({activeProjects.length})</span>} size="small" style={{ height: 400 }}>
+          <Card size="small" style={{ height: "auto" }}
+            title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные проекты ({activeProjects.length})</span>}
+            extra={activeProjects.length > TOP_N && (
+              <Button size="small" type="link" icon={showAllActive ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setShowAllActive(!showAllActive)}>
+                {showAllActive ? "Свернуть" : `Показать все (${activeProjects.length})`}
+              </Button>
+            )}>
             {activeProjects.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет активных проектов за период" /> : (
-              <Table dataSource={activeProjects} columns={activeProjectColumns} rowKey="id" size="small" pagination={false} scroll={{ y: 300 }} />
+              <Table dataSource={showAllActive ? activeProjects : activeProjects.slice(0, TOP_N)}
+                columns={activeProjectColumns} rowKey="id" size="small" pagination={false} />
             )}
           </Card>
         </Col>
         <Col span={12}>
-          <Card title={<span><MinusOutlined style={{ color: "#999", marginRight: 6 }} />Неактивные проекты ({inactiveProjects.length})</span>} size="small" style={{ height: 400 }}>
+          <Card size="small" style={{ height: "auto" }}
+            title={<span><MinusOutlined style={{ color: "#999", marginRight: 6 }} />Неактивные проекты ({inactiveProjects.length})</span>}
+            extra={inactiveProjects.length > TOP_N && (
+              <Button size="small" type="link" icon={showAllInactive ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setShowAllInactive(!showAllInactive)}>
+                {showAllInactive ? "Свернуть" : `Показать все (${inactiveProjects.length})`}
+              </Button>
+            )}>
             {inactiveProjects.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Все проекты активны" /> : (
-              <Table dataSource={inactiveProjects} columns={inactiveProjectColumns} rowKey="id" size="small" pagination={false} scroll={{ y: 300 }} />
+              <Table dataSource={showAllInactive ? inactiveProjects : inactiveProjects.slice(0, TOP_N)}
+                columns={inactiveProjectColumns} rowKey="id" size="small" pagination={false} />
             )}
           </Card>
         </Col>
@@ -163,16 +184,32 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       {/* Active vs Inactive Contributors */}
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={12}>
-          <Card title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные контрибьюторы ({topContributors.length})</span>} size="small" style={{ height: 400 }}>
+          <Card size="small" style={{ height: "auto" }}
+            title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные контрибьюторы ({topContributors.length})</span>}
+            extra={topContributors.length > TOP_N && (
+              <Button size="small" type="link" icon={showAllActiveContrib ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setShowAllActiveContrib(!showAllActiveContrib)}>
+                {showAllActiveContrib ? "Свернуть" : `Показать все (${topContributors.length})`}
+              </Button>
+            )}>
             {topContributors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
-              <Table dataSource={topContributors} columns={activeContributorColumns} rowKey="email" size="small" pagination={false} scroll={{ y: 300 }} />
+              <Table dataSource={showAllActiveContrib ? topContributors : topContributors.slice(0, TOP_N)}
+                columns={activeContributorColumns} rowKey="email" size="small" pagination={false} />
             )}
           </Card>
         </Col>
         <Col span={12}>
-          <Card title={<span><ArrowDownOutlined style={{ color: "#cf1322", marginRight: 6 }} />Неактивные контрибьюторы ({inactiveContributors.length})</span>} size="small" style={{ height: 400 }}>
+          <Card size="small" style={{ height: "auto" }}
+            title={<span><ArrowDownOutlined style={{ color: "#cf1322", marginRight: 6 }} />Неактивные контрибьюторы ({inactiveContributors.length})</span>}
+            extra={inactiveContributors.length > TOP_N && (
+              <Button size="small" type="link" icon={showAllInactiveContrib ? <UpOutlined /> : <DownOutlined />}
+                onClick={() => setShowAllInactiveContrib(!showAllInactiveContrib)}>
+                {showAllInactiveContrib ? "Свернуть" : `Показать все (${inactiveContributors.length})`}
+              </Button>
+            )}>
             {inactiveContributors.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет отвалившихся контрибьюторов" /> : (
-              <Table dataSource={inactiveContributors} columns={inactiveContributorColumns} rowKey="email" size="small" pagination={false} scroll={{ y: 300 }} />
+              <Table dataSource={showAllInactiveContrib ? inactiveContributors : inactiveContributors.slice(0, TOP_N)}
+                columns={inactiveContributorColumns} rowKey="email" size="small" pagination={false} />
             )}
           </Card>
         </Col>
