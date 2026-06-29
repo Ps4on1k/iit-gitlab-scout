@@ -176,11 +176,11 @@ export default function App() {
           position: "fixed", top: 60, left: 0,
           width: "40vw", height: "40vh",
           overflow: "hidden", pointerEvents: "none", zIndex: 0,
-          opacity: darkMode ? 0.035 : 0.055,
+          opacity: darkMode ? 0.12 : 0.06,
         }}>
           <img src="/asterics_bg.svg" alt="" style={{
-            position: "absolute", top: 0, left: 0,
-            width: "80vw", height: "auto",
+            position: "absolute", top: -20, left: -40,
+            width: "120vw", height: "auto",
           }} />
         </div>
         <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315" }}>
