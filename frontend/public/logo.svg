@@ -3,13 +3,16 @@
   <rect x="44" y="44" width="168" height="168" rx="28" transform="rotate(45 128 128)" fill="#E25B3E"/>
 
   <!-- Git branching symbol -->
-  <line x1="128" y1="60" x2="128" y2="176" stroke="#111315" stroke-width="16" stroke-linecap="round"/>
-  <line x1="128" y1="60" x2="176" y2="108" stroke="#111315" stroke-width="16" stroke-linecap="round"/>
-  <circle cx="128" cy="60" r="18" fill="#111315"/>
-  <circle cx="128" cy="176" r="18" fill="#111315"/>
-  <circle cx="176" cy="108" r="18" fill="#111315"/>
+  <line x1="120" y1="52" x2="120" y2="170" stroke="#111315" stroke-width="14" stroke-linecap="round"/>
+  <line x1="120" y1="52" x2="172" y2="104" stroke="#111315" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="120" cy="52" r="16" fill="#111315"/>
+  <circle cx="120" cy="170" r="16" fill="#111315"/>
+  <circle cx="172" cy="104" r="16" fill="#111315"/>
 
-  <!-- Magnifying glass -->
-  <circle cx="192" cy="196" r="28" stroke="#3A8DFF" stroke-width="8" fill="none"/>
-  <line x1="213" y1="217" x2="240" y2="244" stroke="#3A8DFF" stroke-width="8" stroke-linecap="round"/>
+  <!-- Magnifying glass - bigger and more expressive -->
+  <circle cx="188" cy="188" r="36" stroke="#3A8DFF" stroke-width="10" fill="none"/>
+  <circle cx="188" cy="188" r="30" stroke="#3A8DFF" stroke-width="2" fill="rgba(58,141,255,0.08)"/>
+  <line x1="214" y1="214" x2="248" y2="248" stroke="#3A8DFF" stroke-width="10" stroke-linecap="round"/>
+  <!-- Glass reflection -->
+  <path d="M176 172 Q180 168 186 172" stroke="rgba(58,141,255,0.4)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
 </svg>
