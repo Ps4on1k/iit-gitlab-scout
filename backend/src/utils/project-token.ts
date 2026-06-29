@@ -1,5 +1,6 @@
 import { getPool } from "../db/pool.js";
 import { decrypt } from "./crypto.js";
+import { GitLabClient } from "../services/gitlab-client.js";
 
 function normalizeBaseUrl(url: string): string {
   let u = url.trim().replace(/\/+$/, "");
@@ -25,10 +26,10 @@ export async function resolveProjectToken(projectId: number): Promise<{ token: s
   const baseUrl = normalizeBaseUrl(proj.base_url);
   let token = proj.token_encrypted ? decrypt(proj.token_encrypted) : "";
 
-  if (!token && baseUrl) {
+  if (!token && proj.base_url) {
     const ptResult = await pool.query(
       "SELECT token_encrypted FROM personal_tokens WHERE base_url = $1 ORDER BY created_at DESC LIMIT 1",
-      [baseUrl]
+      [proj.base_url]
     );
     if (ptResult.rows.length > 0) {
       token = decrypt(ptResult.rows[0].token_encrypted);
@@ -36,4 +37,16 @@ export async function resolveProjectToken(projectId: number): Promise<{ token: s
   }
 
   return { token, baseUrl, path: proj.path };
+}
+
+export async function validateProjectToken(projectId: number): Promise<{ valid: boolean; error?: string }> {
+  try {
+    const { token, baseUrl } = await resolveProjectToken(projectId);
+    if (!token) return { valid: false, error: "No token configured" };
+    const client = new GitLabClient({ token, baseUrl });
+    await client.request<any>("/user");
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, error: err instanceof Error ? err.message : String(err) };
+  }
 }

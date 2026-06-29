@@ -4,6 +4,7 @@ import { startBatchCollect, updateBatchCollect, addBatchError, finishBatchCollec
 import { getPool } from "../../db/pool.js";
 import { decrypt } from "../../utils/crypto.js";
 import { GitLabClient } from "../../services/gitlab-client.js";
+import { resolveProjectToken } from "../../utils/project-token.js";
 import { collectProject } from "../../services/contributor-collector.js";
 import { collectBranches } from "../../services/branch-collector.js";
 import { collectActivity } from "../../services/activity-collector.js";
@@ -65,11 +66,31 @@ async function runBatchCollect(collector: string, projectIds: number[], dateFrom
   if (!collectorDef) return;
 
   const batchId = startBatchCollect(collector, projectIds);
+  const skipped: number[] = [];
 
   for (let i = 0; i < projectIds.length; i++) {
     const projectId = projectIds[i];
     updateBatchCollect(batchId, i);
+
     try {
+      const { token, baseUrl } = await resolveProjectToken(projectId);
+      if (!token) {
+        addBatchError(batchId, projectId, "No token configured");
+        logCollectionError(collectorDef.errorType, projectId, "BATCH", "No token configured", "scheduler");
+        skipped.push(projectId);
+        continue;
+      }
+
+      const client = new GitLabClient({ token, baseUrl });
+      try {
+        await client.request<any>("/user");
+      } catch {
+        addBatchError(batchId, projectId, "Token validation failed — skipped");
+        logCollectionError(collectorDef.errorType, projectId, "BATCH", "Token validation failed", "scheduler");
+        skipped.push(projectId);
+        continue;
+      }
+
       if (collector === "contributors" && (dateFrom || dateTo)) {
         await collectProject(projectId, dateFrom, dateTo);
       } else {
@@ -90,6 +111,44 @@ async function runBatchCollect(collector: string, projectIds: number[], dateFrom
 }
 
 export async function batchCollectRoutes(app: FastifyInstance) {
+  app.post<{
+    Body: { project_ids: number[] };
+  }>("/api/v1/collect/validate-tokens", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { project_ids } = request.body;
+    if (!project_ids?.length) {
+      return reply.status(400).send({ ok: false, error: "project_ids are required" });
+    }
+
+    const pool = getPool();
+    const results: { project_id: number; label: string; valid: boolean; error?: string }[] = [];
+
+    for (const projectId of project_ids) {
+      const projResult = await pool.query("SELECT label FROM projects WHERE id = $1", [projectId]);
+      const label = projResult.rows[0]?.label || `#${projectId}`;
+
+      try {
+        const { token, baseUrl } = await resolveProjectToken(projectId);
+        if (!token) {
+          results.push({ project_id: projectId, label, valid: false, error: "No token" });
+          continue;
+        }
+        const client = new GitLabClient({ token, baseUrl });
+        await client.request<any>("/user");
+        results.push({ project_id: projectId, label, valid: true });
+      } catch (err) {
+        results.push({ project_id: projectId, label, valid: false, error: err instanceof Error ? err.message : String(err) });
+      }
+    }
+
+    const valid = results.filter((r) => r.valid).length;
+    const invalid = results.filter((r) => !r.valid);
+
+    return {
+      ok: true,
+      data: { total: results.length, valid, invalid },
+    };
+  });
+
   app.post<{
     Body: { collector: string; project_ids: number[]; date_from?: string; date_to?: string };
   }>("/api/v1/collect/batch", { preHandler: [requireAdmin] }, async (request, reply) => {

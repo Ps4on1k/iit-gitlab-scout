@@ -307,6 +307,10 @@ export async function fetchCollectStatus(): Promise<ApiResponse<CollectJob[]>> {
   return fetchJson<CollectJob[]>("/v1/collect/status");
 }
 
+export async function validateProjectTokens(projectIds: number[]): Promise<ApiResponse<{ total: number; valid: number; invalid: { project_id: number; label: string; error: string }[] }>> {
+  return fetchJson("/v1/collect/validate-tokens", { method: "POST", body: JSON.stringify({ project_ids: projectIds }) });
+}
+
 export async function fetchBenchmark(tags: string[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<any>> {
   const qs = new URLSearchParams();
   qs.set("tags", tags.join(","));
