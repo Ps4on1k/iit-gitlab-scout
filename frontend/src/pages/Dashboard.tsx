@@ -88,7 +88,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   ];
 
   return (
-    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2, background: "var(--ant-color-bg-container)" }}>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
       <div style={{ background: "linear-gradient(135deg, #8BAADB 0%, #9ED4C8 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontSize: 28, marginBottom: 10 }}>Обзор</h1>

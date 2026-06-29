@@ -117,7 +117,7 @@ export function BenchmarkDashboard({ filters }: Props) {
   }, [groups]);
 
   return (
-    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2, background: "var(--ant-color-bg-container)" }}>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
       <div style={{ background: "linear-gradient(135deg, #D0B8E8 0%, #B8D8F0 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Бенчмарк</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сравнение проектов по тегам: DORA, коммиты, пайплайны, ветки</div>

@@ -56,7 +56,7 @@ export function AnalyticsDashboard() {
   }));
 
   return (
-    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2, background: "var(--ant-color-bg-container)" }}>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
       <div style={{ background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Аналитика</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сводная статистика по всем модулям</div>

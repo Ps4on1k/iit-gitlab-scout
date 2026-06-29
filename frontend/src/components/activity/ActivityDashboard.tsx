@@ -104,7 +104,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
   const cc = chartColors();
 
   return (
-    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2, background: "var(--ant-color-bg-container)" }}>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
       <div style={{ background: "linear-gradient(135deg, #E0C0A0 0%, #D8D0C0 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Активность проектов</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Коммиты, мерж-реквесты и пайплайны по дням/неделям</div>
