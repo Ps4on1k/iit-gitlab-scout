@@ -24,8 +24,8 @@ function Watermark({ dark }: { dark: boolean }) {
   const color = dark ? "rgba(174,183,200,0.08)" : "rgba(17,19,21,0.04)";
   return (
     <div style={{
-      position: "fixed", top: -304, left: -360,
-      width: 720, height: 720,
+      position: "fixed", top: -180, left: -360,
+      width: 1440, height: 1440,
       overflow: "hidden", pointerEvents: "none", zIndex: 0,
     }}>
       <svg viewBox="0 0 120 120" style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
