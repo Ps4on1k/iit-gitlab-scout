@@ -95,7 +95,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags, 
   const reset = () => onChange({ ...defaultFilters, dateFrom: dayjs().subtract(90, "day").format("YYYY-MM-DD"), dateTo: dayjs().format("YYYY-MM-DD") });
 
   return (
-    <div style={{ borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: "1px solid var(--ant-color-border-secondary)" }}>
+    <div style={{ borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-bg-container)" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "nowrap", marginBottom: hasActive ? 8 : 0 }}>
         <RangePicker
           value={filters.dateFrom && filters.dateTo ? [dayjs(filters.dateFrom), dayjs(filters.dateTo)] : null}
