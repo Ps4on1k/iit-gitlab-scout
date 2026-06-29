@@ -142,9 +142,13 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
   const branchProjectIds = useMemo(() => filters.projectIds.length > 0 ? filters.projectIds : projects.map((p) => p.id), [filters.projectIds, projects]);
 
   const thStyle: React.CSSProperties = {
-    background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)",
-    color: "white", padding: "12px 10px", textAlign: "left",
-    fontWeight: 600, cursor: "pointer", userSelect: "none", fontSize: 12, whiteSpace: "nowrap",
+    background: "var(--ant-color-fill-secondary)",
+    color: "var(--ant-color-textSecondary)",
+    padding: "12px 10px", textAlign: "left",
+    fontWeight: 700, fontSize: 11, letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
+    cursor: "pointer", userSelect: "none", whiteSpace: "nowrap",
+    borderBottom: "2px solid var(--ant-color-border-secondary)",
   };
 
   const tdStyle: React.CSSProperties = {
