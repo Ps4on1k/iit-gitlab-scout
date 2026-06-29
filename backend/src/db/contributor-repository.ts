@@ -342,6 +342,7 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
   by_contributor: Record<string, Record<string, number>>;
   project_contributors: Record<string, string[]>;
   by_project_contributor: Record<string, Record<string, Record<string, number>>>;
+  project_labels: Record<string, string>;
 }> {
   const pool = getPool();
   const conditions: string[] = [];
@@ -395,6 +396,7 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
   }
 
   const byProject: Record<string, Record<string, number>> = {};
+  const projectLabels: Record<string, string> = {};
   const byContributor: Record<string, Record<string, number>> = {};
   const projectContributors: Record<string, Set<string>> = {};
   const byProjectContributor: Record<string, Record<string, Record<string, number>>> = {};
@@ -405,6 +407,8 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
 
     if (!byProject[projKey]) byProject[projKey] = {};
     byProject[projKey][row.day] = (byProject[projKey][row.day] || 0) + row.cnt;
+
+    if (!projectLabels[projKey]) projectLabels[projKey] = projLabel;
 
     const displayName = emailToName[row.author_email] || row.author_email;
     const primaryEmail = nameToFirstEmail[displayName] || row.author_email;
@@ -428,7 +432,7 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
     projectContributorsArr[k] = Array.from(v);
   }
 
-  return { by_project: byProject, by_contributor: byContributor, project_contributors: projectContributorsArr, by_project_contributor: byProjectContributor };
+  return { by_project: byProject, by_contributor: byContributor, project_contributors: projectContributorsArr, by_project_contributor: byProjectContributor, project_labels: projectLabels };
 }
 
 export async function getMetrics(filters: ContributorFilters): Promise<any> {

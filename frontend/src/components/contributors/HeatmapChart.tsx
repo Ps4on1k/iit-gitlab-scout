@@ -16,6 +16,7 @@ interface Props {
   loading: boolean;
   projectTags?: Record<string, string>;
   projectDescriptions?: Record<string, string>;
+  projectLabels?: Record<string, string>;
 }
 
 function getAllDates(data: Record<string, Record<string, number>>): string[] {
@@ -43,13 +44,14 @@ function prepareHeatmapData(
   data: Record<string, Record<string, number>>,
   allDates: string[],
   tags?: Record<string, string>,
+  labels?: Record<string, string>,
   topN = 30
 ): HeatmapItem[] {
   const items: HeatmapItem[] = [];
   for (const [name, daily] of Object.entries(data)) {
     const total = Object.values(daily).reduce((s, v) => s + v, 0);
     const arr = allDates.map((d) => daily[d] || 0);
-    items.push({ name, tag: tags?.[name], data: arr, total });
+    items.push({ name: labels?.[name] || name, tag: tags?.[name], data: arr, total });
   }
   items.sort((a, b) => b.total - a.total);
   return items.slice(0, topN);
@@ -154,7 +156,7 @@ function HeatmapGrid({ items, allDates, projectDescriptions }: { items: HeatmapI
   );
 }
 
-export function HeatmapChart({ byProject, byContributor, loading, projectTags, projectDescriptions }: Props) {
+export function HeatmapChart({ byProject, byContributor, loading, projectTags, projectDescriptions, projectLabels }: Props) {
   const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -203,10 +205,10 @@ export function HeatmapChart({ byProject, byContributor, loading, projectTags, p
     const fullDates = generateFullDateRange(rawDates);
     return {
       allDates: fullDates,
-      projectItems: prepareHeatmapData(byProject, fullDates, projectTags),
+      projectItems: prepareHeatmapData(byProject, fullDates, projectTags, projectLabels),
       contributorItems: prepareHeatmapData(byContributor, fullDates),
     };
-  }, [byProject, byContributor, projectTags]);
+  }, [byProject, byContributor, projectTags, projectLabels]);
 
   if (!loading && projectItems.length === 0 && contributorItems.length === 0) {
     return <Empty description="Нет данных для тепловой карты" />;

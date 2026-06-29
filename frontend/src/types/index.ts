@@ -128,6 +128,7 @@ export interface HeatmapData {
   by_contributor: Record<string, Record<string, number>>;
   project_contributors: Record<string, string[]>;
   by_project_contributor: Record<string, Record<string, Record<string, number>>>;
+  project_labels?: Record<string, string>;
 }
 
 export interface ContributorFilters {

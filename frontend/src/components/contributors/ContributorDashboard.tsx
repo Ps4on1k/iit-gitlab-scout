@@ -216,7 +216,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
       </div>
 
       <div style={{ marginBottom: 30 }}>
-        <HeatmapChart byProject={filteredHeatmap.by_project} byContributor={filteredHeatmap.by_contributor} loading={loading} projectTags={projectTags} projectDescriptions={projectDescriptions} />
+        <HeatmapChart byProject={filteredHeatmap.by_project} byContributor={filteredHeatmap.by_contributor} loading={loading} projectTags={projectTags} projectDescriptions={projectDescriptions} projectLabels={allHeatmap.project_labels} />
       </div>
 
       {userRole !== "user" && (
