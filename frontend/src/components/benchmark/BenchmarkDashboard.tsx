@@ -164,9 +164,9 @@ export function BenchmarkDashboard({ filters }: Props) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--ant-color-border-secondary)" }}>
-                  <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 12, fontWeight: 600, width: 200 }}>Метрика</th>
+                  <th style={{ padding: "12px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ant-color-textSecondary)", background: "var(--ant-color-fill-secondary)", width: 200 }}>Метрика</th>
                   {groups.map((g: any, i: number) => (
-                    <th key={g.tag} style={{ padding: "8px 12px", textAlign: "center", fontSize: 12, fontWeight: 600, borderBottom: `3px solid ${GROUP_COLORS[i % GROUP_COLORS.length]}` }}>
+                    <th key={g.tag} style={{ padding: "12px 12px", textAlign: "center", fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--ant-color-textSecondary)", background: "var(--ant-color-fill-secondary)", borderBottom: `3px solid ${GROUP_COLORS[i % GROUP_COLORS.length]}` }}>
                       <Tag style={{ background: GROUP_COLORS[i % GROUP_COLORS.length], color: "#fff", border: "none", fontSize: 11 }}>{g.tag}</Tag>
                     </th>
                   ))}

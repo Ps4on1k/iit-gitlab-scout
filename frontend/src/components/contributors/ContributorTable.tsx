@@ -113,12 +113,12 @@ function CommitPopup({ email, dateFrom, dateTo }: { email: string; dateFrom?: st
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
               <tr>
-                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>SHA</th>
-                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>Дата</th>
-                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>Проект</th>
-                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>+ строки</th>
-                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>- строки</th>
-                <th style={{ textAlign: "left", padding: "6px 8px", borderBottom: "1px solid var(--ant-color-border-secondary)", color: "var(--ant-color-textSecondary)", fontWeight: 600 }}>Сообщение</th>
+                <th style={{ background: "var(--ant-color-fill-secondary)", color: "var(--ant-color-textSecondary)", padding: "12px 8px", textAlign: "left", fontWeight: 700, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "2px solid var(--ant-color-border-secondary)" }}>SHA</th>
+                <th style={{ background: "var(--ant-color-fill-secondary)", color: "var(--ant-color-textSecondary)", padding: "12px 8px", textAlign: "left", fontWeight: 700, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "2px solid var(--ant-color-border-secondary)" }}>Дата</th>
+                <th style={{ background: "var(--ant-color-fill-secondary)", color: "var(--ant-color-textSecondary)", padding: "12px 8px", textAlign: "left", fontWeight: 700, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "2px solid var(--ant-color-border-secondary)" }}>Проект</th>
+                <th style={{ background: "var(--ant-color-fill-secondary)", color: "var(--ant-color-textSecondary)", padding: "12px 8px", textAlign: "left", fontWeight: 700, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "2px solid var(--ant-color-border-secondary)" }}>+ строки</th>
+                <th style={{ background: "var(--ant-color-fill-secondary)", color: "var(--ant-color-textSecondary)", padding: "12px 8px", textAlign: "left", fontWeight: 700, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "2px solid var(--ant-color-border-secondary)" }}>- строки</th>
+                <th style={{ background: "var(--ant-color-fill-secondary)", color: "var(--ant-color-textSecondary)", padding: "12px 8px", textAlign: "left", fontWeight: 700, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", borderBottom: "2px solid var(--ant-color-border-secondary)" }}>Сообщение</th>
               </tr>
             </thead>
             <tbody>
@@ -240,15 +240,18 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
   if (!loading && data.length === 0) return <Empty description="Нет данных. Нажмите «Собрать данные»." />;
 
   const thStyle: React.CSSProperties = {
-    background: "linear-gradient(135deg, #8BAADB 0%, #98C8D8 100%)",
-    color: "white",
+    background: "var(--ant-color-fill-secondary)",
+    color: "var(--ant-color-textSecondary)",
     padding: "12px 8px",
     textAlign: "left",
-    fontWeight: 600,
+    fontWeight: 700,
+    fontSize: 11,
+    letterSpacing: "0.1em",
+    textTransform: "uppercase" as const,
     cursor: "pointer",
     userSelect: "none",
-    fontSize: 11,
     whiteSpace: "nowrap",
+    borderBottom: "2px solid var(--ant-color-border-secondary)",
   };
 
   const tdStyle: React.CSSProperties = {
