@@ -16,7 +16,7 @@ interface Props {
 
 const DEBOUNCE_MS = 3000;
 
-export function CollectButton({ collector, projectIds, dateFrom, dateTo, onComplete, color = "#667eea", label = "Собрать" }: Props) {
+export function CollectButton({ collector, projectIds, dateFrom, dateTo, onComplete, color = "#3A8DFF", label = "Собрать" }: Props) {
   const { activeJobs, isAnyRunning, stuckJobs, poll, ready } = useCollectStatus(onComplete);
   const [localStarting, setLocalStarting] = useState(false);
   const lastClickRef = useRef(0);

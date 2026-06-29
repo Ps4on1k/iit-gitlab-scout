@@ -89,7 +89,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <h1 style={{ fontSize: 28, marginBottom: 10 }}>Обзор</h1>
           <div style={{ opacity: 0.9, fontSize: 14 }}>Проекты, контрибьюторы и активность за период</div>
@@ -112,18 +112,18 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Контрибьюторов" value={summary.contributors} prefix={<TeamOutlined />} valueStyle={statSmall} /></Card></Col>
         <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Коммитов" value={summary.commits} prefix={<FireOutlined />} valueStyle={statSmall} /></Card></Col>
         <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Дней активности" value={summary.activeDays} valueStyle={statSmall} /></Card></Col>
-        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Активные ветки" value={summary.activeBranches || 0} valueStyle={{ color: "#3f8600", ...statSmall }} prefix={<CheckCircleOutlined />} /></Card></Col>
-        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Заброшенные" value={summary.staleBranches || 0} valueStyle={{ color: "#cf1322", ...statSmall }} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Активные ветки" value={summary.activeBranches || 0} valueStyle={{ color: "#21B573", ...statSmall }} prefix={<CheckCircleOutlined />} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Заброшенные" value={summary.staleBranches || 0} valueStyle={{ color: "#E5484D", ...statSmall }} /></Card></Col>
       </Row>
 
       {/* Summary cards row 2 */}
       <Row gutter={12} style={{ marginBottom: 16 }}>
-        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Открытых" value={summary.mrOpened} valueStyle={{ color: "#1677ff", ...statSmall }} prefix={<MergeOutlined />} /></Card></Col>
-        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Замержено" value={summary.mrMerged} valueStyle={{ color: "#3f8600", ...statSmall }} prefix={<CheckCircleOutlined />} suffix={mrMergeRate !== null && <span style={{ fontSize: 11, color: "#999" }}>({mrMergeRate}%)</span>} /></Card></Col>
-        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Закрыто" value={summary.mrClosed} valueStyle={{ color: "#cf1322", ...statSmall }} prefix={<WarningOutlined />} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Открытых" value={summary.mrOpened} valueStyle={{ color: "#3A8DFF", ...statSmall }} prefix={<MergeOutlined />} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Замержено" value={summary.mrMerged} valueStyle={{ color: "#21B573", ...statSmall }} prefix={<CheckCircleOutlined />} suffix={mrMergeRate !== null && <span style={{ fontSize: 11, color: "#999" }}>({mrMergeRate}%)</span>} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="MR Закрыто" value={summary.mrClosed} valueStyle={{ color: "#E5484D", ...statSmall }} prefix={<WarningOutlined />} /></Card></Col>
         <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Пайплайнов" value={summary.deploysTotal || 0} valueStyle={statSmall} prefix={<RocketOutlined />} /></Card></Col>
-        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев OK" value={summary.deploysSuccess || 0} valueStyle={{ color: "#3f8600", ...statSmall }} suffix={deploySuccessRate !== null && <span style={{ fontSize: 11, color: "#999" }}>({deploySuccessRate}%)</span>} /></Card></Col>
-        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев Failed" value={summary.deploysFailed || 0} valueStyle={{ color: "#cf1322", ...statSmall }} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев OK" value={summary.deploysSuccess || 0} valueStyle={{ color: "#21B573", ...statSmall }} suffix={deploySuccessRate !== null && <span style={{ fontSize: 11, color: "#999" }}>({deploySuccessRate}%)</span>} /></Card></Col>
+        <Col span={4}><Card size="small" style={CARD_STYLE}><Statistic title="Деплоев Failed" value={summary.deploysFailed || 0} valueStyle={{ color: "#E5484D", ...statSmall }} /></Card></Col>
       </Row>
 
       {/* Activity chart */}
@@ -133,7 +133,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
             {activityChartData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div style={{ height: "calc(100% - 40px)" }}>
                 <Line data={activityChartData} xField="date" yField="commits"
-                  point={{ size: 2 }} style={{ lineWidth: 2, stroke: "#667eea" }}
+                  point={{ size: 2 }} style={{ lineWidth: 2, stroke: "#3A8DFF" }}
                   axis={{
                     x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                     y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
@@ -151,7 +151,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       <Row gutter={16} style={{ marginBottom: 16 }} align="stretch">
         <Col span={12}>
           <Card size="small" style={{ height: "100%" }}
-            title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные проекты ({activeProjects.length})</span>}
+            title={<span><ArrowUpOutlined style={{ color: "#21B573", marginRight: 6 }} />Активные проекты ({activeProjects.length})</span>}
             extra={activeProjects.length > TOP_N && (
               <Button size="small" type="link" icon={showAllActive ? <UpOutlined /> : <DownOutlined />}
                 onClick={() => setShowAllActive(!showAllActive)}>
@@ -185,7 +185,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       <Row gutter={16} style={{ marginBottom: 16 }} align="stretch">
         <Col span={12}>
           <Card size="small" style={{ height: "100%" }}
-            title={<span><ArrowUpOutlined style={{ color: "#3f8600", marginRight: 6 }} />Активные контрибьюторы ({topContributors.length})</span>}
+            title={<span><ArrowUpOutlined style={{ color: "#21B573", marginRight: 6 }} />Активные контрибьюторы ({topContributors.length})</span>}
             extra={topContributors.length > TOP_N && (
               <Button size="small" type="link" icon={showAllActiveContrib ? <UpOutlined /> : <DownOutlined />}
                 onClick={() => setShowAllActiveContrib(!showAllActiveContrib)}>
@@ -200,7 +200,7 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
         </Col>
         <Col span={12}>
           <Card size="small" style={{ height: "100%" }}
-            title={<span><ArrowDownOutlined style={{ color: "#cf1322", marginRight: 6 }} />Неактивные контрибьюторы ({inactiveContributors.length})</span>}
+            title={<span><ArrowDownOutlined style={{ color: "#E5484D", marginRight: 6 }} />Неактивные контрибьюторы ({inactiveContributors.length})</span>}
             extra={inactiveContributors.length > TOP_N && (
               <Button size="small" type="link" icon={showAllInactiveContrib ? <UpOutlined /> : <DownOutlined />}
                 onClick={() => setShowAllInactiveContrib(!showAllInactiveContrib)}>
@@ -229,13 +229,13 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
                         <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{p.label}</span>
                         <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 10 }}>
-                          <span style={{ color: "#1677ff" }}>{p.opened}</span> / <span style={{ color: "#3f8600" }}>{p.merged}</span> / <span style={{ color: "#cf1322" }}>{p.closed}</span>
+                          <span style={{ color: "#3A8DFF" }}>{p.opened}</span> / <span style={{ color: "#21B573" }}>{p.merged}</span> / <span style={{ color: "#E5484D" }}>{p.closed}</span>
                         </span>
                       </div>
                       <div style={{ display: "flex", height: 5, borderRadius: 3, overflow: "hidden" }}>
-                        <div style={{ width: `${p.total > 0 ? (p.opened / p.total * 100) : 0}%`, background: "#1677ff" }} />
-                        <div style={{ width: `${pct}%`, background: "#3f8600" }} />
-                        <div style={{ width: `${p.total > 0 ? (p.closed / p.total * 100) : 0}%`, background: "#cf1322" }} />
+                        <div style={{ width: `${p.total > 0 ? (p.opened / p.total * 100) : 0}%`, background: "#3A8DFF" }} />
+                        <div style={{ width: `${pct}%`, background: "#21B573" }} />
+                        <div style={{ width: `${p.total > 0 ? (p.closed / p.total * 100) : 0}%`, background: "#E5484D" }} />
                       </div>
                     </div>
                   );

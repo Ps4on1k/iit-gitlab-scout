@@ -8,7 +8,7 @@ import type { GlobalFilters } from "../GlobalFilterBar";
 
 interface Props { filters: GlobalFilters; }
 
-const GROUP_COLORS = ["#667eea", "#3f8600", "#cf1322", "#722ed1", "#13c2c2", "#fa8c16", "#eb2f96", "#2f54eb"];
+const GROUP_COLORS = ["#3A8DFF", "#42D9C8", "#E5484D", "#21B573", "#FFB020", "#141B2D", "#AEB7C4", "#1A5FCC"];
 
 function fmtSec(s: number): string {
   if (s === 0) return "—";
@@ -46,7 +46,7 @@ function MetricRow({ label, values, format, higherIsBetter = true, unit = "" }: 
         const isWorst = v.value && v.value === worst && v.value !== best && numericVals.length > 1;
         return (
           <td key={v.tag} style={{ padding: "6px 12px", fontSize: 13, textAlign: "center", fontWeight: isBest ? 700 : 400,
-            color: isBest ? "#3f8600" : isWorst ? "#cf1322" : "var(--ant-color-text)" }}>
+            color: isBest ? "#21B573" : isWorst ? "#E5484D" : "var(--ant-color-text)" }}>
             {v.value !== null ? fmt(v.value) : "—"}
           </td>
         );
@@ -118,7 +118,7 @@ export function BenchmarkDashboard({ filters }: Props) {
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #722ed1 0%, #13c2c2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Бенчмарк</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сравнение проектов по тегам: DORA, коммиты, пайплайны, ветки</div>
       </div>

@@ -57,7 +57,7 @@ export function AnalyticsDashboard() {
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Аналитика</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сводная статистика по всем модулям</div>
       </div>
@@ -82,31 +82,31 @@ export function AnalyticsDashboard() {
       ) : (
         <>
           {/* Contributor Metrics */}
-          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Контрибьюторы</h3>
+          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12, marginBottom: 16 }}>Контрибьюторы</h3>
           <Row gutter={16} style={{ marginBottom: 30 }}>
             <Col span={6}><Card><Statistic title="Контрибьюторов" value={metrics?.unique_contributors || 0} /></Card></Col>
             <Col span={6}><Card><Statistic title="Всего коммитов" value={metrics?.total_commits || 0} /></Card></Col>
-            <Col span={6}><Card><Statistic title="Добавлено строк" value={metrics?.total_additions || 0} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-            <Col span={6}><Card><Statistic title="Удалено строк" value={metrics?.total_deletions || 0} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+            <Col span={6}><Card><Statistic title="Добавлено строк" value={metrics?.total_additions || 0} valueStyle={{ color: "#21B573" }} /></Card></Col>
+            <Col span={6}><Card><Statistic title="Удалено строк" value={metrics?.total_deletions || 0} valueStyle={{ color: "#E5484D" }} /></Card></Col>
           </Row>
 
           {/* Branch Metrics */}
-          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Ветки</h3>
+          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12, marginBottom: 16 }}>Ветки</h3>
           <Row gutter={16} style={{ marginBottom: 30 }}>
             <Col span={6}><Card><Statistic title="Всего веток" value={branchSummary?.total || 0} /></Card></Col>
-            <Col span={6}><Card><Statistic title="Активные (<90д)" value={branchSummary?.active || 0} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-            <Col span={6}><Card><Statistic title="Заброшенные (>90д)" value={branchSummary?.stale || 0} valueStyle={{ color: "#cf1322" }} /></Card></Col>
-            <Col span={6}><Card><Statistic title="Замерженные" value={branchSummary?.merged || 0} valueStyle={{ color: "#667eea" }} /></Card></Col>
+            <Col span={6}><Card><Statistic title="Активные (<90д)" value={branchSummary?.active || 0} valueStyle={{ color: "#21B573" }} /></Card></Col>
+            <Col span={6}><Card><Statistic title="Заброшенные (>90д)" value={branchSummary?.stale || 0} valueStyle={{ color: "#E5484D" }} /></Card></Col>
+            <Col span={6}><Card><Statistic title="Замерженные" value={branchSummary?.merged || 0} valueStyle={{ color: "#3A8DFF" }} /></Card></Col>
           </Row>
 
           {/* Issue Metrics */}
           {issueSummary && (
             <>
-              <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Задачи</h3>
+              <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12, marginBottom: 16 }}>Задачи</h3>
               <Row gutter={16} style={{ marginBottom: 30 }}>
                 <Col span={6}><Card><Statistic title="Всего задач" value={issueSummary.total} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Открытых" value={issueSummary.opened} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Закрытых" value={issueSummary.closed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+                <Col span={6}><Card><Statistic title="Открытых" value={issueSummary.opened} valueStyle={{ color: "#21B573" }} /></Card></Col>
+                <Col span={6}><Card><Statistic title="Закрытых" value={issueSummary.closed} valueStyle={{ color: "#E5484D" }} /></Card></Col>
                 <Col span={6}><Card><Statistic title="Ср. время закрытия (дн.)" value={issueSummary.avg_days_to_close} /></Card></Col>
               </Row>
             </>
@@ -115,16 +115,16 @@ export function AnalyticsDashboard() {
           {/* Dependency Metrics */}
           {depSummary && (
             <>
-              <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Зависимости</h3>
+              <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12, marginBottom: 16 }}>Зависимости</h3>
               <Row gutter={16} style={{ marginBottom: 30 }}>
                 <Col span={6}><Card><Statistic title="Всего зависимостей" value={depSummary.total} /></Card></Col>
-                <Col span={6}><Card><Statistic title="Устаревших" value={depSummary.outdated} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+                <Col span={6}><Card><Statistic title="Устаревших" value={depSummary.outdated} valueStyle={{ color: "#E5484D" }} /></Card></Col>
               </Row>
             </>
           )}
 
           {/* Heatmap */}
-          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Тепловая карта</h3>
+          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12, marginBottom: 16 }}>Тепловая карта</h3>
           <div style={{ overflowX: "auto" }}>
             {Object.keys(heatmap.by_contributor).length > 0 ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>

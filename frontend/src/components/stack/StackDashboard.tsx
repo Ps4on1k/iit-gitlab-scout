@@ -85,7 +85,7 @@ export function StackDashboard({ userRole }: Props) {
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #13c2c2 0%, #2f54eb 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #42D9C8 0%, #3A8DFF 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Стек технологий</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Языки программирования по проектам</div>
       </div>
@@ -98,14 +98,14 @@ export function StackDashboard({ userRole }: Props) {
             const tagText = String(label);
             const tagMatch = tagText.match(/\[(.+)\]$/);
             const tagVal = tagMatch ? tagMatch[1] : "";
-            const c = tagVal ? getTagColor(tagVal) : { bg: "#13c2c2", text: "#fff" };
+            const c = tagVal ? getTagColor(tagVal) : { bg: "#42D9C8", text: "#fff" };
             return <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: c.bg, color: c.text, border: "none" }}>{label}</Tag>;
           }}
           maxTagCount="responsive" />
         {tagOptions.length > 0 && (
           <Select mode="multiple" placeholder="Теги" allowClear style={{ minWidth: 180 }}
             value={selectedTags} onChange={setSelectedTags} options={tagOptions}
-            tagRender={({ label, closable, onClose }) => <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#1677ff", color: "white", border: "none" }}>{label}</Tag>} />
+            tagRender={({ label, closable, onClose }) => <Tag closable={closable} onClose={onClose} style={{ marginRight: 3, background: "#3A8DFF", color: "white", border: "none" }}>{label}</Tag>} />
         )}
         {languageOptions.length > 0 && (
           <Select mode="multiple" placeholder="Языки" allowClear showSearch optionFilterProp="label"
@@ -117,7 +117,7 @@ export function StackDashboard({ userRole }: Props) {
             }}
             maxTagCount="responsive" />
         )}
-        {userRole === "admin" && <CollectButton collector="stack" projectIds={stackProjectIds} onComplete={loadData} color="#13c2c2" label="Собрать стек" />}
+        {userRole === "admin" && <CollectButton collector="stack" projectIds={stackProjectIds} onComplete={loadData} color="#42D9C8" label="Собрать стек" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

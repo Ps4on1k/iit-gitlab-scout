@@ -63,8 +63,8 @@ export function IssueDashboard() {
       {summary && (
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={6}><Card><Statistic title="Всего" value={summary.total} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Открытых" value={summary.opened} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Закрытых" value={summary.closed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+          <Col span={6}><Card><Statistic title="Открытых" value={summary.opened} valueStyle={{ color: "#21B573" }} /></Card></Col>
+          <Col span={6}><Card><Statistic title="Закрытых" value={summary.closed} valueStyle={{ color: "#E5484D" }} /></Card></Col>
           <Col span={6}><Card><Statistic title="Ср. время закрытия (дн.)" value={summary.avg_days_to_close} /></Card></Col>
         </Row>
       )}

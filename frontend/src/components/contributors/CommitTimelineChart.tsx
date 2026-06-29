@@ -82,7 +82,7 @@ export function CommitTimelineChart({ data, loading, dateFrom, dateTo }: Props) 
 
   return (
     <div style={{ background: "var(--ant-color-bg-container)", padding: 20, borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-      <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>
+      <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12 }}>
         {chartTitle}
       </h3>
       <div style={{ position: "relative", height: 300 }}>

@@ -40,7 +40,7 @@ export function MetricsCards({ data, loading }: Props) {
               e.currentTarget.style.boxShadow = "0 2px 10px rgba(0,0,0,0.1)";
             }}
           >
-            <div style={{ fontSize: 28, fontWeight: "bold", color: "#667eea" }}>{card.value}</div>
+            <div style={{ fontSize: 28, fontWeight: "bold", color: "#3A8DFF" }}>{card.value}</div>
             <div style={{ color: "var(--ant-color-text-secondary)", marginTop: 8, fontSize: 13 }}>{card.label}</div>
           </div>
         </Col>

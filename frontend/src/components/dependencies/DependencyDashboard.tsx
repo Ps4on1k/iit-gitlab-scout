@@ -61,7 +61,7 @@ export function DependencyDashboard() {
       {summary && (
         <Row gutter={16} style={{ marginBottom: 16 }}>
           <Col span={6}><Card><Statistic title="Всего зависимостей" value={summary.total} /></Card></Col>
-          <Col span={6}><Card><Statistic title="Устаревших" value={summary.outdated} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+          <Col span={6}><Card><Statistic title="Устаревших" value={summary.outdated} valueStyle={{ color: "#E5484D" }} /></Card></Col>
           {Object.entries(summary.by_source).map(([src, cnt]) => (
             <Col span={4} key={src}><Card><Statistic title={src} value={cnt} /></Card></Col>
           ))}

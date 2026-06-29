@@ -29,21 +29,21 @@ function formatMttr(minutes: number): string {
 }
 
 function rateColor(rate: number): string {
-  if (rate <= 5) return "#3f8600";
-  if (rate <= 15) return "#d4b106";
-  return "#cf1322";
+  if (rate <= 5) return "#21B573";
+  if (rate <= 15) return "#FFB020";
+  return "#E5484D";
 }
 
 function freqColor(freq: number): string {
-  if (freq >= 1) return "#3f8600";
-  if (freq >= 0.1) return "#d4b106";
-  return "#cf1322";
+  if (freq >= 1) return "#21B573";
+  if (freq >= 0.1) return "#FFB020";
+  return "#E5484D";
 }
 
 function leadTimeColor(seconds: number): string {
-  if (seconds < 3600) return "#3f8600";
-  if (seconds < 86400) return "#d4b106";
-  return "#cf1322";
+  if (seconds < 3600) return "#21B573";
+  if (seconds < 86400) return "#FFB020";
+  return "#E5484D";
 }
 
 export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
@@ -106,7 +106,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #0052cc 0%, #36b37e 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #141B2D 0%, #1A2332 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>DORA Метрики</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Четыре ключевые метрики DevOps-производительности</div>
       </div>
@@ -146,15 +146,15 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
             <Col span={6}>
               <Card style={CARD_STYLE}>
                 <Statistic title="MTTR (время восстановления)" value={formatMttr(s.avgMttrMin)}
-                  valueStyle={{ color: s.avgMttrMin <= 60 ? "#3f8600" : s.avgMttrMin <= 360 ? "#d4b106" : "#cf1322" }} />
+                  valueStyle={{ color: s.avgMttrMin <= 60 ? "#21B573" : s.avgMttrMin <= 360 ? "#FFB020" : "#E5484D" }} />
               </Card>
             </Col>
           </Row>
 
           <Row gutter={12} style={{ marginBottom: 16 }} align="stretch">
             <Col span={4}><Card size="small"><Statistic title="Всего" value={s.total} /></Card></Col>
-            <Col span={4}><Card size="small"><Statistic title="Успешных" value={s.success} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-            <Col span={4}><Card size="small"><Statistic title="Провалено" value={s.failed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Успешных" value={s.success} valueStyle={{ color: "#21B573" }} /></Card></Col>
+            <Col span={4}><Card size="small"><Statistic title="Провалено" value={s.failed} valueStyle={{ color: "#E5484D" }} /></Card></Col>
             <Col span={4}><Card size="small"><Statistic title="Отменено" value={s.canceled} valueStyle={{ color: "#999" }} /></Card></Col>
             <Col span={4}><Card size="small"><Statistic title="Другие" value={s.other || 0} valueStyle={{ color: "#999" }}
               suffix={<span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>({s.total > 0 ? Math.round(((s.total - s.success - s.failed - s.canceled) / s.total) * 100) : 0}%)</span>} /></Card></Col>
@@ -170,7 +170,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                     <Column data={deployChartData} xField="date" yField="count" colorField="type"
                       stack={true} style={{ radiusTopLeft: 2, radiusTopRight: 2 }}
                       axis={axisStyle}
-                      scale={{ color: { range: ["#3f8600", "#cf1322"] } }}
+                      scale={{ color: { range: ["#21B573", "#E5484D"] } }}
                       tooltip={{ title: "date", items: [{ field: "count", name: "Кол-во" }] }}
                       legend={{ color: { position: "top", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
                       autoFit
@@ -193,8 +193,8 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                             <span style={{ color: "var(--ant-color-textSecondary)" }}>{p.total} ({pct}%)</span>
                           </div>
                           <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>
-                            <div style={{ width: `${pct}%`, background: "#3f8600" }} />
-                            {p.failed > 0 && <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#cf1322" }} />}
+                            <div style={{ width: `${pct}%`, background: "#21B573" }} />
+                            {p.failed > 0 && <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#E5484D" }} />}
                           </div>
                         </div>
                       );
@@ -212,7 +212,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                 {leadTimeData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных" /> : (
                   <div style={{ height: 200 }}>
                     <Line data={leadTimeData} xField="date" yField="value"
-                      point={{ size: 3 }} style={{ lineWidth: 2, stroke: "#1677ff" }}
+                      point={{ size: 3 }} style={{ lineWidth: 2, stroke: "#3A8DFF" }}
                       axis={axisStyle}
                       tooltip={{ title: "date", items: [{ field: "value", name: "Lead Time", valueFormatter: (v: any) => formatDuration(v) }] }}
                       legend={false}
@@ -227,7 +227,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                 {mttrData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных" /> : (
                   <div style={{ height: 200 }}>
                     <Line data={mttrData} xField="date" yField="value"
-                      point={{ size: 3 }} style={{ lineWidth: 2, stroke: "#fa541c" }}
+                      point={{ size: 3 }} style={{ lineWidth: 2, stroke: "#E5484D" }}
                       axis={axisStyle}
                       tooltip={{ title: "date", items: [{ field: "value", name: "MTTR", valueFormatter: (v: any) => formatMttr(v) }] }}
                       legend={false}
@@ -248,7 +248,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                       <div style={{ color: "var(--ant-color-textTertiary)", lineHeight: 1.5 }}>
                         <b>Формула:</b> Всего деплоев / Кол-во дней в периоде.<br />
                         <b>Данные:</b> таблица <code>project_deployments</code>, статус = success.<br />
-                        <b>Уровни:</b> <b style={{ color: "#3f8600" }}>Elite</b> ≥1/день, <b style={{ color: "#d4b106" }}>High</b> ≥1/неделю, <b style={{ color: "#cf1322" }}>Low</b> ≥1/месяц.
+                        <b>Уровни:</b> <b style={{ color: "#21B573" }}>Elite</b> ≥1/день, <b style={{ color: "#FFB020" }}>High</b> ≥1/неделю, <b style={{ color: "#E5484D" }}>Low</b> ≥1/месяц.
                       </div>
                     </div>
                   </Col>
@@ -258,7 +258,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                       <div style={{ color: "var(--ant-color-textTertiary)", lineHeight: 1.5 }}>
                         <b>Формула:</b> Среднее(deploy.created_at − commit.committed_date) для успешных деплоев.<br />
                         <b>Данные:</b> из <code>raw_json.deployable.commit.committed_date</code> и <code>created_at</code>.<br />
-                        <b>Уровни:</b> <b style={{ color: "#3f8600" }}>Elite</b> &lt;1ч, <b style={{ color: "#d4b106" }}>High</b> &lt;1день, <b style={{ color: "#cf1322" }}>Low</b> &lt;1неделю.
+                        <b>Уровни:</b> <b style={{ color: "#21B573" }}>Elite</b> &lt;1ч, <b style={{ color: "#FFB020" }}>High</b> &lt;1день, <b style={{ color: "#E5484D" }}>Low</b> &lt;1неделю.
                       </div>
                     </div>
                   </Col>
@@ -268,7 +268,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                       <div style={{ color: "var(--ant-color-textTertiary)", lineHeight: 1.5 }}>
                         <b>Формула:</b> Кол-во failed деплоев × 100 / Всего деплоев.<br />
                         <b>Данные:</b> <code>status = 'failed'</code> или <code>pipeline_status = 'failed'</code>.<br />
-                        <b>Уровни:</b> <b style={{ color: "#3f8600" }}>Elite</b> 0–15%, <b style={{ color: "#d4b106" }}>High</b> 16–30%, <b style={{ color: "#cf1322" }}>Low</b> &gt;30%.
+                        <b>Уровни:</b> <b style={{ color: "#21B573" }}>Elite</b> 0–15%, <b style={{ color: "#FFB020" }}>High</b> 16–30%, <b style={{ color: "#E5484D" }}>Low</b> &gt;30%.
                       </div>
                     </div>
                   </Col>
@@ -278,7 +278,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                       <div style={{ color: "var(--ant-color-textTertiary)", lineHeight: 1.5 }}>
                         <b>Формула:</b> Среднее время от failed деплоя до следующего success деплоя.<br />
                         <b>Данные:</b> пары failed→success в хронологическом порядке, разница в минутах.<br />
-                        <b>Уровни:</b> <b style={{ color: "#3f8600" }}>Elite</b> &lt;1ч, <b style={{ color: "#d4b106" }}>High</b> &lt;1день, <b style={{ color: "#cf1322" }}>Low</b> &gt;1неделя.
+                        <b>Уровни:</b> <b style={{ color: "#21B573" }}>Elite</b> &lt;1ч, <b style={{ color: "#FFB020" }}>High</b> &lt;1день, <b style={{ color: "#E5484D" }}>Low</b> &gt;1неделя.
                       </div>
                     </div>
                   </Col>

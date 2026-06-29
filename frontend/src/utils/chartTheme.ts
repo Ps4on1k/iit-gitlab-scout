@@ -9,10 +9,10 @@ export function isDarkMode(): boolean {
 export function chartColors() {
   const dark = isDarkMode();
   return {
-    axisLabel: dark ? "#a0a0b4" : "#666",
-    axisLine: dark ? "#313147" : "#e0e0e0",
-    gridLine: dark ? "#252536" : "#f0f0f0",
-    text: dark ? "#e0e0e8" : "#333",
-    secondaryText: dark ? "#a0a0b4" : "#999",
+    axisLabel: dark ? "#8A94A6" : "#4A5568",
+    axisLine: dark ? "#2A3A4A" : "#D8DCE3",
+    gridLine: dark ? "#1F2D3D" : "#EEF1F4",
+    text: dark ? "#E8ECF1" : "#111315",
+    secondaryText: dark ? "#AEB7C4" : "#8A94A6",
   };
 }

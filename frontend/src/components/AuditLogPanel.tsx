@@ -6,14 +6,14 @@ import { fetchAuditLog } from "../api/client";
 const { Text } = Typography;
 
 const ACTION_COLORS: Record<string, string> = {
-  login_success: "#3f8600",
-  login_failed: "#cf1322",
-  project_create: "#1677ff",
-  project_update: "#d4b106",
-  project_delete: "#cf1322",
-  user_create: "#1677ff",
-  user_update: "#d4b106",
-  user_delete: "#cf1322",
+  login_success: "#21B573",
+  login_failed: "#E5484D",
+  project_create: "#3A8DFF",
+  project_update: "#FFB020",
+  project_delete: "#E5484D",
+  user_create: "#3A8DFF",
+  user_update: "#FFB020",
+  user_delete: "#E5484D",
 };
 
 export function AuditLogPanel() {

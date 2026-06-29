@@ -23,18 +23,18 @@ function formatAge(days: number): string {
 }
 
 function getAgeColor(days: number): string {
-  if (days <= 30) return "#3f8600";
-  if (days <= 90) return "#d4b106";
-  if (days <= 180) return "#fa8c16";
-  return "#cf1322";
+  if (days <= 30) return "#21B573";
+  if (days <= 90) return "#FFB020";
+  if (days <= 180) return "#FFB020";
+  return "#E5484D";
 }
 
 function getHealthColor(active: number, stale: number, total: number): string {
   if (total === 0) return "#d9d9d9";
   const staleRatio = stale / total;
-  if (staleRatio <= 0.2) return "#3f8600";
-  if (staleRatio <= 0.5) return "#d4b106";
-  return "#cf1322";
+  if (staleRatio <= 0.2) return "#21B573";
+  if (staleRatio <= 0.5) return "#FFB020";
+  return "#E5484D";
 }
 
 function downloadCsv(filename: string, headers: string[], rows: any[][]) {
@@ -142,7 +142,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
   const branchProjectIds = useMemo(() => filters.projectIds.length > 0 ? filters.projectIds : projects.map((p) => p.id), [filters.projectIds, projects]);
 
   const thStyle: React.CSSProperties = {
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)",
     color: "white", padding: "12px 10px", textAlign: "left",
     fontWeight: 600, cursor: "pointer", userSelect: "none", fontSize: 12, whiteSpace: "nowrap",
   };
@@ -153,7 +153,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Ветки проектов</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Оценка состояния веток: активность, заброшенность, здоровье проектов</div>
       </div>
@@ -180,7 +180,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
             { value: "merged", label: "Замерженные" },
           ]} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        {userRole === "admin" && <CollectButton collector="branches" projectIds={branchProjectIds} onComplete={loadData} color="#667eea" />}
+        {userRole === "admin" && <CollectButton collector="branches" projectIds={branchProjectIds} onComplete={loadData} color="#3A8DFF" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 
@@ -188,11 +188,11 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
         <>
           <Row gutter={16} style={{ marginBottom: 16 }}>
             <Col span={4}><Card><Statistic title="Всего" value={summary.total} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Активные" value={summary.active} valueStyle={{ color: "#3f8600" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({summary.total > 0 ? Math.round(summary.active / summary.total * 100) : 0}%)</span>} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Заброшенные" value={summary.stale} valueStyle={{ color: "#cf1322" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({summary.total > 0 ? Math.round(summary.stale / summary.total * 100) : 0}%)</span>} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Замерженные" value={summary.merged} valueStyle={{ color: "#667eea" }} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Активные" value={summary.active} valueStyle={{ color: "#21B573" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({summary.total > 0 ? Math.round(summary.active / summary.total * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Заброшенные" value={summary.stale} valueStyle={{ color: "#E5484D" }} suffix={<span style={{ fontSize: 12, color: "var(--ant-color-textTertiary)" }}>({summary.total > 0 ? Math.round(summary.stale / summary.total * 100) : 0}%)</span>} /></Card></Col>
+            <Col span={4}><Card><Statistic title="Замерженные" value={summary.merged} valueStyle={{ color: "#3A8DFF" }} /></Card></Col>
             <Col span={4}><Card><Statistic title="Защищённые" value={summary.protected} /></Card></Col>
-            <Col span={4}><Card><Statistic title="Ср. дн. без коммита" value={summary.avgDaysSinceCommit} valueStyle={{ color: summary.avgDaysSinceCommit > 90 ? "#cf1322" : summary.avgDaysSinceCommit > 30 ? "#d4b106" : "#3f8600" }} suffix="дн." /></Card></Col>
+            <Col span={4}><Card><Statistic title="Ср. дн. без коммита" value={summary.avgDaysSinceCommit} valueStyle={{ color: summary.avgDaysSinceCommit > 90 ? "#E5484D" : summary.avgDaysSinceCommit > 30 ? "#FFB020" : "#21B573" }} suffix="дн." /></Card></Col>
           </Row>
 
           {summary.perProject.length > 0 && (
@@ -218,23 +218,23 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                           </div>
                           <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
                             <span>Всего: <b>{p.total}</b></span>
-                            <span style={{ color: "#3f8600" }}>Актив: <b>{p.active}</b></span>
-                            <span style={{ color: "#cf1322" }}>Заброшен: <b>{p.stale}</b></span>
-                            <span style={{ color: "#667eea" }}>Замержен: <b>{p.merged}</b></span>
+                            <span style={{ color: "#21B573" }}>Актив: <b>{p.active}</b></span>
+                            <span style={{ color: "#E5484D" }}>Заброшен: <b>{p.stale}</b></span>
+                            <span style={{ color: "#3A8DFF" }}>Замержен: <b>{p.merged}</b></span>
                           </div>
                           <div style={{ marginTop: 6 }}>
                             <div style={{ height: 6, borderRadius: 3, background: "var(--ant-color-border-secondary)", overflow: "hidden", display: "flex" }}>
-                              <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#3f8600" }} />
-                              <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#cf1322" }} />
-                              <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#667eea" }} />
+                              <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#21B573" }} />
+                              <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#E5484D" }} />
+                              <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#3A8DFF" }} />
                             </div>
                             {stalePct > 30 && (
-                              <div style={{ fontSize: 11, color: "#cf1322", marginTop: 4 }}>
+                              <div style={{ fontSize: 11, color: "#E5484D", marginTop: 4 }}>
                                 <WarningOutlined /> {stalePct}% веток заброшены — рекомендуется очистка
                               </div>
                             )}
                             {stalePct <= 10 && (p.total - p.merged) > 0 && (
-                              <div style={{ fontSize: 11, color: "#3f8600", marginTop: 4 }}>
+                              <div style={{ fontSize: 11, color: "#21B573", marginTop: 4 }}>
                                 <CheckCircleOutlined /> Хорошее состояние
                               </div>
                             )}
@@ -279,9 +279,9 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                     </span>
                     {(r as any).last_commit_additions > 0 || (r as any).last_commit_deletions > 0 ? (
                       <span style={{ marginLeft: 6, fontSize: 11, color: "var(--ant-color-textSecondary)" }}>
-                        <span style={{ color: "#3f8600" }}>+{(r as any).last_commit_additions}</span>
+                        <span style={{ color: "#21B573" }}>+{(r as any).last_commit_additions}</span>
                         {" "}
-                        <span style={{ color: "#cf1322" }}>-{(r as any).last_commit_deletions}</span>
+                        <span style={{ color: "#E5484D" }}>-{(r as any).last_commit_deletions}</span>
                       </span>
                     ) : lastDate ? (
                       <span style={{ marginLeft: 6, fontSize: 11, color: "var(--ant-color-textTertiary)" }}>N/A</span>
@@ -291,7 +291,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
                     {r.branchAge !== null ? <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatAge(r.branchAge)}</span> : "N/A"}
                   </td>
                   <td style={tdStyle}>
-                    <span style={{ color: "#667eea", cursor: "pointer" }} onClick={() => onContributorClick?.((r as any).last_commit_author_email || r.display_author)}>{r.display_author}</span>
+                    <span style={{ color: "#3A8DFF", cursor: "pointer" }} onClick={() => onContributorClick?.((r as any).last_commit_author_email || r.display_author)}>{r.display_author}</span>
                   </td>
                 </tr>
               );
@@ -327,7 +327,7 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 10 }}>Легенда</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
           <div><b style={{ color: "var(--ant-color-text)" }}>Основная</b> — дефолтная ветка проекта (main/master)</div>
-          <div><b style={{ color: "#fa8c16" }}>Защищена</b> — ветка с правилами защиты в GitLab</div>
+          <div><b style={{ color: "#FFB020" }}>Защищена</b> — ветка с правилами защиты в GitLab</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Последний коммит</b> — дата + сколько дней назад. Цвет: зелёный (&lt;30д), жёлтый (30-90д), красный (&gt;90д)</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Жизнь ветки</b> — сколько дней существует ветка (от первого до последнего коммита)</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Ср. дн. без коммита</b> — среднее количество дней с момента последнего коммита по всем веткам</div>

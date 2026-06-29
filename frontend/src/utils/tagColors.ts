@@ -1,22 +1,22 @@
 const TAG_COLORS: Record<string, { bg: string; text: string }> = {};
 
 const PALETTE: { bg: string; text: string }[] = [
-  { bg: "#1677ff", text: "#fff" },
-  { bg: "#52c41a", text: "#fff" },
-  { bg: "#fa8c16", text: "#fff" },
-  { bg: "#722ed1", text: "#fff" },
-  { bg: "#13c2c2", text: "#fff" },
-  { bg: "#eb2f96", text: "#fff" },
-  { bg: "#faad14", text: "#000" },
-  { bg: "#2f54eb", text: "#fff" },
-  { bg: "#f5222d", text: "#fff" },
-  { bg: "#a0d911", text: "#000" },
-  { bg: "#722ed1", text: "#fff" },
-  { bg: "#fa541c", text: "#fff" },
+  { bg: "#3A8DFF", text: "#fff" },
+  { bg: "#42D9C8", text: "#111315" },
+  { bg: "#21B573", text: "#fff" },
+  { bg: "#FFB020", text: "#111315" },
+  { bg: "#E5484D", text: "#fff" },
+  { bg: "#141B2D", text: "#fff" },
+  { bg: "#3A8DFF", text: "#fff" },
+  { bg: "#42D9C8", text: "#111315" },
+  { bg: "#21B573", text: "#fff" },
+  { bg: "#FFB020", text: "#111315" },
+  { bg: "#AEB7C4", text: "#111315" },
+  { bg: "#E5484D", text: "#fff" },
 ];
 
 export function getTagColor(tag: string): { bg: string; text: string } {
-  if (!tag) return { bg: "#d9d9d9", text: "#000" };
+  if (!tag) return { bg: "#D8DCE3", text: "#111315" };
   if (TAG_COLORS[tag]) return TAG_COLORS[tag];
   const idx = Object.keys(TAG_COLORS).length % PALETTE.length;
   TAG_COLORS[tag] = PALETTE[idx];

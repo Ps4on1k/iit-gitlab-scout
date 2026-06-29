@@ -171,7 +171,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags, 
                 closable
                 onClose={() => removeProject(id)}
                 closeIcon={<CloseCircleFilled style={{ color: "#fff", opacity: 0.7 }} />}
-                style={{ margin: 0, background: "#667eea", color: "#fff", border: "none", fontWeight: 500 }}
+                style={{ margin: 0, background: "#3A8DFF", color: "#fff", border: "none", fontWeight: 500 }}
               >{p?.label || `#${id}`}</Tag>
             );
           })}
@@ -183,7 +183,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags, 
                 closable
                 onClose={() => removeContributor(email)}
                 closeIcon={<CloseCircleFilled style={{ color: "#fff", opacity: 0.7 }} />}
-                style={{ margin: 0, background: "#722ed1", color: "#fff", border: "none", fontWeight: 500 }}
+                style={{ margin: 0, background: "#42D9C8", color: "#fff", border: "none", fontWeight: 500 }}
                 title={email}
               >{name}</Tag>
             );

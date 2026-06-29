@@ -23,13 +23,13 @@ const { Header, Content } = Layout;
 function Logo({ isDark }: { isDark: boolean }) {
   return (
     <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="4" fill={isDark ? "#667eea" : "#fff"} opacity="0.9"/>
-      <circle cx="12" cy="26" r="4" fill={isDark ? "#667eea" : "#fff"} opacity="0.9"/>
-      <circle cx="24" cy="19" r="4" fill={isDark ? "#667eea" : "#fff"} opacity="0.9"/>
-      <path d="M12 16v6" stroke={isDark ? "#667eea" : "#fff"} strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
-      <path d="M12 12c0-4 6-6 12-4" stroke={isDark ? "#667eea" : "#fff"} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.8"/>
-      <circle cx="26" cy="26" r="6" stroke={isDark ? "#667eea" : "#fff"} strokeWidth="2" fill="none" opacity="0.85"/>
-      <line x1="30.5" y1="30.5" x2="34" y2="34" stroke={isDark ? "#667eea" : "#fff"} strokeWidth="2.5" strokeLinecap="round" opacity="0.85"/>
+      <circle cx="12" cy="12" r="4" fill={isDark ? "#3A8DFF" : "#fff"} opacity="0.9"/>
+      <circle cx="12" cy="26" r="4" fill={isDark ? "#3A8DFF" : "#fff"} opacity="0.9"/>
+      <circle cx="24" cy="19" r="4" fill={isDark ? "#3A8DFF" : "#fff"} opacity="0.9"/>
+      <path d="M12 16v6" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2.5" strokeLinecap="round" opacity="0.8"/>
+      <path d="M12 12c0-4 6-6 12-4" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2.5" strokeLinecap="round" fill="none" opacity="0.8"/>
+      <circle cx="26" cy="26" r="6" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2" fill="none" opacity="0.85"/>
+      <line x1="30.5" y1="30.5" x2="34" y2="34" stroke={isDark ? "#3A8DFF" : "#fff"} strokeWidth="2.5" strokeLinecap="round" opacity="0.85"/>
     </svg>
   );
 }
@@ -146,8 +146,8 @@ export default function App() {
   }, []);
 
   const themeConfig = darkMode ? darkThemeConfig : lightThemeConfig;
-  const contentBg = darkMode ? "#11111b" : "#f5f5f5";
-  const subMenuBg = darkMode ? "#1a1a2e" : "#001529";
+  const contentBg = darkMode ? "#111827" : "#F5F7FA";
+  const subMenuBg = darkMode ? "#111827" : "#111315";
   const filterKey = JSON.stringify(filters);
 
   if (loading) return <ConfigProvider theme={themeConfig}><div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: contentBg }}><Typography.Text>Загрузка...</Typography.Text></div></ConfigProvider>;
@@ -172,7 +172,7 @@ export default function App() {
   return (
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
-        <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#1e1e2e" : "#001529" }}>
+        <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
@@ -193,16 +193,16 @@ export default function App() {
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)" }}>Выйти</Button>
         </Header>
         {tab === "analytics" && (
-          <div style={{ background: subMenuBg, padding: "0 24px", display: "flex", gap: 0, borderBottom: darkMode ? "1px solid #313147" : "none" }}>
+          <div style={{ background: subMenuBg, padding: "0 24px", display: "flex", gap: 0, borderBottom: darkMode ? "1px solid #2A3A4A" : "none" }}>
             {analyticsSubTabs.map((t) => (
               <div key={t.key}
                 onClick={() => setAnalyticsTab(t.key as AnalyticsTab)}
                 style={{
                   padding: "10px 24px", cursor: "pointer", fontSize: 14, fontWeight: 500,
-                  color: analyticsTab === t.key ? "#fff" : (darkMode ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.55)"),
-                  borderBottom: analyticsTab === t.key ? "2px solid #667eea" : "2px solid transparent",
-                  background: analyticsTab === t.key ? "rgba(102,126,234,0.15)" : "transparent",
-                  transition: "all 0.2s",
+                  color: analyticsTab === t.key ? "#fff" : (darkMode ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.6)"),
+                  borderBottom: analyticsTab === t.key ? "2px solid #3A8DFF" : "2px solid transparent",
+                  background: analyticsTab === t.key ? "rgba(58,141,255,0.12)" : "transparent",
+                  transition: "all 0.15s ease",
                 }}
               >{t.label}</div>
             ))}

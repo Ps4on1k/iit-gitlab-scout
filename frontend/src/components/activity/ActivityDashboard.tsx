@@ -114,7 +114,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
         <Select value={groupBy} onChange={(v) => setGroupBy(v)} style={{ width: 120 }}
           options={[{ value: "day", label: "По дням" }, { value: "week", label: "По неделям" }]} />
         <Space>
-          {userRole === "admin" && <CollectButton collector="activity_mr" projectIds={activityProjectIds} onComplete={loadAll} color="#c47a5a" label="Собрать данные" />}
+          {userRole === "admin" && <CollectButton collector="activity_mr" projectIds={activityProjectIds} onComplete={loadAll} color="#FFB020" label="Собрать данные" />}
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         </Space>
       </div>
@@ -144,12 +144,12 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
 
       {mrLoading ? <div style={{ textAlign: "center", padding: 40 }}><Spin size="large" /></div> : mrData && (
         <>
-          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12, marginBottom: 16 }}>Merge Requests</h3>
+          <h3 style={{ fontSize: 18, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12, marginBottom: 16 }}>Merge Requests</h3>
           <Row gutter={16} style={{ marginBottom: 24 }}>
             <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Всего MR" value={mrData.summary.total} /></Card></Col>
-            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Замержено" value={mrData.summary.merged} valueStyle={{ color: "#3f8600" }} /></Card></Col>
-            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Открыто" value={mrData.summary.opened} valueStyle={{ color: "#1677ff" }} /></Card></Col>
-            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Закрыто" value={mrData.summary.closed} valueStyle={{ color: "#cf1322" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Замержено" value={mrData.summary.merged} valueStyle={{ color: "#21B573" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Открыто" value={mrData.summary.opened} valueStyle={{ color: "#3A8DFF" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Закрыто" value={mrData.summary.closed} valueStyle={{ color: "#E5484D" }} /></Card></Col>
             <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Ср. дн. до мержа" value={Number(mrData.summary.avg_days_to_merge) || 0} suffix="дн." /></Card></Col>
             <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Ср. одобрений" value={Number(mrData.summary.avg_approvals) || 0} /></Card></Col>
           </Row>
@@ -164,7 +164,7 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                       x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                       y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                     }}
-                    scale={{ color: { range: ["#7eb0d5", "#3f8600"] } }}
+                    scale={{ color: { range: ["#7eb0d5", "#21B573"] } }}
                     tooltip={{ title: "date", items: [{ field: "count", name: "Количество" }] }}
                   />
                 )}
@@ -178,10 +178,10 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                       <div key={p.label} style={{ marginBottom: 8 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
                           <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}</span>
-                          <span style={{ color: Number(p.avgDays) <= 2 ? "#3f8600" : Number(p.avgDays) <= 7 ? "#d4b106" : "#cf1322", fontWeight: 600 }}>{p.avgDays} дн.</span>
+                          <span style={{ color: Number(p.avgDays) <= 2 ? "#21B573" : Number(p.avgDays) <= 7 ? "#FFB020" : "#E5484D", fontWeight: 600 }}>{p.avgDays} дн.</span>
                         </div>
                         <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>
-                          <div style={{ width: `${Math.min(100, (Number(p.avgDays) / 30) * 100)}%`, background: Number(p.avgDays) <= 2 ? "#3f8600" : Number(p.avgDays) <= 7 ? "#d4b106" : "#cf1322" }} />
+                          <div style={{ width: `${Math.min(100, (Number(p.avgDays) / 30) * 100)}%`, background: Number(p.avgDays) <= 2 ? "#21B573" : Number(p.avgDays) <= 7 ? "#FFB020" : "#E5484D" }} />
                         </div>
                       </div>
                     ))}
@@ -203,14 +203,14 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#667eea" }}
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#3A8DFF" }}
                             onClick={() => onContributorClick?.(a.email || a.name)}>{a.name}</div>
                           {a.email && <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>{a.email}</div>}
                           <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{a.total} MR создано, {a.merged} замержено</div>
                         </div>
                         <div style={{ width: 120 }}>
                           <div style={{ height: 10, borderRadius: 5, background: "var(--ant-color-fill-secondary)", overflow: "hidden" }}>
-                            <div style={{ width: `${(a.total / (mrData.topAuthors[0]?.total || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #667eea, #764ba2)", borderRadius: 5 }} />
+                            <div style={{ width: `${(a.total / (mrData.topAuthors[0]?.total || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #3A8DFF, #42D9C8)", borderRadius: 5 }} />
                           </div>
                         </div>
                         <span style={{ fontSize: 12, color: "var(--ant-color-text-secondary)", width: 30, textAlign: "right" }}>{a.total}</span>
@@ -231,14 +231,14 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
                           {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
                         </span>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#764ba2" }}
+                          <div style={{ fontWeight: 500, fontSize: 13, cursor: "pointer", color: "#3A8DFF" }}
                             onClick={() => onContributorClick?.(r.email || r.name)}>{r.name}</div>
                           {r.email && <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>{r.email}</div>}
                           <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)" }}>{r.reviews} одобрений MR</div>
                         </div>
                         <div style={{ width: 120 }}>
                           <div style={{ height: 10, borderRadius: 5, background: "var(--ant-color-fill-secondary)", overflow: "hidden" }}>
-                            <div style={{ width: `${(r.reviews / (mrData.topReviewers[0]?.reviews || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #764ba2, #f093fb)", borderRadius: 5 }} />
+                            <div style={{ width: `${(r.reviews / (mrData.topReviewers[0]?.reviews || 1)) * 100}%`, height: "100%", background: "linear-gradient(90deg, #42D9C8, #AEB7C4)", borderRadius: 5 }} />
                           </div>
                         </div>
                         <span style={{ fontSize: 12, color: "var(--ant-color-text-secondary)", width: 30, textAlign: "right" }}>{r.reviews}</span>

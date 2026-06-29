@@ -9,7 +9,7 @@ const { Text } = Typography;
 const ROLE_PERMISSIONS: Record<Role, { label: string; color: string; permissions: string[] }> = {
   admin: {
     label: "Admin",
-    color: "#cf1322",
+    color: "#E5484D",
     permissions: [
       "Полный доступ ко всем данным",
       "Управление проектами и пользователями",
@@ -20,7 +20,7 @@ const ROLE_PERMISSIONS: Record<Role, { label: string; color: string; permissions
   },
   manager: {
     label: "Manager",
-    color: "#fa8c16",
+    color: "#FFB020",
     permissions: [
       "Просмотр статистики (все вкладки)",
       "Фильтрация и поиск",
@@ -32,7 +32,7 @@ const ROLE_PERMISSIONS: Record<Role, { label: string; color: string; permissions
   },
   user: {
     label: "User",
-    color: "#1677ff",
+    color: "#3A8DFF",
     permissions: [
       "Просмотр статистики (все вкладки)",
       "Фильтрация и поиск",

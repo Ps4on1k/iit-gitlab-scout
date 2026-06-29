@@ -47,11 +47,11 @@ function computeScore(c: {
   const raw = (consistency * 30) + (activity * 25) + (impact * 25) + (sizeQuality * 20);
   const score = Math.round(Math.min(100, Math.max(0, raw)));
 
-  if (score >= 80) return { score, grade: "Превосходно", color: "#3f8600", icon: "★" };
-  if (score >= 60) return { score, grade: "Отлично", color: "#1677ff", icon: "●" };
-  if (score >= 40) return { score, grade: "Хорошо", color: "#fa8c16", icon: "◆" };
-  if (score >= 20) return { score, grade: "Требует внимания", color: "#d4b106", icon: "▲" };
-  return { score, grade: "Критично", color: "#cf1322", icon: "!" };
+  if (score >= 80) return { score, grade: "Превосходно", color: "#21B573", icon: "★" };
+  if (score >= 60) return { score, grade: "Отлично", color: "#3A8DFF", icon: "●" };
+  if (score >= 40) return { score, grade: "Хорошо", color: "#FFB020", icon: "◆" };
+  if (score >= 20) return { score, grade: "Требует внимания", color: "#FFB020", icon: "▲" };
+  return { score, grade: "Критично", color: "#E5484D", icon: "!" };
 }
 
 function ScoreCell({ score }: { score: ScoreResult }) {
@@ -126,11 +126,11 @@ function CommitPopup({ email, dateFrom, dateTo }: { email: string; dateFrom?: st
                 const d = c.committed_date ? new Date(c.committed_date) : null;
                 return (
                   <tr key={c.id || c.commit_sha} style={{ borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
-                    <td style={{ padding: "5px 8px" }}><code style={{ color: "#667eea", fontSize: 11 }}>{c.commit_sha?.slice(0, 8)}</code></td>
+                    <td style={{ padding: "5px 8px" }}><code style={{ color: "#3A8DFF", fontSize: 11 }}>{c.commit_sha?.slice(0, 8)}</code></td>
                     <td style={{ padding: "5px 8px", whiteSpace: "nowrap" }}>{d ? d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "—"}</td>
                     <td style={{ padding: "5px 8px" }}>{c.project_label && <Tag style={{ fontSize: 10 }}>{c.project_label}</Tag>}</td>
-                    <td style={{ padding: "5px 8px", color: "#3f8600" }}>+{c.additions}</td>
-                    <td style={{ padding: "5px 8px", color: "#cf1322" }}>-{c.deletions}</td>
+                    <td style={{ padding: "5px 8px", color: "#21B573" }}>+{c.additions}</td>
+                    <td style={{ padding: "5px 8px", color: "#E5484D" }}>-{c.deletions}</td>
                     <td style={{ padding: "5px 8px", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{(c.message || c.raw_json?.message || "").split("\n")[0].slice(0, 120)}</td>
                   </tr>
                 );
@@ -240,7 +240,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
   if (!loading && data.length === 0) return <Empty description="Нет данных. Нажмите «Собрать данные»." />;
 
   const thStyle: React.CSSProperties = {
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)",
     color: "white",
     padding: "12px 8px",
     textAlign: "left",
@@ -287,25 +287,25 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
                     <div style={{ fontWeight: 600 }}>
                       {c.author_name}
                       <SearchOutlined
-                        style={{ color: "#667eea", marginLeft: 6, cursor: "pointer", fontSize: 12 }}
+                        style={{ color: "#3A8DFF", marginLeft: 6, cursor: "pointer", fontSize: 12 }}
                         onClick={(e) => { e.stopPropagation(); setModalEmail(c.author_email); setModalName(c.author_name || c.author_email); setModalOpen(true); }}
                       />
                     </div>
-                    <div style={{ fontSize: 11, color: onContributorClick ? "#667eea" : "var(--ant-color-textTertiary)", cursor: onContributorClick ? "pointer" : "default", fontWeight: c.author_name ? 400 : 500 }}
+                    <div style={{ fontSize: 11, color: onContributorClick ? "#3A8DFF" : "var(--ant-color-textTertiary)", cursor: onContributorClick ? "pointer" : "default", fontWeight: c.author_name ? 400 : 500 }}
                       onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</div>
                   </div>
                 </td>
                 <td style={tdStyle}><ScoreCell score={c.score} /></td>
                 <td style={tdStyle}>{Number(c.total_commits)}</td>
                 <td style={{ ...tdStyle, fontWeight: 600 }}>{Number(c.total_changes).toLocaleString()}</td>
-                <td style={{ ...tdStyle, color: "#3f8600" }}>+{Number(c.total_additions).toLocaleString()}</td>
-                <td style={{ ...tdStyle, color: "#cf1322" }}>-{Number(c.total_deletions).toLocaleString()}</td>
+                <td style={{ ...tdStyle, color: "#21B573" }}>+{Number(c.total_additions).toLocaleString()}</td>
+                <td style={{ ...tdStyle, color: "#E5484D" }}>-{Number(c.total_deletions).toLocaleString()}</td>
                 <td style={tdStyle}>{cpc}</td>
                 <td style={tdStyle}>{c.activeDays}</td>
                 <td style={tdStyle}>{c.commitsPerDay.toFixed(1)}</td>
                 <td style={tdStyle}>{c.commitsPerWeek.toFixed(1)}</td>
-                <td style={{ ...tdStyle, color: "#3f8600" }}>+{c.avgAdditions.toFixed(1)}</td>
-                <td style={{ ...tdStyle, color: "#cf1322" }}>-{c.avgDeletions.toFixed(1)}</td>
+                <td style={{ ...tdStyle, color: "#21B573" }}>+{c.avgAdditions.toFixed(1)}</td>
+                <td style={{ ...tdStyle, color: "#E5484D" }}>-{c.avgDeletions.toFixed(1)}</td>
                 <td style={tdStyle}>{c.activitySpan}д</td>
               </tr>
             );
@@ -352,24 +352,24 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
       <div style={{ padding: "16px 20px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)", borderRadius: "0 0 12px 12px" }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 10 }}>Индикатор эффективности</div>
         <div style={{ display: "flex", gap: 20, marginBottom: 14, fontSize: 12 }}>
-          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#3f8600", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>★</span> 80–100 Превосходно</span>
-          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#1677ff", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>●</span> 60–79 Отлично</span>
-          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#fa8c16", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>◆</span> 40–59 Хорошо</span>
-          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#d4b106", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>▲</span> 20–29 Требует внимания</span>
-          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#cf1322", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>!</span> 0–19 Критично</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#21B573", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>★</span> 80–100 Превосходно</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#3A8DFF", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>●</span> 60–79 Отлично</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#FFB020", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>◆</span> 40–59 Хорошо</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#FFB020", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>▲</span> 20–29 Требует внимания</span>
+          <span><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, borderRadius: 10, background: "#E5484D", color: "white", fontSize: 10, fontWeight: 700, marginRight: 4 }}>!</span> 0–19 Критично</span>
         </div>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 8 }}>Легенда метрик</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
           <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов</b> — общее количество коммитов за выбранный период</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Изменений</b> — суммарный объём (добавления + удаления строк)</div>
-          <div><b style={{ color: "#3f8600" }}>+ строк</b> — общее число добавленных строк</div>
-          <div><b style={{ color: "#cf1322" }}>- строк</b> — общее число удалённых строк</div>
+          <div><b style={{ color: "#21B573" }}>+ строк</b> — общее число добавленных строк</div>
+          <div><b style={{ color: "#E5484D" }}>- строк</b> — общее число удалённых строк</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Δ/коммит</b> — средний размер коммита: (изменений) / (коммитов). Чем выше — тем «крупнее» коммиты</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Активных дн.</b> — количество дней, в которые автор делал хотя бы один коммит</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов/день</b> — коммитов / активных дней. Средняя дневная интенсивность</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов/нед.</b> — коммитов / (активных дней / 7). Недельная интенсивность</div>
-          <div><b style={{ color: "#3f8600" }}>Ср. +/коммит</b> — (всего добавлений) / (коммитов). Сколько строк добавляется в среднем за коммит</div>
-          <div><b style={{ color: "#cf1322" }}>Ср. -/коммит</b> — (всего удалений) / (коммитов). Сколько строк удаляется в среднем за коммит</div>
+          <div><b style={{ color: "#21B573" }}>Ср. +/коммит</b> — (всего добавлений) / (коммитов). Сколько строк добавляется в среднем за коммит</div>
+          <div><b style={{ color: "#E5484D" }}>Ср. -/коммит</b> — (всего удалений) / (коммитов). Сколько строк удаляется в среднем за коммит</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Дн. активности</b> — календарных дней от первого до последнего коммита. Общий период участия</div>
         </div>
         <div style={{ marginTop: 12, fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 6 }}>Формула расчёта эффективности</div>

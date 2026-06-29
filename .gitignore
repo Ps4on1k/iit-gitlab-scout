@@ -30,3 +30,6 @@ docker-compose.override.yml
 
 # Cache
 .cache/
+
+# Design system reference
+design-system-innovaciya-it.html

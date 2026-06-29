@@ -186,14 +186,14 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Аналитика контрибьюторов</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Сбор и визуализация статистики коммитов из GitLab</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         {userRole === "admin" && (
-          <CollectButton collector="contributors" projectIds={contributorIds} dateFrom={filters.dateFrom} dateTo={filters.dateTo} onComplete={loadData} color="#667eea" label="Собрать данные" />
+          <CollectButton collector="contributors" projectIds={contributorIds} dateFrom={filters.dateFrom} dateTo={filters.dateTo} onComplete={loadData} color="#3A8DFF" label="Собрать данные" />
         )}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
@@ -203,12 +203,12 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30, marginBottom: 30 }}>
         <CommitTimelineChart data={filteredContributors} loading={loading} dateFrom={filters.dateFrom} dateTo={filters.dateTo} />
         <div style={{ borderRadius: 12, padding: 20, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-          <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Топ-10 контрибьюторов</h3>
+          <h3 style={{ margin: "0 0 20px", fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12 }}>Топ-10 контрибьюторов</h3>
           {loading ? <div style={{ textAlign: "center", padding: 40 }}>Загрузка...</div> : (
             <div>{filteredContributors.slice(0, 10).map((c, i) => (
               <div key={c.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--ant-color-border-secondary)", fontSize: 13 }}>
-                <span style={{ cursor: "pointer", color: "#667eea" }} onClick={() => onContributorClick?.(c.author_email)}>{i + 1}. {c.author_name ? `${c.author_name} (${c.author_email})` : c.author_email}</span>
-                <span style={{ fontWeight: 600, color: "#667eea" }}>{c.total_changes.toLocaleString()}</span>
+                <span style={{ cursor: "pointer", color: "#3A8DFF" }} onClick={() => onContributorClick?.(c.author_email)}>{i + 1}. {c.author_name ? `${c.author_name} (${c.author_email})` : c.author_email}</span>
+                <span style={{ fontWeight: 600, color: "#3A8DFF" }}>{c.total_changes.toLocaleString()}</span>
               </div>
             ))}</div>
           )}
@@ -222,7 +222,7 @@ export function ContributorDashboard({ userRole, filters, onContributorClick }: 
       {userRole !== "user" && (
       <div style={{ borderRadius: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)", marginBottom: 30 }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
-          <h3 style={{ margin: 0, fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #667eea", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
+          <h3 style={{ margin: 0, fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #3A8DFF", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
         <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} onContributorClick={onContributorClick} /></div>
       </div>

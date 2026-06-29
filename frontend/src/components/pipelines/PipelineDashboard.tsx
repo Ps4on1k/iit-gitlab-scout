@@ -21,7 +21,7 @@ function downloadCsv(filename: string, headers: string[], rows: any[][]) {
   URL.revokeObjectURL(url);
 }
 
-const PIE_COLORS = ["#3f8600", "#cf1322", "#1677ff", "#d4b106", "#722ed1"];
+const PIE_COLORS = ["#21B573", "#E5484D", "#3A8DFF", "#FFB020", "#42D9C8"];
 
 function formatDuration(secs: number | null): string {
   if (secs === null || secs === undefined) return "N/A";
@@ -66,13 +66,13 @@ export function PipelineDashboard({ userRole, filters }: Props) {
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #722ed1 0%, #13c2c2 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>CI/CD Пайплайны <span style={{ fontSize: 14, background: "rgba(255,255,255,0.2)", padding: "2px 10px", borderRadius: 10, verticalAlign: "middle" }}>Бэта</span></h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Длительность, успешность и стабильность процессов сборки</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        {userRole === "admin" && <CollectButton collector="pipelines" projectIds={pipelineProjectIds} onComplete={loadData} color="#722ed1" />}
+        {userRole === "admin" && <CollectButton collector="pipelines" projectIds={pipelineProjectIds} onComplete={loadData} color="#42D9C8" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         {data && <Button size="small" icon={<DownloadOutlined />} onClick={() => {
           const headers = ["Статус", "Кол-во", "%"];
@@ -96,20 +96,20 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Всего пайплайнов" value={data.summary.total} valueStyle={{ fontSize: 24 }} /></Card></Col>
             <Col span={4}>
               <Card style={{ height: "100%" }}>
-                <Statistic title="Успешно" value={data.summary.success} valueStyle={{ color: "#3f8600" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({successRate}%)</span>} />
+                <Statistic title="Успешно" value={data.summary.success} valueStyle={{ color: "#21B573" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({successRate}%)</span>} />
                 <div style={{ marginTop: 4 }}>
                   <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden", background: "#f0f0f0" }}>
-                    <div style={{ width: `${successRate}%`, background: "#3f8600", borderRadius: 3 }} />
+                    <div style={{ width: `${successRate}%`, background: "#21B573", borderRadius: 3 }} />
                   </div>
                 </div>
               </Card>
             </Col>
             <Col span={4}>
               <Card style={{ height: "100%" }}>
-                <Statistic title="Провалено" value={data.summary.failed} valueStyle={{ color: "#cf1322" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({data.summary.total > 0 ? Math.round(data.summary.failed / data.summary.total * 100) : 0}%)</span>} />
+                <Statistic title="Провалено" value={data.summary.failed} valueStyle={{ color: "#E5484D" }} suffix={<span style={{ fontSize: 12, color: "#999" }}>({data.summary.total > 0 ? Math.round(data.summary.failed / data.summary.total * 100) : 0}%)</span>} />
               </Card>
             </Col>
-            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Выполняется" value={data.summary.running} valueStyle={{ color: "#1677ff" }} /></Card></Col>
+            <Col span={4}><Card style={{ height: "100%" }}><Statistic title="Выполняется" value={data.summary.running} valueStyle={{ color: "#3A8DFF" }} /></Card></Col>
             <Col span={4}>
               <Card style={{ height: "100%" }}>
                 <Statistic title="Ср. время" value={formatDuration(data.summary.avg_duration)} />
@@ -118,7 +118,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             </Col>
             <Col span={4}>
               <Card style={{ height: "100%" }}>
-                <Statistic title="Отменено" value={data.summary.canceled || 0} valueStyle={{ color: "#d4b106" }} />
+                <Statistic title="Отменено" value={data.summary.canceled || 0} valueStyle={{ color: "#FFB020" }} />
               </Card>
             </Col>
           </Row>
@@ -145,7 +145,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                       x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                       y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                     }}
-                    scale={{ color: { range: ["#3f8600", "#cf1322"] } }}
+                    scale={{ color: { range: ["#21B573", "#E5484D"] } }}
                     tooltip={{ title: "date", items: [{ field: "count", name: "Количество" }] }}
                   />
                 )}
@@ -188,14 +188,14 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
                             <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{p.label}{p.tag?.length > 0 && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tag.join(", ")}</Tag>}</span>
                             <span style={{ color: "var(--ant-color-textSecondary)" }}>
-                              <span style={{ color: "#3f8600" }}>{p.success}</span>/<span>{p.total}</span>
-                              <span style={{ marginLeft: 6, color: pct >= 80 ? "#3f8600" : pct >= 50 ? "#d4b106" : "#cf1322", fontWeight: 600 }}>{pct}%</span>
+                              <span style={{ color: "#21B573" }}>{p.success}</span>/<span>{p.total}</span>
+                              <span style={{ marginLeft: 6, color: pct >= 80 ? "#21B573" : pct >= 50 ? "#FFB020" : "#E5484D", fontWeight: 600 }}>{pct}%</span>
                               {p.avgDuration > 0 && <span style={{ marginLeft: 6, color: "var(--ant-color-textTertiary)" }}>⏱{formatDuration(p.avgDuration)}</span>}
                             </span>
                           </div>
                           <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
-                            <div style={{ width: `${pct}%`, background: "#3f8600" }} />
-                            <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#cf1322" }} />
+                            <div style={{ width: `${pct}%`, background: "#21B573" }} />
+                            <div style={{ width: `${p.total > 0 ? (p.failed / p.total * 100) : 0}%`, background: "#E5484D" }} />
                           </div>
                         </div>
                       );
@@ -212,11 +212,11 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                       Распределение времени выполнения <b>успешных</b> пайплайнов
                     </div>
                     {[
-                      { label: "< 1 мин", value: data.durationDistribution.under_1min, color: "#3f8600", hint: "Быстрые проверки" },
-                      { label: "1–5 мин", value: data.durationDistribution.min_1_5, color: "#667eea", hint: "Сборка + тесты" },
-                      { label: "5–15 мин", value: data.durationDistribution.min_5_15, color: "#d4b106", hint: "Полный pipeline" },
-                      { label: "15–60 мин", value: data.durationDistribution.min_15_60, color: "#fa8c16", hint: "Долгие сборки" },
-                      { label: "> 1 час", value: data.durationDistribution.over_1hour, color: "#cf1322", hint: "Критично долгие" },
+                      { label: "< 1 мин", value: data.durationDistribution.under_1min, color: "#21B573", hint: "Быстрые проверки" },
+                      { label: "1–5 мин", value: data.durationDistribution.min_1_5, color: "#3A8DFF", hint: "Сборка + тесты" },
+                      { label: "5–15 мин", value: data.durationDistribution.min_5_15, color: "#FFB020", hint: "Полный pipeline" },
+                      { label: "15–60 мин", value: data.durationDistribution.min_15_60, color: "#FFB020", hint: "Долгие сборки" },
+                      { label: "> 1 час", value: data.durationDistribution.over_1hour, color: "#E5484D", hint: "Критично долгие" },
                     ].map((d) => {
                       const total = data.summary.success || 1;
                       const pct = Math.round(d.value / total * 100);
@@ -250,13 +250,13 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
                         <span style={{ fontWeight: 500 }}><code>{r.ref}</code></span>
                         <span style={{ color: "var(--ant-color-textSecondary)" }}>
-                          <span style={{ color: "#3f8600" }}>{r.success}</span>/<span>{r.total}</span>
-                          <span style={{ marginLeft: 6, color: pct >= 80 ? "#3f8600" : "#cf1322", fontWeight: 600 }}>{pct}%</span>
+                          <span style={{ color: "#21B573" }}>{r.success}</span>/<span>{r.total}</span>
+                          <span style={{ marginLeft: 6, color: pct >= 80 ? "#21B573" : "#E5484D", fontWeight: 600 }}>{pct}%</span>
                         </span>
                       </div>
                       <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, background: "#3f8600" }} />
-                        <div style={{ width: `${r.total > 0 ? (r.failed / r.total * 100) : 0}%`, background: "#cf1322" }} />
+                        <div style={{ width: `${pct}%`, background: "#21B573" }} />
+                        <div style={{ width: `${r.total > 0 ? (r.failed / r.total * 100) : 0}%`, background: "#E5484D" }} />
                       </div>
                     </div>
                   );
