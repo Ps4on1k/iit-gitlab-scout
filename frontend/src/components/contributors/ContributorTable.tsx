@@ -240,7 +240,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
   if (!loading && data.length === 0) return <Empty description="Нет данных. Нажмите «Собрать данные»." />;
 
   const thStyle: React.CSSProperties = {
-    background: "linear-gradient(135deg, #3A8DFF 0%, #42D9C8 100%)",
+    background: "linear-gradient(135deg, #8BAADB 0%, #98C8D8 100%)",
     color: "white",
     padding: "12px 8px",
     textAlign: "left",

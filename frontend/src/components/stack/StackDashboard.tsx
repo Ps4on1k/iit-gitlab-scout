@@ -85,7 +85,7 @@ export function StackDashboard({ userRole }: Props) {
 
   return (
     <div style={{ width: "90%", margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg, #42D9C8 0%, #3A8DFF 100%)", color: "white", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
+      <div style={{ background: "linear-gradient(135deg, #98C8D8 0%, #8BAADB 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
         <h1 style={{ fontSize: 28, marginBottom: 10 }}>Стек технологий</h1>
         <div style={{ opacity: 0.9, fontSize: 14 }}>Языки программирования по проектам</div>
       </div>
@@ -117,7 +117,7 @@ export function StackDashboard({ userRole }: Props) {
             }}
             maxTagCount="responsive" />
         )}
-        {userRole === "admin" && <CollectButton collector="stack" projectIds={stackProjectIds} onComplete={loadData} color="#42D9C8" label="Собрать стек" />}
+        {userRole === "admin" && <CollectButton collector="stack" projectIds={stackProjectIds} onComplete={loadData} color="#98C8D8" label="Собрать стек" />}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

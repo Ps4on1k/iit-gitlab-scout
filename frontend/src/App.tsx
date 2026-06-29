@@ -220,6 +220,20 @@ export default function App() {
           {tab === "benchmark" && <BenchmarkDashboard filters={filters} />}
           {tab === "settings" && user.role === "admin" && <SettingsPanel />}
         </Content>
+        <footer style={{
+          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          padding: "24px 16px", borderTop: `1px solid ${darkMode ? "#2A3A4A" : "#EEF1F4"}`,
+          background: darkMode ? "#111827" : "#F5F7FA",
+        }}>
+          <a href="https://inn-it.pro/" target="_blank" rel="noopener noreferrer">
+            <img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 28, opacity: 0.7, transition: "opacity 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")} />
+          </a>
+          <span style={{ fontSize: 11, color: darkMode ? "#8A94A6" : "#AEB7C4", marginTop: 8, letterSpacing: 0.3 }}>
+            &copy; {new Date().getFullYear()} Инновация ИТ
+          </span>
+        </footer>
       </Layout>
     </ConfigProvider>
   );
