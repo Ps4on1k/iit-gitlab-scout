@@ -234,14 +234,8 @@ export async function fetchFlatContributors(): Promise<ApiResponse<{ contributor
   return fetchJson("/v1/contributor-directory/flat-export");
 }
 
-export async function fetchDashboard(): Promise<ApiResponse<{
-  summary: { projects: number; contributors: number; branches: number; activeBranches: number; staleBranches: number; mergedBranches: number; commits: number; activeDays: number };
-  topContributors: { email: string; name: string; commits: number; changes: number }[];
-  projectHealth: { label: string; tag: string; total: number; merged: number; active: number; stale: number; healthPct: number }[];
-  recentActivity: { date: string; commits: number }[];
-  languageDistribution: { language: string; percentage: number }[];
-}>> {
-  return fetchJson("/v1/dashboard");
+export async function fetchDashboard(period: number = 30): Promise<ApiResponse<any>> {
+  return fetchJson(`/v1/dashboard?period=${period}`);
 }
 
 export async function fetchMRAnalytics(projectIds?: number[], dateFrom?: string, dateTo?: string, contributor?: string): Promise<ApiResponse<any>> {

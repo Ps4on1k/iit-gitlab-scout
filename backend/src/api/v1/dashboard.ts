@@ -4,10 +4,13 @@ import { getPool } from "../../db/pool.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function dashboardRoutes(app: FastifyInstance) {
-  app.get("/api/v1/dashboard", { preHandler: [requireAuth] }, async (request) => {
+  app.get<{
+    Querystring: { period?: string };
+  }>("/api/v1/dashboard", { preHandler: [requireAuth] }, async (request) => {
     const user = (request as any).user as JwtPayload;
     const pool = getPool();
     const allowedIds = await getFilteredProjectIds(user.userId);
+    const periodDays = Math.max(1, Math.min(365, parseInt(request.query.period || "30") || 30));
 
     const projectWhere = allowedIds !== null
       ? allowedIds.length > 0 ? `WHERE p.id = ANY($1)` : `WHERE 1=0`
@@ -22,37 +25,22 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const projectIds = projects.map((p: any) => p.id);
 
     const empty = {
+      period: periodDays,
       summary: { projects: 0, contributors: 0, branches: 0, activeBranches: 0, staleBranches: 0, mergedBranches: 0, commits: 0, activeDays: 0, mrOpened: 0, mrMerged: 0, mrClosed: 0, deploysTotal: 0, deploysSuccess: 0, deploysFailed: 0 },
       topContributors: [],
-      projectHealth: [],
+      inactiveContributors: [],
+      activeProjects: [],
+      inactiveProjects: [],
       recentActivity: [],
-      branchStatusDistribution: [],
-      branchesByProject: [],
-      pipelinesByProject: [],
       mrByProject: [],
     };
 
     if (projectIds.length === 0) return { ok: true, data: empty };
 
-    const date30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-    const stale30 = 30 * 86400000;
+    const dateFrom = new Date(Date.now() - periodDays * 86400000).toISOString().slice(0, 10);
+    const staleMs = periodDays * 86400000;
     const now = Date.now();
-
-    const branchResult = await pool.query(
-      `SELECT pb.merged, pb.last_commit_date, p.label as project_label
-       FROM project_branches pb JOIN projects p ON p.id = pb.project_id
-       WHERE pb.project_id = ANY($1)
-         AND pb.last_commit_date >= $2`,
-      [projectIds, date30]
-    );
-
-    let totalBranches = 0, activeBranches = 0, staleBranches = 0, mergedBranches = 0;
-    for (const r of branchResult.rows) {
-      totalBranches++;
-      if (r.merged) { mergedBranches++; continue; }
-      if (r.last_commit_date && (now - new Date(r.last_commit_date).getTime()) <= stale30) activeBranches++;
-      else staleBranches++;
-    }
+    const todayStr = new Date().toISOString().slice(0, 10);
 
     const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
     const emailToName: Record<string, string> = {};
@@ -64,10 +52,32 @@ export async function dashboardRoutes(app: FastifyInstance) {
       }
     }
 
+    const activeProjectResult = await pool.query(
+      `SELECT p.id, p.label, p.tags,
+              COUNT(c.id)::int as commits,
+              COUNT(DISTINCT c.author_email)::int as contributors,
+              MAX(c.committed_date) as last_commit
+       FROM projects p
+       LEFT JOIN commits c ON c.project_id = p.id AND c.committed_date >= $2
+       WHERE p.id = ANY($1)
+       GROUP BY p.id, p.label, p.tags
+       ORDER BY commits DESC`,
+      [projectIds, dateFrom]
+    );
+
+    const activeProjects = activeProjectResult.rows
+      .filter((r: any) => r.commits > 0)
+      .map((r: any) => ({ id: r.id, label: r.label, tags: r.tags || [], commits: r.commits, contributors: r.contributors, lastCommit: r.last_commit }));
+
+    const inactiveProjects = activeProjectResult.rows
+      .filter((r: any) => r.commits === 0)
+      .map((r: any) => ({ id: r.id, label: r.label, tags: r.tags || [] }));
+
     const contributorResult = await pool.query(
       `SELECT c.author_email, MAX(cn.author_name) as author_name,
               COUNT(*)::int as total_commits,
-              SUM(c.additions + c.deletions)::int as total_changes
+              SUM(c.additions + c.deletions)::int as total_changes,
+              MAX(c.committed_date) as last_commit
        FROM commits c
        JOIN (
          SELECT author_email, MAX(author_name) as author_name
@@ -76,17 +86,16 @@ export async function dashboardRoutes(app: FastifyInstance) {
        ) cn ON cn.author_email = c.author_email
        WHERE c.project_id = ANY($1) AND c.committed_date >= $2
        GROUP BY c.author_email
-       ORDER BY total_changes DESC
-        LIMIT 10`,
-      [projectIds, date30]
+       ORDER BY total_changes DESC`,
+      [projectIds, dateFrom]
     );
 
     const totalContributorCount = await pool.query(
       `SELECT COUNT(DISTINCT author_email)::int as cnt FROM commits WHERE project_id = ANY($1) AND committed_date >= $2`,
-      [projectIds, date30]
+      [projectIds, dateFrom]
     );
 
-    const contribMap = new Map<string, { name: string; email: string; commits: number; changes: number }>();
+    const contribMap = new Map<string, { name: string; email: string; commits: number; changes: number; lastCommit: string }>();
     for (const c of contributorResult.rows as any[]) {
       const dn = emailToName[c.author_email] || null;
       const key = dn || c.author_email;
@@ -94,62 +103,74 @@ export async function dashboardRoutes(app: FastifyInstance) {
       if (existing) {
         existing.commits += c.total_commits;
         existing.changes += c.total_changes;
+        if (c.last_commit > existing.lastCommit) existing.lastCommit = c.last_commit;
       } else {
         contribMap.set(key, {
           name: dn ? `${nameToFirstEmail[dn]} (${dn})` : (c.author_name || c.author_email),
           email: c.author_email,
           commits: c.total_commits,
           changes: c.total_changes,
+          lastCommit: c.last_commit,
         });
       }
     }
     const topContributors = Array.from(contribMap.values()).sort((a, b) => b.changes - a.changes).slice(0, 10);
 
+    const inactiveContribResult = await pool.query(
+      `SELECT DISTINCT c.author_email, MAX(c.author_name) as name,
+              MAX(c.committed_date) as last_commit
+       FROM commits c
+       WHERE c.project_id = ANY($1)
+         AND c.committed_date < $2
+         AND c.committed_date >= $3
+         AND NOT EXISTS (
+           SELECT 1 FROM commits c2
+           WHERE c2.author_email = c.author_email
+             AND c2.project_id = ANY($1)
+             AND c2.committed_date >= $2
+         )
+       GROUP BY c.author_email
+       ORDER BY MAX(c.committed_date) DESC
+       LIMIT 10`,
+      [projectIds, dateFrom, new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)]
+    );
+
+    const inactiveContributors = inactiveContribResult.rows.map((r: any) => ({
+      name: emailToName[r.author_email] || r.name || r.author_email,
+      email: r.author_email,
+      lastCommit: r.last_commit,
+    }));
+
     const activityResult = await pool.query(
       `SELECT TO_CHAR(committed_date, 'YYYY-MM-DD') as day, COUNT(*)::int as cnt
        FROM commits WHERE project_id = ANY($1) AND committed_date >= $2
        GROUP BY day ORDER BY day`,
-      [projectIds, date30]
+      [projectIds, dateFrom]
     );
 
     const activityMap = new Map<string, number>();
     for (const r of activityResult.rows as any[]) activityMap.set(r.day, r.cnt);
-    const todayStr = new Date().toISOString().slice(0, 10);
     const fullActivity: { date: string; commits: number }[] = [];
-    const startDate = new Date(date30);
+    const startDate = new Date(dateFrom);
     const endDate = new Date(todayStr);
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const ds = d.toISOString().slice(0, 10);
       fullActivity.push({ date: ds, commits: activityMap.get(ds) || 0 });
     }
 
-    const projectHealth = projects.map((p: any) => {
-      const pb = branchResult.rows.filter((b: any) => b.project_label === p.label);
-      const total = pb.length;
-      const merged = pb.filter((b: any) => b.merged).length;
-      const active = pb.filter((b: any) => !b.merged && b.last_commit_date && (now - new Date(b.last_commit_date).getTime()) <= stale30).length;
-      const stale = total - merged - active;
-      const nonMerged = total - merged || 1;
-      return { label: p.label, tags: p.tags || [], total, merged, active, stale, healthPct: Math.round((active / nonMerged) * 100) };
-    });
+    const mrTotal = await pool.query(
+      `SELECT
+         COUNT(*)::int as total,
+         COUNT(*) FILTER (WHERE state = 'merged')::int as merged,
+         COUNT(*) FILTER (WHERE state = 'opened')::int as opened,
+         COUNT(*) FILTER (WHERE state = 'closed')::int as closed
+       FROM project_merge_requests
+       WHERE project_id = ANY($1) AND created_at >= $2`,
+      [projectIds, dateFrom]
+    );
+    const mr = mrTotal.rows[0] || { total: 0, merged: 0, opened: 0, closed: 0 };
 
-    const topHealth = projectHealth.sort((a, b) => a.healthPct - b.healthPct).slice(0, 10);
-    const topBranches = projectHealth.sort((a, b) => b.total - a.total).slice(0, 10);
-
-    const pipelinesResult = projectIds.length > 0 ? (await pool.query(
-      `SELECT p.label, p.tags,
-              COUNT(*)::int as total,
-              COUNT(*) FILTER (WHERE pp.status = 'success')::int as success,
-              COUNT(*) FILTER (WHERE pp.status = 'failed')::int as failed
-       FROM project_pipelines pp
-       JOIN projects p ON p.id = pp.project_id
-       WHERE pp.project_id = ANY($1) AND pp.created_at >= $2
-       GROUP BY p.label, p.tags
-       ORDER BY total DESC LIMIT 10`,
-      [projectIds, date30]
-    )).rows.map((r: any) => ({ label: r.label, tags: r.tags || [], total: r.total, success: r.success, failed: r.failed })) : [];
-
-    const mrResult = projectIds.length > 0 ? (await pool.query(
+    const mrByProjectResult = projectIds.length > 0 ? (await pool.query(
       `SELECT p.label, p.tags,
               COUNT(*)::int as total,
               COUNT(*) FILTER (WHERE pmr.state = 'merged')::int as merged,
@@ -160,20 +181,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
        WHERE pmr.project_id = ANY($1) AND pmr.created_at >= $2
        GROUP BY p.label, p.tags
        ORDER BY total DESC LIMIT 10`,
-      [projectIds, date30]
+      [projectIds, dateFrom]
     )).rows.map((r: any) => ({ label: r.label, tags: r.tags || [], total: r.total, merged: r.merged, opened: r.opened, closed: r.closed })) : [];
-
-    const mrTotal = await pool.query(
-      `SELECT
-         COUNT(*)::int as total,
-         COUNT(*) FILTER (WHERE state = 'merged')::int as merged,
-         COUNT(*) FILTER (WHERE state = 'opened')::int as opened,
-         COUNT(*) FILTER (WHERE state = 'closed')::int as closed
-       FROM project_merge_requests
-       WHERE project_id = ANY($1) AND created_at >= $2`,
-      [projectIds, date30]
-    );
-    const mr = mrTotal.rows[0] || { total: 0, merged: 0, opened: 0, closed: 0 };
 
     const deployResult = projectIds.length > 0 ? await pool.query(
       `SELECT
@@ -182,20 +191,17 @@ export async function dashboardRoutes(app: FastifyInstance) {
          COUNT(*) FILTER (WHERE status = 'failed')::int as failed
        FROM project_deployments
        WHERE project_id = ANY($1) AND created_at >= $2`,
-      [projectIds, date30]
+      [projectIds, dateFrom]
     ) : { rows: [{ total: 0, success: 0, failed: 0 }] };
     const deploys = deployResult.rows[0];
 
     return {
       ok: true,
       data: {
+        period: periodDays,
         summary: {
           projects: projects.length,
           contributors: totalContributorCount.rows[0]?.cnt || 0,
-          branches: totalBranches,
-          activeBranches,
-          staleBranches,
-          mergedBranches,
           commits: activityResult.rows.reduce((s: number, r: any) => s + r.cnt, 0),
           activeDays: activityResult.rows.length,
           mrOpened: mr.opened,
@@ -206,16 +212,11 @@ export async function dashboardRoutes(app: FastifyInstance) {
           deploysFailed: deploys.failed,
         },
         topContributors,
-        projectHealth: topHealth,
+        inactiveContributors,
+        activeProjects,
+        inactiveProjects,
         recentActivity: fullActivity,
-        branchStatusDistribution: [
-          { type: "Активные", value: activeBranches },
-          { type: "Заброшенные", value: staleBranches },
-          { type: "Замерженные", value: mergedBranches },
-        ],
-        branchesByProject: topBranches.map((p) => ({ label: p.label, total: p.total, active: p.active, stale: p.stale, merged: p.merged })),
-        pipelinesByProject: pipelinesResult,
-        mrByProject: mrResult,
+        mrByProject: mrByProjectResult,
       },
     };
   });
