@@ -187,7 +187,7 @@ export default function App() {
         <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315", position: "relative", zIndex: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
             <Logo isDark={darkMode} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
             <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.3.0</span>
           </div>
