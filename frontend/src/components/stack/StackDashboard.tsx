@@ -65,7 +65,13 @@ export function StackDashboard({ userRole }: Props) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const stackProjectIds = useMemo(() => selectedProjectIds.length > 0 ? selectedProjectIds : projects.map((p) => p.id), [selectedProjectIds, projects]);
+  const stackProjectIds = useMemo(() => {
+    if (selectedProjectIds.length > 0) return selectedProjectIds;
+    if (selectedTags.length > 0) {
+      return projects.filter((p) => p.tags?.some((t) => selectedTags.includes(t))).map((p) => p.id);
+    }
+    return projects.map((p) => p.id);
+  }, [selectedProjectIds, selectedTags, projects]);
 
   const projectOptions = useMemo(() =>
     projects.map((p) => ({ value: p.id, label: p.tags?.length ? `${p.label} [${p.tags.join(", ")}]` : p.label })),
