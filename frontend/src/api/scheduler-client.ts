@@ -78,3 +78,8 @@ export async function fetchSchedulerErrors(limit?: number, offset?: number, task
   if (taskName) qs.set("task_name", taskName);
   return fetchJson(`/v1/scheduler/errors${qs.toString() ? "?" + qs.toString() : ""}`);
 }
+
+export async function clearSchedulerErrors(taskName?: string): Promise<ApiResponse<{ deleted: number }>> {
+  const qs = taskName ? `?task_name=${encodeURIComponent(taskName)}` : "";
+  return fetchJson(`/v1/scheduler/errors${qs}`, { method: "DELETE" });
+}

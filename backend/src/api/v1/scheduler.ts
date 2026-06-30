@@ -136,4 +136,23 @@ export async function schedulerRoutes(app: FastifyInstance) {
       },
     };
   });
+
+  app.delete("/api/v1/scheduler/errors", { preHandler: [requireAdmin] }, async () => {
+    const pool = getPool();
+    const result = await pool.query("DELETE FROM scheduler_errors");
+    return { ok: true, data: { deleted: result.rowCount } };
+  });
+
+  app.delete<{
+    Querystring: { task_name?: string };
+  }>("/api/v1/scheduler/errors/by-task", { preHandler: [requireAdmin] }, async (request) => {
+    const { task_name } = request.query;
+    const pool = getPool();
+    if (task_name) {
+      const result = await pool.query("DELETE FROM scheduler_errors WHERE task_name = $1", [task_name]);
+      return { ok: true, data: { deleted: result.rowCount } };
+    }
+    const result = await pool.query("DELETE FROM scheduler_errors");
+    return { ok: true, data: { deleted: result.rowCount } };
+  });
 }

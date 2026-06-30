@@ -3,7 +3,7 @@ import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, P
 
 const { Text } = Typography;
 import { ReloadOutlined, SaveOutlined, DeleteOutlined } from "@ant-design/icons";
-import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, type SchedulerTask } from "../api/scheduler-client";
+import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, type SchedulerTask } from "../api/scheduler-client";
 
 const TASK_LABELS: Record<string, string> = {
   collect_stack: "Сбор стека технологий",
@@ -198,6 +198,12 @@ export function SchedulerPanel() {
                 value={errorsTaskFilter} onChange={(v) => { setErrorsTaskFilter(v); setErrorsPage(1); }}
                 options={Object.entries(TASK_LABELS).map(([k, v]) => ({ value: k, label: v }))} />
               <Button icon={<ReloadOutlined />} onClick={loadErrors} loading={errorsLoading}>Обновить</Button>
+              <Popconfirm title="Очистить лог ошибок?" description={errorsTaskFilter ? `Удалить ошибки задачи «${TASK_LABELS[errorsTaskFilter] || errorsTaskFilter}»?` : "Удалить ВСЕ ошибки?"} onConfirm={async () => {
+                const res = await clearSchedulerErrors(errorsTaskFilter);
+                if (res.ok) { message.success(`Удалено: ${res.data!.deleted}`); loadErrors(); } else { message.error(res.error!); }
+              }} okText="Да, очистить" cancelText="Нет" okButtonProps={{ danger: true }}>
+                <Button danger icon={<DeleteOutlined />}>Очистить</Button>
+              </Popconfirm>
             </div>
             <Table
               columns={[
