@@ -52,10 +52,17 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   const activeProjectColumns = [
     { title: "Проект", dataIndex: "label", key: "label",
       render: (v: string, r: any) => (
-        <span>{v}{r.tags?.length > 0 && r.tags.slice(0, 2).map((t: string) => {
-          const c = getTagColor(t);
-          return <Tag key={t} style={{ marginLeft: 4, fontSize: 10, background: c.bg, color: c.text, border: "none" }}>{t}</Tag>;
-        })}</span>
+        <div>
+          <span style={{ fontWeight: 500 }}>{v}</span>
+          {r.tags?.length > 0 && (
+            <div style={{ marginTop: 2, display: "flex", flexWrap: "wrap", gap: 3 }}>
+              {r.tags.slice(0, 2).map((t: string) => {
+                const c = getTagColor(t);
+                return <Tag key={t} style={{ fontSize: 10, background: c.bg, color: c.text, border: "none", margin: 0, lineHeight: "16px", padding: "0 6px" }}>{t}</Tag>;
+              })}
+            </div>
+          )}
+        </div>
       ),
     },
     { title: "Коммиты", dataIndex: "commits", key: "commits", width: 90, sorter: (a: any, b: any) => a.commits - b.commits, defaultSortOrder: "descend" as const },
@@ -67,10 +74,17 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
   const inactiveProjectColumns = [
     { title: "Проект", dataIndex: "label", key: "label",
       render: (v: string, r: any) => (
-        <span style={{ color: "var(--ant-color-textTertiary)" }}>{v}{r.tags?.length > 0 && r.tags.slice(0, 2).map((t: string) => {
-          const c = getTagColor(t);
-          return <Tag key={t} style={{ marginLeft: 4, fontSize: 10, background: c.bg, color: c.text, border: "none", opacity: 0.5 }}>{t}</Tag>;
-        })}</span>
+        <div style={{ color: "var(--ant-color-textTertiary)" }}>
+          <span style={{ fontWeight: 500 }}>{v}</span>
+          {r.tags?.length > 0 && (
+            <div style={{ marginTop: 2, display: "flex", flexWrap: "wrap", gap: 3 }}>
+              {r.tags.slice(0, 2).map((t: string) => {
+                const c = getTagColor(t);
+                return <Tag key={t} style={{ fontSize: 10, background: c.bg, color: c.text, border: "none", margin: 0, lineHeight: "16px", padding: "0 6px", opacity: 0.5 }}>{t}</Tag>;
+              })}
+            </div>
+          )}
+        </div>
       ),
     },
   ];

@@ -103,12 +103,14 @@ export function AdminPanel() {
       render: (_: any, record: ProjectConfig) => (
         <div>
           <Text code>{record.path}</Text>
-          <div style={{ marginTop: 4 }}>
-            {record.tags && record.tags.map((t: string) => {
-              const c = getTagColor(t);
-              return <Tag key={t} style={{ background: c.bg, color: c.text, border: "none", fontSize: 11 }}>{t}</Tag>;
-            })}
-          </div>
+          {record.tags && record.tags.length > 0 && (
+            <div style={{ marginTop: 2, display: "flex", flexWrap: "wrap", gap: 3 }}>
+              {record.tags.map((t: string) => {
+                const c = getTagColor(t);
+                return <Tag key={t} style={{ background: c.bg, color: c.text, border: "none", fontSize: 10, margin: 0, lineHeight: "16px", padding: "0 6px" }}>{t}</Tag>;
+              })}
+            </div>
+          )}
         </div>
       ),
     },
