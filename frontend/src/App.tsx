@@ -1,22 +1,23 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { ConfigProvider, Layout, Menu, Button, Typography } from "antd";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { ConfigProvider, Layout, Menu, Button, Typography, Spin } from "antd";
 import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
-import { Dashboard } from "./pages/Dashboard";
-import { ContributorDashboard } from "./components/contributors/ContributorDashboard";
-import { StackDashboard } from "./components/stack/StackDashboard";
-import { ActivityDashboard } from "./components/activity/ActivityDashboard";
-import { BranchDashboard } from "./components/branches/BranchDashboard";
-import { PipelineDashboard } from "./components/pipelines/PipelineDashboard";
-import { DoraDashboard } from "./components/dora/DoraDashboard";
-import { BenchmarkDashboard } from "./components/benchmark/BenchmarkDashboard";
-import { SettingsPanel } from "./components/SettingsPanel";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
 import { getMe, clearToken, resolveContributor } from "./api/client";
 import { clearCache } from "./utils/cache";
 import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
 import type { User } from "./types";
+
+const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const ContributorDashboard = lazy(() => import("./components/contributors/ContributorDashboard").then(m => ({ default: m.ContributorDashboard })));
+const StackDashboard = lazy(() => import("./components/stack/StackDashboard").then(m => ({ default: m.StackDashboard })));
+const ActivityDashboard = lazy(() => import("./components/activity/ActivityDashboard").then(m => ({ default: m.ActivityDashboard })));
+const BranchDashboard = lazy(() => import("./components/branches/BranchDashboard").then(m => ({ default: m.BranchDashboard })));
+const PipelineDashboard = lazy(() => import("./components/pipelines/PipelineDashboard").then(m => ({ default: m.PipelineDashboard })));
+const DoraDashboard = lazy(() => import("./components/dora/DoraDashboard").then(m => ({ default: m.DoraDashboard })));
+const BenchmarkDashboard = lazy(() => import("./components/benchmark/BenchmarkDashboard").then(m => ({ default: m.BenchmarkDashboard })));
+const SettingsPanel = lazy(() => import("./components/SettingsPanel").then(m => ({ default: m.SettingsPanel })));
 
 const { Header, Content } = Layout;
 
@@ -189,7 +190,7 @@ export default function App() {
             <Logo isDark={darkMode} />
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.3.0</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.4.0</span>
           </div>
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
@@ -224,15 +225,17 @@ export default function App() {
         )}
         <Content style={{ padding: "12px 24px 24px", background: "transparent", border: "none", position: "relative", zIndex: 1 }}>
           {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} extraParams={tabParams} />}
-          {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-          {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
-          {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
-          {tab === "stack" && <StackDashboard userRole={user.role} />}
-          {tab === "benchmark" && <BenchmarkDashboard filters={filters} />}
-          {tab === "settings" && user.role === "admin" && <SettingsPanel />}
+          <Suspense fallback={<div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>}>
+            {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
+            {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+            {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+            {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+            {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
+            {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
+            {tab === "stack" && <StackDashboard userRole={user.role} />}
+            {tab === "benchmark" && <BenchmarkDashboard filters={filters} />}
+            {tab === "settings" && user.role === "admin" && <SettingsPanel />}
+          </Suspense>
         </Content>
         <footer style={{
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
