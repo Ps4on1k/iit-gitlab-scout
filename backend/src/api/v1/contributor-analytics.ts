@@ -170,7 +170,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
         FROM mr_data md
         LEFT JOIN project_pipelines p ON p.project_id = md.project_id AND p.ref = md.source_branch
         GROUP BY md.author_email, md.author_name
-      ),
+      )
       SELECT
         author_email,
         author_name,
