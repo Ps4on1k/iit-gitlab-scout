@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
-import { Select, Button, Space, message, Card, Row, Col, Statistic, Spin, Typography, Empty, Input } from "antd";
-import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
+import { Select, Button, Space, message, Card, Row, Col, Statistic, Spin, Typography, Empty, Input, Switch, Tooltip } from "antd";
+import { DatabaseOutlined, ReloadOutlined, SwapOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
 import { collectActivity, fetchActivity } from "../../api/activity-client";
 import { delay } from "../../utils/collect";
@@ -21,6 +21,7 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
   const [groupBy, setGroupBy] = useState<"day" | "week">("day");
   const [mrData, setMrData] = useState<any>(null);
   const [mrLoading, setMrLoading] = useState(true);
+  const [useMedian, setUseMedian] = useState(false);
 
   useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); }); }, []);
 
@@ -52,10 +53,10 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
     try {
       const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined;
       const contribs = filters.contributors.length > 0 ? filters.contributors.join(",") : undefined;
-      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo, contribs, filters.useMedian);
+      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo, contribs, useMedian);
       if (r.ok) setMrData(r.data);
     } finally { setMrLoading(false); }
-  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors, filters.useMedian]);
+  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors, useMedian]);
 
   useEffect(() => { loadMRData(); }, [loadMRData]);
 
@@ -105,14 +106,21 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
-      <div style={{ background: "linear-gradient(135deg, #E0C0A0 0%, #D8D0C0 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 10 }}>Активность проектов</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Коммиты, мерж-реквесты и пайплайны по дням/неделям</div>
+      <div style={{ background: "linear-gradient(135deg, #E0C0A0 0%, #D8D0C0 100%)", color: "#111315", padding: "14px 24px", borderRadius: "12px", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>Активность проектов</h1>
+        <div style={{ opacity: 0.9, fontSize: 13 }}>Коммиты, Merge Requests и тенденции</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <Select value={groupBy} onChange={(v) => setGroupBy(v)} style={{ width: 120 }}
           options={[{ value: "day", label: "По дням" }, { value: "week", label: "По неделям" }]} />
+        <Tooltip title={useMedian ? "Показывать средние (mean)" : "Показывать медианы (median)"}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--ant-color-textTertiary)" }}>
+            <SwapOutlined />
+            <Switch size="small" checked={useMedian} onChange={setUseMedian} />
+            <span>{useMedian ? "Median" : "Mean"}</span>
+          </span>
+        </Tooltip>
         <Space>
           {userRole === "admin" && <CollectButton collector="activity_mr" projectIds={activityProjectIds} onComplete={loadAll} color="#E0C0A0" label="Собрать данные" />}
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>

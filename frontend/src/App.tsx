@@ -49,7 +49,6 @@ const defaultFilters: GlobalFilters = {
   dateFrom: dayjs().subtract(90, "day").format("YYYY-MM-DD"),
   dateTo: dayjs().format("YYYY-MM-DD"),
   contributors: [],
-  useMedian: false,
 };
 
 type TabKey = "dashboard" | "analytics" | "stack" | "benchmark" | "settings";
@@ -78,10 +77,9 @@ function readUrlState(): { tab: TabKey; analyticsTab: AnalyticsTab; filters: Par
   if (dateFrom) filters.dateFrom = dateFrom;
   const dateTo = params.get("dateTo");
   if (dateTo) filters.dateTo = dateTo;
-  if (params.get("median") === "1") filters.useMedian = true;
   const tabParams: Record<string, string> = {};
   for (const [k, v] of params.entries()) {
-    if (["tab", "view", "projects", "tags", "contributors", "dateFrom", "dateTo", "median"].includes(k)) continue;
+    if (["tab", "view", "projects", "tags", "contributors", "dateFrom", "dateTo"].includes(k)) continue;
     tabParams[k] = v;
   }
   return { tab, analyticsTab: aTab, filters, tabParams };
@@ -97,7 +95,6 @@ function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalF
     if (filters.contributors.length > 0) params.set("contributors", filters.contributors.join(","));
     if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
-    if (filters.useMedian) params.set("median", "1");
   }
   for (const [k, v] of Object.entries(tabParams)) {
     if (v) params.set(k, v);

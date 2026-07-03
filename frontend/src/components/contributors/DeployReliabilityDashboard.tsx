@@ -36,9 +36,9 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
-      <div style={{ background: "linear-gradient(135deg, #21B573 0%, #3A8DFF 100%)", color: "#fff", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 10 }}>Надёжность деплоя</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Как часто коммиты контрибуторов доходят до успешного деплоя</div>
+      <div style={{ background: "linear-gradient(135deg, #21B573 0%, #3A8DFF 100%)", color: "#fff", padding: "14px 24px", borderRadius: "12px", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>Надёжность деплоя</h1>
+        <div style={{ opacity: 0.9, fontSize: 13 }}>Как часто коммиты контрибуторов доходят до успешного деплоя</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePicker, Collapse, Alert } from "antd";
 import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
@@ -46,7 +46,7 @@ function downloadCsv(filename: string, headers: string[], rows: any[][]) {
   URL.revokeObjectURL(url);
 }
 
-export function BranchDashboard({ userRole, filters, onContributorClick }: Props) {
+export const BranchDashboard = memo(function BranchDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -157,9 +157,9 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
-      <div style={{ background: "linear-gradient(135deg, #8BC8A8 0%, #B8D8C0 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 10 }}>Ветки проектов</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Оценка состояния веток: активность, заброшенность, здоровье проектов</div>
+      <div style={{ background: "linear-gradient(135deg, #8BC8A8 0%, #B8D8C0 100%)", color: "#111315", padding: "14px 24px", borderRadius: "12px", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>Ветки проектов</h1>
+        <div style={{ opacity: 0.9, fontSize: 13 }}>Статус и возраст веток из GitLab</div>
       </div>
 
       <Alert
@@ -341,4 +341,4 @@ export function BranchDashboard({ userRole, filters, onContributorClick }: Props
       </div>
     </div>
   );
-}
+});

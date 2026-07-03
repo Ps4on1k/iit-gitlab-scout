@@ -27,7 +27,7 @@ function getDefaultDateFrom(): string {
 
 interface Props {
   userRole: Role;
-  filters: { projectIds: number[]; tags: string[]; dateFrom: string; dateTo: string; contributors: string[]; useMedian: boolean };
+  filters: { projectIds: number[]; tags: string[]; dateFrom: string; dateTo: string; contributors: string[] };
   onContributorClick?: (name: string) => void;
 }
 
@@ -186,9 +186,9 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
-      <div style={{ background: "linear-gradient(135deg, #8BAADB 0%, #B8A8D8 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 10 }}>Аналитика контрибьюторов</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Сбор и визуализация статистики коммитов из GitLab</div>
+      <div style={{ background: "linear-gradient(135deg, #8BAADB 0%, #B8A8D8 100%)", color: "#111315", padding: "14px 24px", borderRadius: "12px", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>Аналитика контрибьюторов</h1>
+        <div style={{ opacity: 0.9, fontSize: 13 }}>Сбор и визуализация статистики коммитов из GitLab</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>

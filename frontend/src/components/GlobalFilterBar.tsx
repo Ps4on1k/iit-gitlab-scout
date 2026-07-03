@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { DatePicker, Tag, Button, Input, Select, Modal, Typography, message, List, Space, Popconfirm, Tooltip, Switch } from "antd";
-import { ReloadOutlined, CloseCircleFilled, ShareAltOutlined, CopyOutlined, FilterOutlined, PlusOutlined, DeleteOutlined, EditOutlined, CheckOutlined, SwapOutlined } from "@ant-design/icons";
+import { DatePicker, Tag, Button, Input, Select, Modal, Typography, message, List, Space, Popconfirm, Tooltip } from "antd";
+import { ReloadOutlined, CloseCircleFilled, ShareAltOutlined, CopyOutlined, FilterOutlined, PlusOutlined, DeleteOutlined, EditOutlined, CheckOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fetchProjects, fetchContributorsList } from "../api/client";
 import { getTagColor } from "../utils/tagColors";
@@ -15,7 +15,6 @@ export interface GlobalFilters {
   dateFrom: string;
   dateTo: string;
   contributors: string[];
-  useMedian: boolean;
 }
 
 interface Props {
@@ -32,7 +31,6 @@ const defaultFilters: GlobalFilters = {
   dateFrom: dayjs().subtract(90, "day").format("YYYY-MM-DD"),
   dateTo: dayjs().format("YYYY-MM-DD"),
   contributors: [],
-  useMedian: false,
 };
 
 export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags, extraParams }: Props) {
@@ -106,7 +104,7 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags, 
 
   return (
     <div style={{ borderRadius: 8, padding: "12px 16px", marginBottom: 16, border: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-bg-container)" }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "nowrap", marginBottom: hasActive ? 8 : 0 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "nowrap" }}>
         <RangePicker
           value={filters.dateFrom && filters.dateTo ? [dayjs(filters.dateFrom), dayjs(filters.dateTo)] : null}
           onChange={(dates) => {
@@ -151,22 +149,17 @@ export function GlobalFilterBar({ filters, onChange, userRole, userAllowedTags, 
             .filter(([email]) => !filters.contributors.includes(email))
             .map(([email, name]) => ({ value: email, label: name !== email ? `${name} (${email})` : email }))}
         />
+      </div>
 
+      <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "flex-end", marginTop: 8 }}>
         <Tooltip title="Сбросить фильтры">
-          <Button icon={<ReloadOutlined />} onClick={reset} style={{ flex: "0 0 auto" }} />
-        </Tooltip>
-        <Tooltip title={filters.useMedian ? "Показывать средние (mean)" : "Показывать медианы (median)"}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, flex: "0 0 auto", fontSize: 12, color: "var(--ant-color-textTertiary)" }}>
-            <SwapOutlined />
-            <Switch size="small" checked={filters.useMedian} onChange={(v) => update({ useMedian: v })} />
-            <span>{filters.useMedian ? "Median" : "Mean"}</span>
-          </span>
+          <Button icon={<ReloadOutlined />} onClick={reset} />
         </Tooltip>
         <Tooltip title="Пресеты фильтров">
-          <Button icon={<FilterOutlined />} onClick={() => setPresetsOpen(true)} style={{ flex: "0 0 auto" }} />
+          <Button icon={<FilterOutlined />} onClick={() => setPresetsOpen(true)} />
         </Tooltip>
         <Tooltip title="Поделиться ссылкой">
-          <Button icon={<ShareAltOutlined />} onClick={() => setShareOpen(true)} style={{ flex: "0 0 auto" }} />
+          <Button icon={<ShareAltOutlined />} onClick={() => setShareOpen(true)} />
         </Tooltip>
       </div>
 

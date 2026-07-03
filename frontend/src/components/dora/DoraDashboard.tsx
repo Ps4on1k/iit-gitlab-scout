@@ -106,9 +106,9 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
-      <div style={{ background: "linear-gradient(135deg, #2A3A5A 0%, #3A4A6A 100%)", color: "#E8ECF1", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 10 }}>DORA Метрики</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Четыре ключевые метрики DevOps-производительности</div>
+      <div style={{ background: "linear-gradient(135deg, #2A3A5A 0%, #3A4A6A 100%)", color: "#E8ECF1", padding: "14px 24px", borderRadius: "12px", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>DORA метрики</h1>
+        <div style={{ opacity: 0.9, fontSize: 13 }}>Key metrics for measuring software delivery performance</div>
       </div>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>

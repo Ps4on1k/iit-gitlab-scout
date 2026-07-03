@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, Row, Col, Statistic, Select, Button, Tag, message, Spin, Empty } from "antd";
-import { DatabaseOutlined, ReloadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Statistic, Select, Button, Tag, message, Spin, Empty, Switch, Tooltip } from "antd";
+import { DatabaseOutlined, ReloadOutlined, DownloadOutlined, SwapOutlined } from "@ant-design/icons";
 import { Line, Pie } from "@ant-design/charts";
 import { fetchProjects } from "../../api/client";
 import { collectPipelines } from "../../api/pipeline-client";
@@ -32,6 +32,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [data, setData] = useState<any>(null);
+  const [useMedian, setUseMedian] = useState(false);
 
   useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); }); }, []);
 
@@ -48,7 +49,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
       if (effectiveProjectIds.length > 0) qs.set("project_ids", effectiveProjectIds.join(","));
       if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
       if (filters.dateTo) qs.set("date_to", filters.dateTo);
-      if (filters.useMedian) qs.set("use_median", "1");
+      if (useMedian) qs.set("use_median", "1");
       const token = localStorage.getItem("token");
       const res = await fetch(`/api/v1/pipelines${qs.toString() ? "?" + qs.toString() : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       const r = await res.json();
@@ -56,7 +57,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.useMedian]);
+  useEffect(() => { loadData(); }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, useMedian]);
 
   const pipelineProjectIds = useMemo(() => effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id), [effectiveProjectIds, projects]);
 
@@ -65,13 +66,20 @@ export function PipelineDashboard({ userRole, filters }: Props) {
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
-      <div style={{ background: "linear-gradient(135deg, #B8A8D8 0%, #98C8D8 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30 }}>
-        <h1 style={{ fontSize: 28, marginBottom: 10 }}>CI/CD Пайплайны</h1>
-        <div style={{ opacity: 0.9, fontSize: 14 }}>Длительность, успешность и стабильность процессов сборки</div>
+      <div style={{ background: "linear-gradient(135deg, #B8A8D8 0%, #98C8D8 100%)", color: "#111315", padding: "14px 24px", borderRadius: "12px", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>CI/CD Пайплайны</h1>
+        <div style={{ opacity: 0.9, fontSize: 13 }}>Длительность, успешность и стабильность процессов сборки</div>
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         {userRole === "admin" && <CollectButton collector="pipelines" projectIds={pipelineProjectIds} onComplete={loadData} color="#B8A8D8" />}
+        <Tooltip title={useMedian ? "Показывать средние (mean)" : "Показывать медианы (median)"}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--ant-color-textTertiary)" }}>
+            <SwapOutlined />
+            <Switch size="small" checked={useMedian} onChange={setUseMedian} />
+            <span>{useMedian ? "Median" : "Mean"}</span>
+          </span>
+        </Tooltip>
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         {data && <Button size="small" icon={<DownloadOutlined />} onClick={() => {
           const headers = ["Статус", "Кол-во", "%"];

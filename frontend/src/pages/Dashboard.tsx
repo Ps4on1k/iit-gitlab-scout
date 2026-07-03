@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, memo } from "react";
 import { Card, Row, Col, Statistic, Spin, Empty, Table, Tag, Segmented, Button } from "antd";
 import { ProjectOutlined, TeamOutlined, FireOutlined, CheckCircleOutlined, MergeOutlined, RocketOutlined, WarningOutlined, ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, UpOutlined, DownOutlined } from "@ant-design/icons";
 import { Line } from "@ant-design/charts";
@@ -22,7 +22,7 @@ function formatMttr(minutes: number): string {
 const CARD_STYLE = { height: "100%" as const };
 const statSmall = { fontSize: 14 };
 
-export function Dashboard({ onContributorClick }: { onContributorClick?: (name: string) => void }) {
+export const Dashboard = memo(function Dashboard({ onContributorClick }: { onContributorClick?: (name: string) => void }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [period, setPeriod] = useState<number>(30);
@@ -107,10 +107,10 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
-      <div style={{ background: "linear-gradient(135deg, #8BAADB 0%, #9ED4C8 100%)", color: "#111315", padding: "30px 40px", borderRadius: "20px", marginBottom: 30, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ background: "linear-gradient(135deg, #8BAADB 0%, #9ED4C8 100%)", color: "#111315", padding: "14px 24px", borderRadius: "12px", marginBottom: 20, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <h1 style={{ fontSize: 28, marginBottom: 10 }}>Обзор</h1>
-          <div style={{ opacity: 0.9, fontSize: 14 }}>Проекты, контрибьюторы и активность за период</div>
+          <h1 style={{ fontSize: 20, marginBottom: 4 }}>Обзор</h1>
+          <div style={{ opacity: 0.9, fontSize: 13 }}>Проекты, контрибьюторы и активность за период</div>
         </div>
         <Segmented
           value={period}
@@ -275,4 +275,4 @@ export function Dashboard({ onContributorClick }: { onContributorClick?: (name: 
       )}
     </div>
   );
-}
+});
