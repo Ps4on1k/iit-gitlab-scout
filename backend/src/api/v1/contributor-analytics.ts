@@ -161,11 +161,16 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
           COUNT(DISTINCT p.gitlab_id) as total_pipelines,
           COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'success') as successful_pipelines,
           COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'failed') as failed_pipelines,
-          COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status IN ('success', 'failed')) as completed_pipelines
+          COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status IN ('success', 'failed')) as completed_pipelines,
+          COUNT(DISTINCT md.gitlab_iid) FILTER (WHERE EXISTS (
+            SELECT 1 FROM project_pipelines pp
+            WHERE pp.project_id = md.project_id AND pp.ref = md.source_branch
+              AND pp.status IN ('success', 'failed')
+          )) as mrs_with_pipeline
         FROM mr_data md
         LEFT JOIN project_pipelines p ON p.project_id = md.project_id AND p.ref = md.source_branch
         GROUP BY md.author_email, md.author_name
-      )
+      ),
       SELECT
         author_email,
         author_name,
@@ -179,7 +184,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
           ELSE 0
         END as deploy_success_rate,
         CASE WHEN total_merged_mrs > 0
-          THEN ROUND((completed_pipelines::numeric / total_merged_mrs) * 100, 1)
+          THEN ROUND((mrs_with_pipeline::numeric / total_merged_mrs) * 100, 1)
           ELSE 0
         END as pipeline_coverage_rate
       FROM pipeline_data

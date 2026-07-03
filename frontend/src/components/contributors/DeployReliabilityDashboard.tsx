@@ -65,8 +65,8 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
 
           <Card size="small" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)" }}>
-              <b>Deploy Success Rate</b> — % успешных pipeline из запущенных. Выше 80% — стабильный деплой.
-              <b style={{ marginLeft: 16 }}>Pipeline Coverage</b> — % MR, для которых запускался pipeline.
+              <b>Deploy Success Rate</b> — % успешных pipeline из завершённых (success / (success + failed)). Выше 80% — стабильный деплой.
+              <b style={{ marginLeft: 16 }}>Pipeline Coverage</b> — % MR, для которых был запущен хотя бы один pipeline (не зависит от количества пушей в MR).
             </div>
           </Card>
 
