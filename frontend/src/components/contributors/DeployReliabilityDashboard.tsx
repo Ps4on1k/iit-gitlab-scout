@@ -5,6 +5,13 @@ import { fetchProjects, fetchDeployReliability, type DeployReliabilityEntry } fr
 import type { ProjectConfig } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
 
+function computeScore(d: DeployReliabilityEntry): number {
+  const quality = d.deploy_success_rate;
+  const consistency = d.pipeline_coverage_rate;
+  const volume = Math.min(d.successful_pipelines, 100);
+  return Math.round((quality * 0.5 + consistency * 0.3 + volume * 0.2) * 10) / 10;
+}
+
 interface Props {
   filters: GlobalFilters;
   onContributorClick?: (name: string) => void;
@@ -33,6 +40,12 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
   }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const sortedData = useMemo(() => {
+    return [...deployData]
+      .map((d) => ({ ...d, _score: computeScore(d) }))
+      .sort((a, b) => b._score - a._score);
+  }, [deployData]);
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
@@ -64,15 +77,17 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
           </div>
 
           <Card size="small" style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)" }}>
-              <b>Deploy Success Rate</b> — % успешных pipeline из завершённых (success / (success + failed)). Выше 80% — стабильный деплой.
-              <b style={{ marginLeft: 16 }}>Pipeline Coverage</b> — % MR, для которых был запущен хотя бы один pipeline (не зависит от количества пушей в MR).
+            <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)", lineHeight: 1.8 }}>
+              <b>Рейтинг</b> — составной скор: <code>Success Rate × 50% + Coverage × 30% + min(Successful, 100) × 20%</code>.
+              Учитывает качество (доля успешных), стабильность (охват MR pipeline) и объём (количество успешных деплоев, до 100).
+              <span style={{ marginLeft: 16 }}><b>Deploy Success Rate</b> — % успешных pipeline из завершённых.</span>
+              <span style={{ marginLeft: 16 }}><b>Pipeline Coverage</b> — % MR с запущенным pipeline.</span>
             </div>
           </Card>
 
-          <Card title={<span><RocketOutlined /> Топ контрибьюторов по надёжности деплоя</span>} size="small">
+          <Card title={<span><RocketOutlined /> Рейтинг контрибьюторов по надёжности деплоя</span>} size="small">
             <Table
-              dataSource={deployData}
+              dataSource={sortedData}
               rowKey="email"
               size="small"
               pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ["10", "20", "50", "100"], showTotal: (total) => `Всего: ${total}` }}
@@ -89,8 +104,8 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
                 {
                   title: "Контрибьютор",
                   dataIndex: "name",
-                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.name.localeCompare(b.name),
-                  render: (name: string, record: DeployReliabilityEntry) => (
+                  sorter: (a: any, b: any) => a.name.localeCompare(b.name),
+                  render: (name: string, record: any) => (
                     <span style={{ cursor: "pointer", color: "#3A8DFF", fontWeight: 600 }} onClick={() => onContributorClick?.(record.email)}>
                       {name}
                       {record.email && name !== record.email && <span style={{ fontWeight: 400, color: "var(--ant-color-textSecondary)", fontSize: 12, marginLeft: 6 }}>{record.email}</span>}
@@ -98,35 +113,42 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
                   ),
                 },
                 {
+                  title: "Score",
+                  dataIndex: "_score",
+                  width: 70,
+                  defaultSortOrder: "descend" as const,
+                  sorter: (a: any, b: any) => a._score - b._score,
+                  render: (v: number) => <span style={{ fontWeight: 700, color: v >= 70 ? "#21B573" : v >= 40 ? "#FFB020" : "#E5484D" }}>{v}</span>,
+                },
+                {
                   title: "MR",
                   dataIndex: "total_merged_mrs",
-                  width: 80,
+                  width: 70,
                   sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.total_merged_mrs - b.total_merged_mrs,
                 },
                 {
                   title: "Pipeline",
                   dataIndex: "total_pipelines",
-                  width: 80,
+                  width: 70,
                   sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.total_pipelines - b.total_pipelines,
                 },
                 {
-                  title: "Успешных",
+                  title: "Успешн.",
                   dataIndex: "successful_pipelines",
-                  width: 90,
+                  width: 80,
                   sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.successful_pipelines - b.successful_pipelines,
                 },
                 {
-                  title: "Провалов",
+                  title: "Провалы",
                   dataIndex: "failed_pipelines",
-                  width: 80,
+                  width: 75,
                   sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.failed_pipelines - b.failed_pipelines,
                   render: (v: number) => <span style={{ color: v > 0 ? "#E5484D" : undefined }}>{v}</span>,
                 },
                 {
                   title: "Success Rate",
                   dataIndex: "deploy_success_rate",
-                  width: 110,
-                  defaultSortOrder: "descend" as const,
+                  width: 100,
                   sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.deploy_success_rate - b.deploy_success_rate,
                   render: (v: number) => (
                     <span style={{ color: v >= 80 ? "#21B573" : v >= 50 ? "#FFB020" : "#E5484D", fontWeight: 600 }}>{v}%</span>
@@ -135,7 +157,7 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
                 {
                   title: "Coverage",
                   dataIndex: "pipeline_coverage_rate",
-                  width: 100,
+                  width: 90,
                   sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.pipeline_coverage_rate - b.pipeline_coverage_rate,
                   render: (v: number) => <span style={{ fontWeight: 500 }}>{v}%</span>,
                 },
