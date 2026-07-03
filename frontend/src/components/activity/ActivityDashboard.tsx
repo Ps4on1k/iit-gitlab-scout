@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Select, Button, Space, message, Card, Row, Col, Statistic, Spin, Typography, Empty, Input } from "antd";
 import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
@@ -14,7 +14,7 @@ import type { GlobalFilters } from "../GlobalFilterBar";
 
 interface Props { userRole: Role; filters: GlobalFilters; onContributorClick?: (name: string) => void; }
 
-export function ActivityDashboard({ userRole, filters, onContributorClick }: Props) {
+export const ActivityDashboard = memo(function ActivityDashboard({ userRole, filters, onContributorClick }: Props) {
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [activity, setActivity] = useState<ActivityDay[]>([]);
@@ -51,8 +51,8 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
     setMrLoading(true);
     try {
       const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined;
-      const contrib = filters.contributors.length > 0 ? filters.contributors[0] : undefined;
-      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo, contrib);
+      const contribs = filters.contributors.length > 0 ? filters.contributors.join(",") : undefined;
+      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo, contribs);
       if (r.ok) setMrData(r.data);
     } finally { setMrLoading(false); }
   }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors]);
@@ -253,4 +253,4 @@ export function ActivityDashboard({ userRole, filters, onContributorClick }: Pro
       )}
     </div>
   );
-}
+});
