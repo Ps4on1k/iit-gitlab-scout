@@ -162,7 +162,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
           COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'success') as successful_pipelines,
           COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'failed') as failed_pipelines,
           COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status IN ('success', 'failed')) as completed_pipelines,
-          COUNT(DISTINCT md.gitlab_iid) FILTER (WHERE EXISTS (
+          COUNT(DISTINCT md.gitlab_iid) FILTER (WHERE md.mr_state = 'merged' AND EXISTS (
             SELECT 1 FROM project_pipelines pp
             WHERE pp.project_id = md.project_id AND pp.ref = md.source_branch
               AND pp.status IN ('success', 'failed')
