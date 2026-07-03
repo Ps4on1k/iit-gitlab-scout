@@ -136,7 +136,7 @@ export default function App() {
 
   useEffect(() => {
     clearCache();
-  }, [filters]);
+  }, [filters, analyticsTab]);
 
   useEffect(() => {
     if (isInitialLoad.current) { isInitialLoad.current = false; return; }
