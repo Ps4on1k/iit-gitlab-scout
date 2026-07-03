@@ -8,6 +8,8 @@ import {
   getMetrics,
 } from "../../db/contributor-repository.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
+import { getCached, setCache, cacheKey } from "../../utils/cache.js";
+import { getPool } from "../../db/pool.js";
 
 export async function contributorAnalyticsRoutes(app: FastifyInstance) {
   app.post<{
@@ -38,13 +40,20 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
     const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
+
+    const cacheK = cacheKey("contributors", user.userId, finalIds?.join(","), date_from, date_to);
+    const cached = getCached<any>(cacheK);
+    if (cached) return cached;
+
     const contributors = await getContributors({
       project_id: project_id ? Number(project_id) : undefined,
       project_ids: finalIds,
       date_from,
       date_to,
     });
-    return { ok: true, data: contributors };
+    const response = { ok: true, data: contributors };
+    setCache(cacheK, response, 60_000);
+    return response;
   });
 
   app.get<{
@@ -57,8 +66,15 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
       ? project_ids.split(",").map(Number).filter(Boolean)
       : project_id ? [Number(project_id)] : undefined;
     const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
+
+    const cacheK = cacheKey("heatmap", user.userId, finalIds?.join(","), date_from, date_to);
+    const cached = getCached<any>(cacheK);
+    if (cached) return cached;
+
     const data = await getHeatmapData(finalIds, date_from, date_to);
-    return { ok: true, data };
+    const response = { ok: true, data };
+    setCache(cacheK, response, 60_000);
+    return response;
   });
 
   app.get<{
@@ -69,12 +85,123 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     const allowedIds = await getFilteredProjectIds(user.userId);
     const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
     const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
+
+    const cacheK = cacheKey("metrics", user.userId, finalIds?.join(","), date_from, date_to);
+    const cached = getCached<any>(cacheK);
+    if (cached) return cached;
+
     const metrics = await getMetrics({
       project_id: project_id ? Number(project_id) : undefined,
       project_ids: finalIds,
       date_from,
       date_to,
     });
-    return { ok: true, data: metrics };
+    const response = { ok: true, data: metrics };
+    setCache(cacheK, response, 60_000);
+    return response;
+  });
+
+  app.get<{
+    Querystring: { project_ids?: string; date_from?: string; date_to?: string; contributor?: string; contributors?: string };
+  }>("/api/v1/contributor-analytics/deploy-reliability", { preHandler: [requireAuth] }, async (request) => {
+    const { project_ids, date_from, date_to, contributors } = request.query;
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
+    const ids = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
+    const finalIds = allowedIds !== null ? (ids ? ids.filter((id) => allowedIds.includes(id)) : allowedIds) : ids;
+
+    const cacheK = cacheKey("deploy-reliability", user.userId, finalIds?.join(","), date_from, date_to, contributors);
+    const cached = getCached<any>(cacheK);
+    if (cached) return cached;
+
+    const pool = getPool();
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let idx = 1;
+
+    if (finalIds && finalIds.length > 0) {
+      conditions.push(`mr.project_id = ANY($${idx++})`);
+      params.push(finalIds);
+    }
+    if (date_from) {
+      conditions.push(`mr.created_at >= $${idx++}`);
+      params.push(date_from);
+    }
+    if (date_to) {
+      conditions.push(`mr.created_at <= $${idx++}`);
+      params.push(date_to + "T23:59:59Z");
+    }
+    if (contributors) {
+      const emails = contributors.split(",").map((e) => e.trim()).filter(Boolean);
+      if (emails.length > 0) {
+        conditions.push(`mr.author_email = ANY($${idx++})`);
+        params.push(emails);
+      }
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const result = await pool.query(
+      `WITH mr_data AS (
+        SELECT
+          mr.author_email,
+          mr.author_name,
+          mr.project_id,
+          mr.source_branch,
+          mr.state as mr_state,
+          mr.gitlab_iid
+        FROM project_merge_requests mr
+        ${where}
+      ),
+      pipeline_data AS (
+        SELECT
+          md.author_email,
+          md.author_name,
+          COUNT(DISTINCT md.gitlab_iid) FILTER (WHERE md.mr_state = 'merged') as total_merged_mrs,
+          COUNT(DISTINCT p.gitlab_id) as total_pipelines,
+          COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'success') as successful_pipelines,
+          COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'failed') as failed_pipelines,
+          COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status IN ('success', 'failed')) as completed_pipelines
+        FROM mr_data md
+        LEFT JOIN project_pipelines p ON p.project_id = md.project_id AND p.ref = md.source_branch
+        GROUP BY md.author_email, md.author_name
+      )
+      SELECT
+        author_email,
+        author_name,
+        total_merged_mrs,
+        total_pipelines,
+        successful_pipelines,
+        failed_pipelines,
+        completed_pipelines,
+        CASE WHEN completed_pipelines > 0
+          THEN ROUND((successful_pipelines::numeric / completed_pipelines) * 100, 1)
+          ELSE 0
+        END as deploy_success_rate,
+        CASE WHEN total_merged_mrs > 0
+          THEN ROUND((completed_pipelines::numeric / total_merged_mrs) * 100, 1)
+          ELSE 0
+        END as pipeline_coverage_rate
+      FROM pipeline_data
+      ORDER BY successful_pipelines DESC`,
+      params
+    );
+
+    const response = {
+      ok: true,
+      data: result.rows.map((r: any) => ({
+        email: r.author_email,
+        name: r.author_name || r.author_email,
+        total_merged_mrs: Number(r.total_merged_mrs),
+        total_pipelines: Number(r.total_pipelines),
+        successful_pipelines: Number(r.successful_pipelines),
+        failed_pipelines: Number(r.failed_pipelines),
+        completed_pipelines: Number(r.completed_pipelines),
+        deploy_success_rate: Number(r.deploy_success_rate),
+        pipeline_coverage_rate: Number(r.pipeline_coverage_rate),
+      })),
+    };
+    setCache(cacheK, response, 60_000);
+    return response;
   });
 }

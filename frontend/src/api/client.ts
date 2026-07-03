@@ -256,6 +256,27 @@ export async function resolveContributor(email: string): Promise<ApiResponse<{ e
   return fetchJson(`/v1/contributors/resolve?email=${encodeURIComponent(email)}`);
 }
 
+export interface DeployReliabilityEntry {
+  email: string;
+  name: string;
+  total_merged_mrs: number;
+  total_pipelines: number;
+  successful_pipelines: number;
+  failed_pipelines: number;
+  completed_pipelines: number;
+  deploy_success_rate: number;
+  pipeline_coverage_rate: number;
+}
+
+export async function fetchDeployReliability(projectIds?: number[], dateFrom?: string, dateTo?: string, contributors?: string): Promise<ApiResponse<DeployReliabilityEntry[]>> {
+  const qs = new URLSearchParams();
+  if (projectIds && projectIds.length > 0) qs.set("project_ids", projectIds.join(","));
+  if (dateFrom) qs.set("date_from", dateFrom);
+  if (dateTo) qs.set("date_to", dateTo);
+  if (contributors) qs.set("contributors", contributors);
+  return fetchJson(`/v1/contributor-analytics/deploy-reliability${qs.toString() ? "?" + qs.toString() : ""}`);
+}
+
 export async function fetchContributorCommits(email: string, projectIds?: number[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<{ commits: any[]; total: number }>> {
   const qs = new URLSearchParams({ email });
   if (projectIds && projectIds.length > 0) qs.set("project_ids", projectIds.join(","));
