@@ -52,10 +52,10 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
     try {
       const ids = effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined;
       const contribs = filters.contributors.length > 0 ? filters.contributors.join(",") : undefined;
-      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo, contribs);
+      const r = await fetchMRAnalytics(ids, filters.dateFrom, filters.dateTo, contribs, filters.useMedian);
       if (r.ok) setMrData(r.data);
     } finally { setMrLoading(false); }
-  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors]);
+  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors, filters.useMedian]);
 
   useEffect(() => { loadMRData(); }, [loadMRData]);
 

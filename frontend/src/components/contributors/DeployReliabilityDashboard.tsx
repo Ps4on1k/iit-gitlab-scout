@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
-import { Card, Spin, Empty, Button } from "antd";
+import { Card, Spin, Empty, Button, Table } from "antd";
 import { ReloadOutlined, RocketOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchDeployReliability, type DeployReliabilityEntry } from "../../api/client";
 import type { ProjectConfig } from "../../types";
@@ -71,38 +71,76 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
           </Card>
 
           <Card title={<span><RocketOutlined /> Топ контрибьюторов по надёжности деплоя</span>} size="small">
-            <div style={{ maxHeight: 600, overflow: "auto" }}>
-              {deployData.map((d, i) => {
-                const barWidth = deployData[0]?.successful_pipelines ? (d.successful_pipelines / deployData[0].successful_pipelines) * 100 : 0;
-                return (
-                  <div key={d.email} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
-                    <span style={{ width: 28, textAlign: "center", fontWeight: 700, color: i < 3 ? ["#faad14", "#8c8c8c", "#d48806"][i] : "#999", fontSize: 14 }}>
-                      {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
+            <Table
+              dataSource={deployData}
+              rowKey="email"
+              size="small"
+              pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ["10", "20", "50", "100"], showTotal: (total) => `Всего: ${total}` }}
+              columns={[
+                {
+                  title: "#",
+                  width: 50,
+                  render: (_: any, __: any, i: number) => (
+                    <span style={{ fontWeight: 700, color: i < 3 ? ["#faad14", "#8c8c8c", "#d48806"][i] : "#999" }}>
+                      {i < 3 ? ["★", "●", "◆"][i] : i + 1}
                     </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14, cursor: "pointer", color: "#3A8DFF" }} onClick={() => onContributorClick?.(d.email)}>
-                          {d.name}
-                          {d.email && d.name !== d.email && <span style={{ fontWeight: 400, color: "var(--ant-color-textSecondary)", fontSize: 12, marginLeft: 6 }}>{d.email}</span>}
-                        </span>
-                        <span style={{ fontSize: 12, color: "var(--ant-color-textSecondary)" }}>
-                          {d.successful_pipelines}/{d.completed_pipelines} успешных pipeline
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", background: "var(--ant-color-fill-secondary)", marginBottom: 4 }}>
-                        <div style={{ width: `${barWidth}%`, background: "linear-gradient(90deg, #21B573, #3A8DFF)", borderRadius: 5 }} />
-                      </div>
-                      <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--ant-color-textSecondary)" }}>
-                        <span>MR: <b>{d.total_merged_mrs}</b></span>
-                        <span>Pipeline: <b>{d.total_pipelines}</b></span>
-                        <span>Success: <b style={{ color: d.deploy_success_rate >= 80 ? "#21B573" : d.deploy_success_rate >= 50 ? "#FFB020" : "#E5484D" }}>{d.deploy_success_rate}%</b></span>
-                        <span>Coverage: <b>{d.pipeline_coverage_rate}%</b></span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  ),
+                },
+                {
+                  title: "Контрибьютор",
+                  dataIndex: "name",
+                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.name.localeCompare(b.name),
+                  render: (name: string, record: DeployReliabilityEntry) => (
+                    <span style={{ cursor: "pointer", color: "#3A8DFF", fontWeight: 600 }} onClick={() => onContributorClick?.(record.email)}>
+                      {name}
+                      {record.email && name !== record.email && <span style={{ fontWeight: 400, color: "var(--ant-color-textSecondary)", fontSize: 12, marginLeft: 6 }}>{record.email}</span>}
+                    </span>
+                  ),
+                },
+                {
+                  title: "MR",
+                  dataIndex: "total_merged_mrs",
+                  width: 80,
+                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.total_merged_mrs - b.total_merged_mrs,
+                },
+                {
+                  title: "Pipeline",
+                  dataIndex: "total_pipelines",
+                  width: 80,
+                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.total_pipelines - b.total_pipelines,
+                },
+                {
+                  title: "Успешных",
+                  dataIndex: "successful_pipelines",
+                  width: 90,
+                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.successful_pipelines - b.successful_pipelines,
+                },
+                {
+                  title: "Провалов",
+                  dataIndex: "failed_pipelines",
+                  width: 80,
+                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.failed_pipelines - b.failed_pipelines,
+                  render: (v: number) => <span style={{ color: v > 0 ? "#E5484D" : undefined }}>{v}</span>,
+                },
+                {
+                  title: "Success Rate",
+                  dataIndex: "deploy_success_rate",
+                  width: 110,
+                  defaultSortOrder: "descend" as const,
+                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.deploy_success_rate - b.deploy_success_rate,
+                  render: (v: number) => (
+                    <span style={{ color: v >= 80 ? "#21B573" : v >= 50 ? "#FFB020" : "#E5484D", fontWeight: 600 }}>{v}%</span>
+                  ),
+                },
+                {
+                  title: "Coverage",
+                  dataIndex: "pipeline_coverage_rate",
+                  width: 100,
+                  sorter: (a: DeployReliabilityEntry, b: DeployReliabilityEntry) => a.pipeline_coverage_rate - b.pipeline_coverage_rate,
+                  render: (v: number) => <span style={{ fontWeight: 500 }}>{v}%</span>,
+                },
+              ]}
+            />
           </Card>
         </>
       )}

@@ -21,9 +21,10 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
   });
 
   app.get<{
-    Querystring: { project_ids?: string; date_from?: string; date_to?: string; status?: string };
+    Querystring: { project_ids?: string; date_from?: string; date_to?: string; status?: string; use_median?: string };
   }>("/api/v1/pipelines", { preHandler: [requireAuth] }, async (request) => {
-    const { project_ids, date_from, date_to, status } = request.query;
+    const { project_ids, date_from, date_to, status, use_median } = request.query;
+    const isMedian = use_median === "1";
     const user = (request as any).user as JwtPayload;
     const pool = getPool();
 
@@ -53,7 +54,10 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
          COUNT(*) FILTER (WHERE status = 'failed')::int as failed,
          COUNT(*) FILTER (WHERE status = 'running')::int as running,
          COUNT(*) FILTER (WHERE status = 'canceled')::int as canceled,
-         AVG(duration) FILTER (WHERE status = 'success' AND duration IS NOT NULL)::int as avg_duration,
+         ${isMedian
+           ? `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY duration) FILTER (WHERE status = 'success' AND duration IS NOT NULL)::int as avg_duration`
+           : `AVG(duration) FILTER (WHERE status = 'success' AND duration IS NOT NULL)::int as avg_duration`
+         },
          MIN(duration) FILTER (WHERE status = 'success' AND duration IS NOT NULL)::int as min_duration,
          MAX(duration) FILTER (WHERE status = 'success' AND duration IS NOT NULL)::int as max_duration
        FROM project_pipelines pp ${where}`,
@@ -75,7 +79,10 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
               COUNT(*)::int as total,
               COUNT(*) FILTER (WHERE pp.status = 'success')::int as success,
               COUNT(*) FILTER (WHERE pp.status = 'failed')::int as failed,
-              AVG(pp.duration) FILTER (WHERE pp.status = 'success' AND pp.duration IS NOT NULL)::int as avg_duration
+              ${isMedian
+                ? `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY pp.duration) FILTER (WHERE pp.status = 'success' AND pp.duration IS NOT NULL)::int as avg_duration`
+                : `AVG(pp.duration) FILTER (WHERE pp.status = 'success' AND pp.duration IS NOT NULL)::int as avg_duration`
+              }
        FROM project_pipelines pp
        JOIN projects p ON p.id = pp.project_id
        ${where}

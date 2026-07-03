@@ -48,6 +48,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
       if (effectiveProjectIds.length > 0) qs.set("project_ids", effectiveProjectIds.join(","));
       if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
       if (filters.dateTo) qs.set("date_to", filters.dateTo);
+      if (filters.useMedian) qs.set("use_median", "1");
       const token = localStorage.getItem("token");
       const res = await fetch(`/api/v1/pipelines${qs.toString() ? "?" + qs.toString() : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
       const r = await res.json();
@@ -55,7 +56,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [effectiveProjectIds, filters.dateFrom, filters.dateTo]);
+  useEffect(() => { loadData(); }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.useMedian]);
 
   const pipelineProjectIds = useMemo(() => effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id), [effectiveProjectIds, projects]);
 

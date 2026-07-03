@@ -21,9 +21,10 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
   });
 
   app.get<{
-    Querystring: { project_ids?: string; date_from?: string; date_to?: string; contributor?: string; contributors?: string };
+    Querystring: { project_ids?: string; date_from?: string; date_to?: string; contributor?: string; contributors?: string; use_median?: string };
   }>("/api/v1/mr-analytics", { preHandler: [requireAuth] }, async (request) => {
-    const { project_ids, date_from, date_to, contributor, contributors } = request.query;
+    const { project_ids, date_from, date_to, contributor, contributors, use_median } = request.query;
+    const isMedian = use_median === "1";
     const user = (request as any).user as JwtPayload;
     const pool = getPool();
 
@@ -75,8 +76,12 @@ export async function mrAnalyticsRoutes(app: FastifyInstance) {
          COUNT(*) FILTER (WHERE state = 'merged')::int as merged,
          COUNT(*) FILTER (WHERE state = 'opened')::int as opened,
          COUNT(*) FILTER (WHERE state = 'closed')::int as closed,
-         AVG(CASE WHEN merged_at IS NOT NULL THEN EXTRACT(EPOCH FROM (merged_at - created_at)) / 86400 END)::numeric(5,1) as avg_days_to_merge,
-         AVG(approvals)::numeric(5,1) as avg_approvals,
+         ${isMedian
+           ? `PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY CASE WHEN merged_at IS NOT NULL THEN EXTRACT(EPOCH FROM (merged_at - created_at)) / 86400 END)::numeric(5,1) as avg_days_to_merge,
+              PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY approvals)::numeric(5,1) as avg_approvals`
+           : `AVG(CASE WHEN merged_at IS NOT NULL THEN EXTRACT(EPOCH FROM (merged_at - created_at)) / 86400 END)::numeric(5,1) as avg_days_to_merge,
+              AVG(approvals)::numeric(5,1) as avg_approvals`
+         },
          SUM(changes_count)::int as total_changes,
          SUM(comments_count)::int as total_comments
        FROM project_merge_requests mr ${where}`,

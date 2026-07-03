@@ -238,12 +238,13 @@ export async function fetchDashboard(period: number = 30): Promise<ApiResponse<a
   return fetchJson(`/v1/dashboard?period=${period}`);
 }
 
-export async function fetchMRAnalytics(projectIds?: number[], dateFrom?: string, dateTo?: string, contributors?: string): Promise<ApiResponse<any>> {
+export async function fetchMRAnalytics(projectIds?: number[], dateFrom?: string, dateTo?: string, contributors?: string, useMedian?: boolean): Promise<ApiResponse<any>> {
   const qs = new URLSearchParams();
   if (projectIds && projectIds.length > 0) qs.set("project_ids", projectIds.join(","));
   if (dateFrom) qs.set("date_from", dateFrom);
   if (dateTo) qs.set("date_to", dateTo);
   if (contributors) qs.set("contributors", contributors);
+  if (useMedian) qs.set("use_median", "1");
   const url = `/v1/mr-analytics${qs.toString() ? "?" + qs.toString() : ""}`;
   return fetchJson(url);
 }
