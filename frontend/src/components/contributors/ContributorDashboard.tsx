@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
-import { Select, DatePicker, Button, Space, message, Tag, Card, Row, Col, Spin, Empty, Tooltip } from "antd";
+import { Select, DatePicker, Button, Space, message, Tag } from "antd";
 import dayjs from "dayjs";
-import { ReloadOutlined, RocketOutlined } from "@ant-design/icons";
+import { ReloadOutlined } from "@ant-design/icons";
 import { MetricsCards } from "./MetricsCards";
 import { ContributorTable } from "./ContributorTable";
 import { HeatmapChart } from "./HeatmapChart";
@@ -14,8 +14,6 @@ import {
   fetchContributorHeatmap,
   collectContributors,
   fetchProjects,
-  fetchDeployReliability,
-  type DeployReliabilityEntry,
 } from "../../api/client";
 import type { DbContributor, ContributorMetrics, HeatmapData, ProjectConfig, ContributorFilters, Role } from "../../types";
 
@@ -39,8 +37,6 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
   const [allMetrics, setAllMetrics] = useState<ContributorMetrics | null>(null);
   const [allHeatmap, setAllHeatmap] = useState<HeatmapData>({ by_project: {}, by_contributor: {}, project_contributors: {}, by_project_contributor: {} });
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
-  const [deployData, setDeployData] = useState<DeployReliabilityEntry[]>([]);
-  const [deployLoading, setDeployLoading] = useState(false);
 
   useEffect(() => {
     fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); });
@@ -75,17 +71,6 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
   }, [effectiveProjectIds, filters.dateFrom, filters.dateTo]);
 
   useEffect(() => { loadData(); }, [loadData]);
-
-  const loadDeployData = useCallback(async () => {
-    setDeployLoading(true);
-    try {
-      const contribs = filters.contributors.length > 0 ? filters.contributors.join(",") : undefined;
-      const r = await fetchDeployReliability(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, filters.dateFrom, filters.dateTo, contribs);
-      if (r.ok) setDeployData(r.data!);
-    } finally { setDeployLoading(false); }
-  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors]);
-
-  useEffect(() => { loadDeployData(); }, [loadDeployData]);
 
   // Contributor filter — match by email or by name
   const filteredContributors = useMemo(() => {
@@ -214,64 +199,6 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       </div>
 
       <MetricsCards data={filteredMetrics} loading={loading} />
-
-      {/* Deploy Reliability Card */}
-      <Card
-        title={<span><RocketOutlined /> Надёжность деплоя по контрибьюторам</span>}
-        size="small"
-        style={{ marginBottom: 24 }}
-        extra={<span style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>Как часто коммиты контрибутора доходят до успешного деплоя</span>}
-      >
-        {deployLoading ? <div style={{ textAlign: "center", padding: 40 }}><Spin /></div> :
-         deployData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Нет данных о деплоях" /> : (
-          <div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
-              {[
-                { label: "Всего MR", value: deployData.reduce((s, d) => s + d.total_merged_mrs, 0), color: "#3A8DFF" },
-                { label: "Запусков pipeline", value: deployData.reduce((s, d) => s + d.total_pipelines, 0), color: "#B8A8D8" },
-                { label: "Успешных деплоев", value: deployData.reduce((s, d) => s + d.successful_pipelines, 0), color: "#21B573" },
-                { label: "Провалов деплоя", value: deployData.reduce((s, d) => s + d.failed_pipelines, 0), color: "#E5484D" },
-              ].map((s) => (
-                <div key={s.label} style={{ textAlign: "center", padding: "8px 4px", borderRadius: 8, background: "var(--ant-color-fill-secondary)" }}>
-                  <div style={{ fontSize: 20, fontWeight: 700, color: s.color }}>{s.value}</div>
-                  <div style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)", marginBottom: 12 }}>
-              <b>Deploy Success Rate</b> — % успешных pipeline из запущенных. <b>Pipeline Coverage</b> — % MR, для которых запускался pipeline.
-            </div>
-            <div style={{ maxHeight: 320, overflow: "auto" }}>
-              {deployData.slice(0, 20).map((d, i) => {
-                const barWidth = deployData[0]?.successful_pipelines ? (d.successful_pipelines / deployData[0].successful_pipelines) * 100 : 0;
-                return (
-                  <div key={d.email} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, fontSize: 13 }}>
-                    <span style={{ width: 24, textAlign: "center", fontWeight: 700, color: i < 3 ? ["#faad14", "#8c8c8c", "#d48806"][i] : "#999", fontSize: 13 }}>
-                      {i < 3 ? ["★", "●", "◆"][i] : `${i + 1}`}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                        <span style={{ fontWeight: 500, cursor: "pointer", color: "#3A8DFF" }} onClick={() => onContributorClick?.(d.email)}>{d.name}</span>
-                        <span style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>
-                          {d.successful_pipelines}/{d.completed_pipelines} successful
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>
-                        <div style={{ width: `${barWidth}%`, background: "linear-gradient(90deg, #21B573, #3A8DFF)", borderRadius: 4 }} />
-                      </div>
-                      <div style={{ display: "flex", gap: 12, marginTop: 2, fontSize: 11, color: "var(--ant-color-textSecondary)" }}>
-                        <span>Success: <b style={{ color: d.deploy_success_rate >= 80 ? "#21B573" : d.deploy_success_rate >= 50 ? "#FFB020" : "#E5484D" }}>{d.deploy_success_rate}%</b></span>
-                        <span>Coverage: <b>{d.pipeline_coverage_rate}%</b></span>
-                        <span>MR: {d.total_merged_mrs}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-         )}
-      </Card>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30, marginBottom: 30 }}>
         <CommitTimelineChart data={filteredContributors} loading={loading} dateFrom={filters.dateFrom} dateTo={filters.dateTo} />
