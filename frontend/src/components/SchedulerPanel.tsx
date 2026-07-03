@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select } from "antd";
 
 const { Text } = Typography;
-import { ReloadOutlined, SaveOutlined, DeleteOutlined } from "@ant-design/icons";
-import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, type SchedulerTask } from "../api/scheduler-client";
+import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined } from "@ant-design/icons";
+import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
 
 const TASK_LABELS: Record<string, string> = {
   collect_stack: "Сбор стека технологий",
@@ -33,6 +33,7 @@ export function SchedulerPanel() {
   const [errorsLoading, setErrorsLoading] = useState(false);
   const [errorsPage, setErrorsPage] = useState(1);
   const [errorsTaskFilter, setErrorsTaskFilter] = useState<string | undefined>();
+  const [runningAll, setRunningAll] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -80,6 +81,18 @@ export function SchedulerPanel() {
       message.error(res.error!);
     }
     setSaving(null);
+  };
+
+  const handleRunAll = async () => {
+    setRunningAll(true);
+    const res = await runAllSchedulerTasks();
+    if (res.ok) {
+      message.success("Запущен сбор всех данных");
+      setTimeout(load, 2000);
+    } else {
+      message.error(res.error!);
+    }
+    setRunningAll(false);
   };
 
   const columns = [
@@ -148,7 +161,10 @@ export function SchedulerPanel() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>Периодичность обновления</Typography.Title>
-        <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Обновить</Button>
+        <Space>
+          <Button icon={<DatabaseOutlined />} onClick={handleRunAll} loading={runningAll}>Собрать все</Button>
+          <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Обновить</Button>
+        </Space>
       </div>
 
       <Card>

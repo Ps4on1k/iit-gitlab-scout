@@ -366,3 +366,35 @@ export async function fetchTimeEntrySummary(): Promise<ApiResponse<any[]>> {
 export async function fetchTimeEntryTemplate(): Promise<ApiResponse<{ csv: string }>> {
   return fetchJson("/v1/time-entries/template");
 }
+
+export interface FilterPresetData {
+  id: number;
+  user_id: number;
+  name: string;
+  filters: any;
+  relative_days_from: number | null;
+  relative_days_to: number | null;
+  created_at: string;
+}
+
+export async function fetchFilterPresets(): Promise<ApiResponse<FilterPresetData[]>> {
+  return fetchJson("/v1/filter-presets");
+}
+
+export async function createFilterPreset(data: { name: string; filters: any; relative_days_from?: number; relative_days_to?: number }): Promise<ApiResponse<FilterPresetData>> {
+  return fetchJson("/v1/filter-presets", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateFilterPreset(id: number, name: string): Promise<ApiResponse<FilterPresetData>> {
+  return fetchJson(`/v1/filter-presets/${id}`, {
+    method: "PUT",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function deleteFilterPreset(id: number): Promise<ApiResponse<{ deleted: boolean }>> {
+  return fetchJson(`/v1/filter-presets/${id}`, { method: "DELETE" });
+}

@@ -116,3 +116,18 @@ export function stopScheduler(): void {
     logFn("[scheduler] Scheduler stopped");
   }
 }
+
+export async function runAllEnabledTasks(): Promise<void> {
+  const pool = getPool();
+  let result;
+  try {
+    result = await pool.query("SELECT * FROM scheduler_settings WHERE enabled = true");
+  } catch {
+    return;
+  }
+
+  for (const task of result.rows as SchedulerTask[]) {
+    logFn(`[scheduler] Manual run: ${task.task_name}`);
+    await runTask(task.task_name);
+  }
+}

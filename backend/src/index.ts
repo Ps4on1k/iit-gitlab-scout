@@ -28,7 +28,7 @@ import { batchCollectRoutes } from "./api/v1/batch-collect.js";
 import { doraMetricsRoutes } from "./api/v1/dora-metrics.js";
 import { benchmarkRoutes } from "./api/v1/benchmark.js";
 import { timeEntriesRoutes } from "./api/v1/time-entries.js";
-import { securityPlugin } from "./utils/security.js";
+import { filterPresetRoutes } from "./api/v1/filter-presets.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { getActiveJobs } from "./utils/collect-tracker.js";
 import { requireAuth } from "./utils/auth.js";
@@ -36,18 +36,29 @@ import { requireAuth } from "./utils/auth.js";
 const env = getEnv();
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: true });
+const corsOrigins = env.CORS_ORIGINS
+  ? env.CORS_ORIGINS.split(",").map((s) => s.trim())
+  : true;
+await app.register(cors, { origin: corsOrigins, credentials: true });
 await app.register(helmet, {
-  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      fontSrc: ["'self'"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    },
+  },
 });
 
-// Security headers
+// Additional security headers (helmet handles most; these supplement it)
 app.addHook("onRequest", async (request, reply) => {
-  reply.header("X-Content-Type-Options", "nosniff");
-  reply.header("X-Frame-Options", "DENY");
   reply.header("X-XSS-Protection", "1; mode=block");
-  reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
   reply.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 });
 
@@ -110,6 +121,7 @@ await app.register(batchCollectRoutes);
 await app.register(doraMetricsRoutes);
 await app.register(benchmarkRoutes);
 await app.register(timeEntriesRoutes);
+await app.register(filterPresetRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
+import { runAllEnabledTasks } from "../../services/scheduler.js";
 
 export interface SchedulerTask {
   id: number;
@@ -135,6 +136,11 @@ export async function schedulerRoutes(app: FastifyInstance) {
         total: countResult.rows[0]?.total || 0,
       },
     };
+  });
+
+  app.post("/api/v1/scheduler/run-all", { preHandler: [requireAdmin] }, async () => {
+    runAllEnabledTasks().catch(() => {});
+    return { ok: true, data: { started: true } };
   });
 
   app.delete("/api/v1/scheduler/errors", { preHandler: [requireAdmin] }, async () => {

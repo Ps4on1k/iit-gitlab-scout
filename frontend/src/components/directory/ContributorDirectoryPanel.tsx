@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, Button, Modal, Form, Input, Space, Typography, Popconfirm, message, Tag, Collapse, Upload } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { fetchContributorDirectory, createContributorDirectoryEntry, updateContributorDirectoryEntry, deleteContributorDirectoryEntry, importContributorDirectory, exportContributorDirectory, fetchFlatContributors } from "../../api/client";
 
 const { Text } = Typography;
@@ -16,7 +16,16 @@ export function ContributorDirectoryPanel() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [yamlText, setYamlText] = useState("");
+  const [searchText, setSearchText] = useState("");
   const [form] = Form.useForm();
+
+  const filteredEntries = useMemo(() => {
+    if (!searchText) return entries;
+    const q = searchText.toLowerCase();
+    return entries.filter((e) =>
+      e.display_name.toLowerCase().includes(q) || e.emails.some((em) => em.toLowerCase().includes(q))
+    );
+  }, [entries, searchText]);
 
   const load = async () => {
     setLoading(true);
@@ -157,9 +166,18 @@ export function ContributorDirectoryPanel() {
         defaultActiveKey={["directory"]}
         items={[{
           key: "directory",
-          label: <span style={{ fontSize: 14 }}>Записи ({entries.length})</span>,
+          label: <span style={{ fontSize: 14 }}>Записи ({entries.length}{searchText ? `, найдено: ${filteredEntries.length}` : ""})</span>,
           children: (
-            <Table columns={columns} dataSource={entries} rowKey="id" loading={loading} pagination={false} />
+            <div>
+              <Input
+                prefix={<SearchOutlined style={{ color: "var(--ant-color-textTertiary)" }} />}
+                placeholder="Поиск по имени или email..."
+                allowClear value={searchText} onChange={(e) => setSearchText(e.target.value)}
+                style={{ marginBottom: 12 }}
+              />
+              <Table columns={columns} dataSource={filteredEntries} rowKey="id" loading={loading}
+                pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ["10", "20", "50", "100"], showTotal: (total) => `Всего: ${total}` }} />
+            </div>
           ),
         }]}
       />
