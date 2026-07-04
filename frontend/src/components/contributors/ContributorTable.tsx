@@ -5,7 +5,7 @@ import type { DbContributor } from "../../types";
 import { fetchContributorCommits } from "../../api/client";
 
 interface Props {
-  data: DbContributor[];
+  data: (DbContributor & { deployScore?: number })[];
   loading: boolean;
   onContributorClick?: (name: string) => void;
 }
@@ -26,8 +26,9 @@ function computeScore(c: {
   activitySpan: number;
   commitsPerWeek: number;
   avgChangesPerCommit: number;
+  deployScore?: number;
 }): ScoreResult {
-  const { total_commits, total_changes, activeDays, activitySpan, commitsPerWeek, avgChangesPerCommit } = c;
+  const { total_commits, total_changes, activeDays, activitySpan, commitsPerWeek, avgChangesPerCommit, deployScore } = c;
 
   if (total_commits === 0) return { score: 0, grade: "Нет данных", color: "#d9d9d9", icon: "—" };
 
@@ -44,7 +45,9 @@ function computeScore(c: {
     : avgChangesPerCommit <= 500 ? 0.5
     : 0.2;
 
-  const raw = (consistency * 30) + (activity * 25) + (impact * 25) + (sizeQuality * 20);
+  const deploy = deployScore !== undefined ? deployScore / 100 : 0.5;
+
+  const raw = (consistency * 25) + (activity * 20) + (impact * 20) + (sizeQuality * 15) + (deploy * 20);
   const score = Math.round(Math.min(100, Math.max(0, raw)));
 
   if (score >= 80) return { score, grade: "Превосходно", color: "#21B573", icon: "★" };
@@ -176,6 +179,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
         activitySpan,
         commitsPerWeek,
         avgChangesPerCommit,
+        deployScore: c.deployScore,
       });
 
       return { ...c, activeDays, commitsPerDay, commitsPerWeek, avgAdditions, avgDeletions, activitySpan, score };
@@ -266,14 +270,11 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
         <thead>
           <tr>
             <th style={thStyle} onClick={() => handleSort("author_email")}>Контрибьютор{arrow("author_email")}</th>
-            <th style={thStyle} onClick={() => handleSort("score")}>{arrow("score")}</th>
+            <th style={thStyle} onClick={() => handleSort("score")}>Score{arrow("score")}</th>
             <th style={thStyle} onClick={() => handleSort("total_commits")}>Коммитов{arrow("total_commits")}</th>
-            <th style={thStyle} onClick={() => handleSort("total_changes")}>Изменений{arrow("total_changes")}</th>
             <th style={thStyle} onClick={() => handleSort("total_additions")}>+ строк{arrow("total_additions")}</th>
             <th style={thStyle} onClick={() => handleSort("total_deletions")}>- строк{arrow("total_deletions")}</th>
             <th style={thStyle} onClick={() => handleSort("cpc")}>Δ/коммит{arrow("cpc")}</th>
-            <th style={thStyle} onClick={() => handleSort("active_days")}>Активных дн.{arrow("active_days")}</th>
-            <th style={thStyle} onClick={() => handleSort("commits_per_day")}>Коммитов/день{arrow("commits_per_day")}</th>
             <th style={thStyle} onClick={() => handleSort("commits_per_week")}>Коммитов/нед.{arrow("commits_per_week")}</th>
             <th style={thStyle} onClick={() => handleSort("avg_additions")}>Ср. +/коммит{arrow("avg_additions")}</th>
             <th style={thStyle} onClick={() => handleSort("avg_deletions")}>Ср. -/коммит{arrow("avg_deletions")}</th>
@@ -300,12 +301,9 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
                 </td>
                 <td style={tdStyle}><ScoreCell score={c.score} /></td>
                 <td style={tdStyle}>{Number(c.total_commits)}</td>
-                <td style={{ ...tdStyle, fontWeight: 600 }}>{Number(c.total_changes).toLocaleString()}</td>
                 <td style={{ ...tdStyle, color: "#21B573" }}>+{Number(c.total_additions).toLocaleString()}</td>
                 <td style={{ ...tdStyle, color: "#E5484D" }}>-{Number(c.total_deletions).toLocaleString()}</td>
                 <td style={tdStyle}>{cpc}</td>
-                <td style={tdStyle}>{c.activeDays}</td>
-                <td style={tdStyle}>{c.commitsPerDay.toFixed(1)}</td>
                 <td style={tdStyle}>{c.commitsPerWeek.toFixed(1)}</td>
                 <td style={{ ...tdStyle, color: "#21B573" }}>+{c.avgAdditions.toFixed(1)}</td>
                 <td style={{ ...tdStyle, color: "#E5484D" }}>-{c.avgDeletions.toFixed(1)}</td>
@@ -321,12 +319,12 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
             {sorted.length > pageSize ? `Показано ${paged.length} из ${sorted.length}` : `${sorted.length} записей`}
           </span>
           <Button size="small" icon={<DownloadOutlined />} onClick={() => {
-            const headers = ["Контрибьютор", "Email", "Коммитов", "Изменений", "+ строк", "- строк", "Δ/коммит", "Активных дн.", "Коммитов/день", "Коммитов/нед.", "Ср.+/коммит", "Ср.-/коммит", "Дн. активности", "Оценка"];
+            const headers = ["Контрибьютор", "Email", "Коммитов", "+ строк", "- строк", "Δ/коммит", "Коммитов/нед.", "Ср.+/коммит", "Ср.-/коммит", "Дн. активности", "Оценка"];
             const rows = sorted.map((c: any) => [
-              c.author_name || "", c.author_email, c.total_commits, c.total_changes,
+              c.author_name || "", c.author_email, c.total_commits,
               c.total_additions, c.total_deletions,
               c.total_commits > 0 ? (c.total_changes / c.total_commits).toFixed(1) : "0",
-              c.activeDays, c.commitsPerDay.toFixed(1), c.commitsPerWeek.toFixed(1),
+              c.commitsPerWeek.toFixed(1),
               c.avgAdditions.toFixed(1), c.avgDeletions.toFixed(1), c.activitySpan,
               `${c.score.score} (${c.score.grade})`,
             ]);
@@ -364,12 +362,9 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 8 }}>Легенда метрик</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
           <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов</b> — общее количество коммитов за выбранный период</div>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Изменений</b> — суммарный объём (добавления + удаления строк)</div>
           <div><b style={{ color: "#21B573" }}>+ строк</b> — общее число добавленных строк</div>
           <div><b style={{ color: "#E5484D" }}>- строк</b> — общее число удалённых строк</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Δ/коммит</b> — средний размер коммита: (изменений) / (коммитов). Чем выше — тем «крупнее» коммиты</div>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Активных дн.</b> — количество дней, в которые автор делал хотя бы один коммит</div>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов/день</b> — коммитов / активных дней. Средняя дневная интенсивность</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Коммитов/нед.</b> — коммитов / (активных дней / 7). Недельная интенсивность</div>
           <div><b style={{ color: "#21B573" }}>Ср. +/коммит</b> — (всего добавлений) / (коммитов). Сколько строк добавляется в среднем за коммит</div>
           <div><b style={{ color: "#E5484D" }}>Ср. -/коммит</b> — (всего удалений) / (коммитов). Сколько строк удаляется в среднем за коммит</div>
@@ -377,13 +372,14 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
         </div>
         <div style={{ marginTop: 12, fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 6 }}>Формула расчёта эффективности</div>
         <div style={{ fontSize: 12, color: "var(--ant-color-text-secondary)", lineHeight: 1.6 }}>
-          Композитная метрика от 0 до 100, рассчитывается как взвешенная сумма четырёх компонентов:
+          Композитная метрика от 0 до 100, рассчитывается как взвешенная сумма пяти компонентов:
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)", marginTop: 4 }}>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Последовательность (30%)</b> — отношение активных дней к общему периоду участия. Регулярный коммитер получает максимум</div>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Активность (25%)</b> — коммитов в неделю (нормализовано до 15 коммитов/нед = максимум)</div>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Влияние (25%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Качество коммитов (20%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Последовательность (25%)</b> — отношение активных дней к общему периоду участия. Регулярный коммитер получает максимум</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Активность (20%)</b> — коммитов в неделю (нормализовано до 15 коммитов/нед = максимум)</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Влияние (20%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Качество коммитов (15%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
+          <div><b style={{ color: "#21B573" }}>Надёжность деплоя (20%)</b> — Success Rate × 50% + Coverage × 30% + min(Successful, 100) × 20%. Как часто код доходит до продакшена</div>
         </div>
         <div style={{ marginTop: 10, fontSize: 11, color: "var(--ant-color-textTertiary)", fontStyle: "italic" }}>
           Все метрики вычисляются на основе коммитов за выбранный диапазон дат. Фильтры по проектам и тегам влияют на результат. Индикатор не учитывает контекст проекта, сложность задач и код-ревью.

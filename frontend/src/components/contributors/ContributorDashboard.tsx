@@ -14,6 +14,8 @@ import {
   fetchContributorHeatmap,
   collectContributors,
   fetchProjects,
+  fetchDeployReliability,
+  type DeployReliabilityEntry,
 } from "../../api/client";
 import type { DbContributor, ContributorMetrics, HeatmapData, ProjectConfig, ContributorFilters, Role } from "../../types";
 
@@ -37,6 +39,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
   const [allMetrics, setAllMetrics] = useState<ContributorMetrics | null>(null);
   const [allHeatmap, setAllHeatmap] = useState<HeatmapData>({ by_project: {}, by_contributor: {}, project_contributors: {}, by_project_contributor: {} });
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
+  const [deployData, setDeployData] = useState<DeployReliabilityEntry[]>([]);
 
   useEffect(() => {
     fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); });
@@ -65,10 +68,14 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       if (cRes.ok) setAllContributors(cRes.data!);
       if (mRes.ok) setAllMetrics(mRes.data!);
       if (hRes.ok) setAllHeatmap(hRes.data!);
+
+      const contribs = filters.contributors.length > 0 ? filters.contributors.join(",") : undefined;
+      const dRes = await fetchDeployReliability(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, filters.dateFrom, filters.dateTo, contribs);
+      if (dRes.ok) setDeployData(dRes.data!);
     } finally {
       setLoading(false);
     }
-  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo]);
+  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -84,6 +91,21 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       );
     });
   }, [allContributors, filters.contributors]);
+
+  // Merge deploy reliability score into contributors
+  const contributorsWithDeployScore = useMemo(() => {
+    const deployMap = new Map<string, DeployReliabilityEntry>();
+    for (const d of deployData) {
+      deployMap.set(d.email, d);
+    }
+    return filteredContributors.map((c) => {
+      const deploy = deployMap.get(c.author_email);
+      const deployScore = deploy
+        ? Math.round((deploy.deploy_success_rate * 0.5 + deploy.pipeline_coverage_rate * 0.3 + Math.min(deploy.successful_pipelines, 100) * 0.2) * 10) / 10
+        : undefined;
+      return { ...c, deployScore };
+    });
+  }, [filteredContributors, deployData]);
 
   // Metrics from filtered contributors
   const filteredMetrics = useMemo((): ContributorMetrics | null => {
@@ -224,7 +246,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
           <h3 style={{ margin: 0, fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #B0C0D8", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
-        <div style={{ padding: 20 }}><ContributorTable data={filteredContributors} loading={loading} onContributorClick={onContributorClick} /></div>
+        <div style={{ padding: 20 }}><ContributorTable data={contributorsWithDeployScore} loading={loading} onContributorClick={onContributorClick} /></div>
       </div>
       )}
 

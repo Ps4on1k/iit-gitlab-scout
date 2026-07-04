@@ -17,7 +17,6 @@ const BranchDashboard = lazy(() => import("./components/branches/BranchDashboard
 const PipelineDashboard = lazy(() => import("./components/pipelines/PipelineDashboard").then(m => ({ default: m.PipelineDashboard })));
 const DoraDashboard = lazy(() => import("./components/dora/DoraDashboard").then(m => ({ default: m.DoraDashboard })));
 const BenchmarkDashboard = lazy(() => import("./components/benchmark/BenchmarkDashboard").then(m => ({ default: m.BenchmarkDashboard })));
-const DeployReliabilityDashboard = lazy(() => import("./components/contributors/DeployReliabilityDashboard").then(m => ({ default: m.DeployReliabilityDashboard })));
 const SettingsPanel = lazy(() => import("./components/SettingsPanel").then(m => ({ default: m.SettingsPanel })));
 
 const { Header, Content } = Layout;
@@ -52,7 +51,7 @@ const defaultFilters: GlobalFilters = {
 };
 
 type TabKey = "dashboard" | "analytics" | "stack" | "benchmark" | "settings";
-type AnalyticsTab = "contributors" | "deploy-reliability" | "activity" | "branches" | "pipelines" | "dora";
+type AnalyticsTab = "contributors" | "activity" | "branches" | "pipelines" | "dora";
 
 function getInitialDarkMode(): boolean {
   try {
@@ -175,8 +174,7 @@ export default function App() {
   ];
 
   const analyticsSubTabs = [
-    { key: "contributors", label: "Коммиты" },
-    { key: "deploy-reliability", label: "Надёжность деплоя" },
+    { key: "contributors", label: "Контрибьюторы" },
     { key: "activity", label: "Активность" },
     { key: "branches", label: "Ветки" },
     { key: "pipelines", label: "CI/CD" },
@@ -230,7 +228,6 @@ export default function App() {
           <Suspense fallback={<div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>}>
             {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-            {tab === "analytics" && analyticsTab === "deploy-reliability" && <DeployReliabilityDashboard key={`deploy-${filterKey}-${analyticsTab}`} filters={filters} onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
