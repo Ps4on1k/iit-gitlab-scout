@@ -161,7 +161,10 @@ export async function schedulerRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/api/v1/scheduler/run-all", { preHandler: [requireAdmin] }, async () => {
+  app.post("/api/v1/scheduler/run-all", { preHandler: [requireAdmin] }, async (_, reply) => {
+    if (isSchedulerBusy()) {
+      return reply.status(409).send({ ok: false, error: "Сбор уже запущен. Дождитесь завершения." });
+    }
     runAllEnabledTasks().catch(() => {});
     return { ok: true, data: { started: true } };
   });

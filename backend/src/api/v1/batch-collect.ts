@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
-import { startBatchCollect, updateBatchCollect, addBatchError, finishBatchCollect } from "../../utils/collect-tracker.js";
+import { startBatchCollect, updateBatchCollect, addBatchError, finishBatchCollect, isAnyCollectionRunning } from "../../utils/collect-tracker.js";
 import { getPool } from "../../db/pool.js";
 import { decrypt } from "../../utils/crypto.js";
 import { GitLabClient } from "../../services/gitlab-client.js";
@@ -159,6 +159,9 @@ export async function batchCollectRoutes(app: FastifyInstance) {
     }
     if (!COLLECTORS[collector]) {
       return reply.status(400).send({ ok: false, error: `Unknown collector: ${collector}. Valid: ${Object.keys(COLLECTORS).join(", ")}` });
+    }
+    if (isAnyCollectionRunning()) {
+      return reply.status(409).send({ ok: false, error: "Сбор уже запущен. Дождитесь завершения." });
     }
 
     runBatchCollect(collector, project_ids, date_from, date_to).catch(() => {});
