@@ -29,6 +29,7 @@ import { doraMetricsRoutes } from "./api/v1/dora-metrics.js";
 import { benchmarkRoutes } from "./api/v1/benchmark.js";
 import { timeEntriesRoutes } from "./api/v1/time-entries.js";
 import { filterPresetRoutes } from "./api/v1/filter-presets.js";
+import { metricWeightsRoutes } from "./api/v1/metric-weights.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { getActiveJobs } from "./utils/collect-tracker.js";
 import { requireAuth } from "./utils/auth.js";
@@ -122,6 +123,7 @@ await app.register(doraMetricsRoutes);
 await app.register(benchmarkRoutes);
 await app.register(timeEntriesRoutes);
 await app.register(filterPresetRoutes);
+await app.register(metricWeightsRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

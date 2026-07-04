@@ -420,3 +420,14 @@ export async function updateFilterPreset(id: number, name: string): Promise<ApiR
 export async function deleteFilterPreset(id: number): Promise<ApiResponse<{ deleted: boolean }>> {
   return fetchJson(`/v1/filter-presets/${id}`, { method: "DELETE" });
 }
+
+export async function fetchMetricWeights(): Promise<ApiResponse<Record<string, Record<string, number>>>> {
+  return fetchJson("/v1/metric-weights");
+}
+
+export async function updateMetricWeights(metric: string, weights: Record<string, number>): Promise<ApiResponse<Record<string, number>>> {
+  return fetchJson(`/v1/metric-weights/${metric}`, {
+    method: "PUT",
+    body: JSON.stringify(weights),
+  });
+}

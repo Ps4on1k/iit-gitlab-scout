@@ -15,6 +15,7 @@ import {
   collectContributors,
   fetchProjects,
   fetchDeployReliability,
+  fetchMetricWeights,
   type DeployReliabilityEntry,
 } from "../../api/client";
 import type { DbContributor, ContributorMetrics, HeatmapData, ProjectConfig, ContributorFilters, Role } from "../../types";
@@ -40,9 +41,13 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
   const [allHeatmap, setAllHeatmap] = useState<HeatmapData>({ by_project: {}, by_contributor: {}, project_contributors: {}, by_project_contributor: {} });
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [deployData, setDeployData] = useState<DeployReliabilityEntry[]>([]);
+  const [deployWeights, setDeployWeights] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchProjects().then((res) => { if (res.ok) setProjects(res.data!); });
+    fetchMetricWeights().then((r) => {
+      if (r.ok && r.data?.deploy_reliability) setDeployWeights(r.data.deploy_reliability);
+    });
   }, []);
 
   const effectiveProjectIds = useMemo(() => {
@@ -100,8 +105,14 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
     }
     return filteredContributors.map((c) => {
       const deploy = deployMap.get(c.author_email);
+      const dw = {
+        successRate: deployWeights.successRate ?? 50,
+        coverage: deployWeights.coverage ?? 30,
+        volume: deployWeights.volume ?? 20,
+      };
+      const totalWeight = dw.successRate + dw.coverage + dw.volume;
       const deployScore = deploy
-        ? Math.round((deploy.deploy_success_rate * 0.5 + deploy.pipeline_coverage_rate * 0.3 + Math.min(deploy.successful_pipelines, 100) * 0.2) * 10) / 10
+        ? Math.round(((deploy.deploy_success_rate * dw.successRate + deploy.pipeline_coverage_rate * dw.coverage + Math.min(deploy.successful_pipelines, 100) * dw.volume) / totalWeight) * 10) / 10
         : undefined;
 
       const freq = c.frequency || {};
@@ -114,7 +125,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
 
       return { ...c, frequency: filteredFreq, deployScore };
     });
-  }, [filteredContributors, deployData, filters.dateFrom, filters.dateTo]);
+  }, [filteredContributors, deployData, filters.dateFrom, filters.dateTo, deployWeights]);
 
   // Metrics from filtered contributors
   const filteredMetrics = useMemo((): ContributorMetrics | null => {

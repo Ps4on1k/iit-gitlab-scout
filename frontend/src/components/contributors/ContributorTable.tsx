@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { Empty, Tooltip, Select, Modal, Button, Spin, Tag } from "antd";
 import { SearchOutlined, DownloadOutlined } from "@ant-design/icons";
 import type { DbContributor } from "../../types";
-import { fetchContributorCommits } from "../../api/client";
+import { fetchContributorCommits, fetchMetricWeights } from "../../api/client";
 
 interface Props {
   data: (DbContributor & { deployScore?: number })[];
@@ -39,8 +39,17 @@ function computeScore(c: {
   commitsPerWeek: number;
   avgChangesPerCommit: number;
   deployScore?: number;
+  weights?: Record<string, number>;
 }): ScoreResult {
-  const { total_commits, total_changes, activeDays, activitySpan, commitsPerWeek, avgChangesPerCommit, deployScore } = c;
+  const { total_commits, total_changes, activeDays, activitySpan, commitsPerWeek, avgChangesPerCommit, deployScore, weights } = c;
+
+  const w = {
+    consistency: weights?.consistency ?? 25,
+    activity: weights?.activity ?? 20,
+    impact: weights?.impact ?? 20,
+    sizeQuality: weights?.sizeQuality ?? 15,
+    deploy: weights?.deploy ?? 20,
+  };
 
   if (total_commits === 0) return { score: 0, grade: "Нет данных", color: "#d9d9d9", icon: "—", breakdown: { consistency: { raw: 0, normalized: 0, weight: 25, description: "Нет данных" }, activity: { raw: 0, normalized: 0, weight: 20, description: "Нет данных" }, impact: { raw: 0, normalized: 0, weight: 20, description: "Нет данных" }, sizeQuality: { raw: 0, normalized: 0, weight: 15, description: "Нет данных" }, deploy: { raw: 0, normalized: 0, weight: 20, description: "Нет данных" } } };
 
@@ -55,7 +64,7 @@ function computeScore(c: {
     : 0.2;
   const deploy = deployScore !== undefined ? deployScore / 100 : 0.5;
 
-  const raw = (consistency * 25) + (activity * 20) + (impact * 20) + (sizeQuality * 15) + (deploy * 20);
+  const raw = (consistency * w.consistency) + (activity * w.activity) + (impact * w.impact) + (sizeQuality * w.sizeQuality) + (deploy * w.deploy);
   const score = Math.round(Math.min(100, Math.max(0, raw)));
 
   const sizeDesc = avgChangesPerCommit <= 10 ? "Мелкие коммиты (≤10 строк) — хорошо для ревью" :
@@ -68,31 +77,31 @@ function computeScore(c: {
     consistency: {
       raw: activitySpan > 0 ? activeDays / activitySpan : 0,
       normalized: consistency,
-      weight: 25,
+      weight: w.consistency,
       description: `${activeDays} активных дней из ${activitySpan} рабочих (${Math.round(consistency * 100)}%)`,
     },
     activity: {
       raw: commitsPerWeek,
       normalized: activity,
-      weight: 20,
+      weight: w.activity,
       description: `${commitsPerWeek.toFixed(1)} коммитов/нед. (норма: ≤15)`,
     },
     impact: {
       raw: changesPerDay,
       normalized: impact,
-      weight: 20,
+      weight: w.impact,
       description: `${Math.round(changesPerDay)} строк/день (норма: ≤200)`,
     },
     sizeQuality: {
       raw: avgChangesPerCommit,
       normalized: sizeQuality,
-      weight: 15,
+      weight: w.sizeQuality,
       description: `${avgChangesPerCommit.toFixed(0)} строк/коммит — ${sizeDesc}`,
     },
     deploy: {
       raw: deployScore ?? 50,
       normalized: deploy,
-      weight: 20,
+      weight: w.deploy,
       description: deployScore !== undefined ? `Score надёжности деплоя: ${deployScore}/100` : "Нет данных о деплоях (нейтральное значение)",
     },
   };
@@ -203,6 +212,13 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
   const [modalName, setModalName] = useState("");
   const [scoreModalOpen, setScoreModalOpen] = useState(false);
   const [scoreModalData, setScoreModalData] = useState<{ name: string; score: ScoreResult } | null>(null);
+  const [weights, setWeights] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetchMetricWeights().then((r) => {
+      if (r.ok && r.data?.contributor_score) setWeights(r.data.contributor_score);
+    });
+  }, []);
 
   const withMetrics = useMemo(() => {
     return data.map((c) => {
@@ -251,6 +267,7 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
         commitsPerWeek,
         avgChangesPerCommit,
         deployScore: c.deployScore,
+        weights,
       });
 
       return { ...c, activeDays, commitsPerDay, commitsPerWeek, avgAdditions, avgDeletions, activitySpan, score };

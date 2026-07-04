@@ -1,5 +1,5 @@
 import { Tabs } from "antd";
-import { ProjectOutlined, UserOutlined, ClockCircleOutlined, TeamOutlined, FileTextOutlined, KeyOutlined, FieldTimeOutlined } from "@ant-design/icons";
+import { ProjectOutlined, UserOutlined, ClockCircleOutlined, TeamOutlined, FileTextOutlined, KeyOutlined, FieldTimeOutlined, PercentageOutlined } from "@ant-design/icons";
 import { AdminPanel } from "./AdminPanel";
 import { UserManagement } from "./UserManagement";
 import { SchedulerPanel } from "./SchedulerPanel";
@@ -7,6 +7,7 @@ import { ContributorDirectoryPanel } from "./directory/ContributorDirectoryPanel
 import { AuditLogPanel } from "./AuditLogPanel";
 import { PersonalTokensPanel } from "./PersonalTokensPanel";
 import { TimeEntriesPanel } from "./TimeEntriesPanel";
+import { WeightsPanel } from "./WeightsPanel";
 
 export function SettingsPanel() {
   return (
@@ -33,6 +34,11 @@ export function SettingsPanel() {
             key: "directory",
             label: <span><TeamOutlined /> Контрибьюторы</span>,
             children: <ContributorDirectoryPanel />,
+          },
+          {
+            key: "weights",
+            label: <span><PercentageOutlined /> Веса</span>,
+            children: <WeightsPanel />,
           },
           {
             key: "scheduler",
