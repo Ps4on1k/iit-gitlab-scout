@@ -91,14 +91,16 @@ async function checkAndRun(): Promise<void> {
   }
 
   const now = Date.now();
-  let hasRunning = false;
 
   for (const task of result.rows as SchedulerTask[]) {
     if (!task.last_run_at) {
       logFn(`[scheduler] Running ${task.task_name} (first run)`);
-      hasRunning = true;
       setSchedulerRunning(true);
-      await runTask(task.task_name);
+      try {
+        await runTask(task.task_name);
+      } finally {
+        setSchedulerRunning(false);
+      }
       continue;
     }
 
@@ -107,14 +109,13 @@ async function checkAndRun(): Promise<void> {
 
     if (elapsed >= task.interval_minutes) {
       logFn(`[scheduler] Running ${task.task_name} (elapsed: ${Math.round(elapsed)} min, interval: ${task.interval_minutes} min)`);
-      hasRunning = true;
       setSchedulerRunning(true);
-      await runTask(task.task_name);
+      try {
+        await runTask(task.task_name);
+      } finally {
+        setSchedulerRunning(false);
+      }
     }
-  }
-
-  if (hasRunning) {
-    setSchedulerRunning(false);
   }
 }
 
@@ -143,13 +144,13 @@ export async function runAllEnabledTasks(): Promise<void> {
     return;
   }
 
-  setSchedulerRunning(true);
-  try {
-    for (const task of result.rows as SchedulerTask[]) {
-      logFn(`[scheduler] Manual run: ${task.task_name}`);
+  for (const task of result.rows as SchedulerTask[]) {
+    logFn(`[scheduler] Manual run: ${task.task_name}`);
+    setSchedulerRunning(true);
+    try {
       await runTask(task.task_name);
+    } finally {
+      setSchedulerRunning(false);
     }
-  } finally {
-    setSchedulerRunning(false);
   }
 }
