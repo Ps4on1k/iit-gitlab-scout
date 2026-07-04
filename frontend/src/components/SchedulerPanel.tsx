@@ -186,7 +186,7 @@ export function SchedulerPanel() {
               format={() => taskTotal > 0 ? `${taskCurrent}/${taskTotal}` : ""}
             />
             <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
-              {currentTask ? `Сбор: ${TASK_LABELS[currentTask] || currentTask}` : "Подготовка..."}
+              {currentTask ? TASK_LABELS[currentTask] || currentTask : "Подготовка..."}
             </Text>
           </div>
         </Card>

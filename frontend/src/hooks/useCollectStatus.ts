@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchSchedulerStatus, type CollectJob } from "../api/scheduler-client";
 
-const POLL_MS = 5000;
+const POLL_MS = 15000;
 
 export function useCollectStatus(onComplete?: () => void) {
   const [status, setStatus] = useState<{
