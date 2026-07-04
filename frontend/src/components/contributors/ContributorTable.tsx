@@ -221,6 +221,15 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
   }, []);
 
   const withMetrics = useMemo(() => {
+    // Find earliest date across ALL contributors for fallback activitySpan
+    let globalMinDate = "";
+    for (const c of data) {
+      const dates = Object.keys(c.frequency || {}).sort();
+      if (dates.length > 0 && (!globalMinDate || dates[0] < globalMinDate)) {
+        globalMinDate = dates[0];
+      }
+    }
+
     return data.map((c) => {
       const freq = c.frequency || {};
       const activeDays = Object.keys(freq).filter((d) => freq[d] > 0).length;
@@ -230,7 +239,6 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
       const avgDeletions = c.total_commits > 0 ? c.total_deletions / c.total_commits : 0;
       const avgChangesPerCommit = c.total_commits > 0 ? c.total_changes / c.total_commits : 0;
 
-      const freqDates = Object.keys(freq).sort();
       let activitySpan = 0;
       if (dateFrom && dateTo) {
         const first = new Date(dateFrom);
@@ -243,8 +251,8 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
           d.setDate(d.getDate() + 1);
         }
         activitySpan = count;
-      } else if (freqDates.length >= 1) {
-        const first = new Date(freqDates[0]);
+      } else if (globalMinDate) {
+        const first = new Date(globalMinDate);
         const last = new Date();
         let count = 0;
         const d = new Date(first);
