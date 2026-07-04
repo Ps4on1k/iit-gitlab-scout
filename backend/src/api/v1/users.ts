@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { getPool } from "../../db/pool.js";
 import { requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { logAuditAction } from "../../utils/audit.js";
+import { validate, userSchema } from "../../utils/validation.js";
 import bcrypt from "bcryptjs";
 
 export async function userManagementRoutes(app: FastifyInstance) {
@@ -17,9 +18,9 @@ export async function userManagementRoutes(app: FastifyInstance) {
     Body: { username: string; password: string; role?: string; allowed_tags?: string[] };
   }>("/api/v1/users", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { username, password, role, allowed_tags } = request.body;
-    if (!username || !password) {
-      return reply.status(400).send({ ok: false, error: "username and password are required" });
-    }
+
+    const v = validate(userSchema, request.body);
+    if (!v.success) return reply.status(400).send({ ok: false, error: v.error });
     if (!["admin", "user", "manager"].includes(role || "user")) {
       return reply.status(400).send({ ok: false, error: "role must be 'admin', 'user' or 'manager'" });
     }

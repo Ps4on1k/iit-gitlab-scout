@@ -5,6 +5,7 @@ import { encrypt, decrypt } from "../../utils/crypto.js";
 import { logAuditAction } from "../../utils/audit.js";
 import { resolveBaseUrl, validateBaseUrl } from "../../utils/project-token.js";
 import { getCached, setCache, clearCache } from "../../utils/cache.js";
+import { validate, projectSchema } from "../../utils/validation.js";
 import yamlLib from "js-yaml";
 import { safeErrorMessage } from "../../utils/safe-error.js";
 
@@ -27,9 +28,8 @@ export async function projectsRoutes(app: FastifyInstance) {
   }>("/api/v1/projects", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { path, label, token, base_url, tags, description } = request.body;
 
-    if (!path || !label || !token || token.trim().length === 0) {
-      return reply.status(400).send({ ok: false, error: "path, label, token are required" });
-    }
+    const v = validate(projectSchema, request.body);
+    if (!v.success) return reply.status(400).send({ ok: false, error: v.error });
 
     const urlToValidate = base_url || "https://gitlab.com/api/v4";
     const urlCheck = validateBaseUrl(urlToValidate);
