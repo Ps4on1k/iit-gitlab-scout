@@ -209,7 +209,7 @@ export default function App() {
             onClick={() => setDarkMode(!darkMode)}
             style={{ marginRight: 12 }}
           />
-          <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 16, fontSize: 14 }}>
+          <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 16, fontSize: 14, whiteSpace: "nowrap", lineHeight: 1 }}>
             {user.username} ({user.role})
           </div>
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)" }}>Выйти</Button>
