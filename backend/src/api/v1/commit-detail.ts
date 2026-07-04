@@ -10,8 +10,31 @@ export async function commitDetailRoutes(app: FastifyInstance) {
     if (!email) return reply.status(400).send({ ok: false, error: "email is required" });
 
     const pool = getPool();
-    const conditions: string[] = [`author_email = $1`];
-    const params: any[] = [email];
+
+    // Resolve all emails for this contributor from directory + profiles
+    const dirResult = await pool.query("SELECT emails FROM contributor_directory WHERE emails @> ARRAY[$1]::text[]", [email]);
+    let allEmails: string[] = [email];
+    if (dirResult.rows.length > 0 && dirResult.rows[0].emails) {
+      allEmails = dirResult.rows[0].emails;
+    } else {
+      // Fallback: find all emails that share the same display_name
+      const profileResult = await pool.query(
+        "SELECT DISTINCT author_email FROM contributor_profiles WHERE author_email = $1",
+        [email]
+      );
+      if (profileResult.rows.length > 0) {
+        const nameResult = await pool.query(
+          "SELECT DISTINCT author_email FROM contributor_profiles WHERE author_name = (SELECT author_name FROM contributor_profiles WHERE author_email = $1 LIMIT 1)",
+          [email]
+        );
+        if (nameResult.rows.length > 0) {
+          allEmails = nameResult.rows.map((r: any) => r.author_email);
+        }
+      }
+    }
+
+    const conditions: string[] = [`author_email = ANY($1)`];
+    const params: any[] = [allEmails];
     let idx = 2;
 
     if (project_ids) {
