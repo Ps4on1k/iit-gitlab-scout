@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireAdmin } from "../../utils/auth.js";
+import { requireAdmin, requireManager } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { getCached, setCache } from "../../utils/cache.js";
 
@@ -9,7 +9,7 @@ const DEFAULT_WEIGHTS: Record<string, Record<string, number>> = {
 };
 
 export async function metricWeightsRoutes(app: FastifyInstance) {
-  app.get("/api/v1/metric-weights", { preHandler: [requireAdmin] }, async () => {
+  app.get("/api/v1/metric-weights", { preHandler: [requireManager] }, async () => {
     const cached = getCached<Record<string, Record<string, number>>>("metric-weights");
     if (cached) return { ok: true, data: cached };
 

@@ -192,7 +192,7 @@ export default function App() {
             <Logo isDark={darkMode} />
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.5.0</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.6.0</span>
           </div>
           {collectionRunning && (
             <Tooltip title="Идёт сбор данных">
