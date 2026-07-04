@@ -8,6 +8,8 @@ interface Props {
   data: (DbContributor & { deployScore?: number })[];
   loading: boolean;
   onContributorClick?: (name: string) => void;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
 type SortKey = "author_email" | "total_commits" | "total_additions" | "total_deletions" | "total_changes" | "cpc" | "active_days" | "commits_per_day" | "commits_per_week" | "avg_additions" | "avg_deletions" | "activity_span" | "score";
@@ -190,7 +192,7 @@ function CommitPopup({ email, dateFrom, dateTo }: { email: string; dateFrom?: st
   );
 }
 
-export function ContributorTable({ data, loading, onContributorClick }: Props) {
+export function ContributorTable({ data, loading, onContributorClick, dateFrom, dateTo }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(1);
@@ -213,7 +215,18 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
 
       const freqDates = Object.keys(freq).sort();
       let activitySpan = 0;
-      if (freqDates.length >= 2) {
+      if (dateFrom && dateTo) {
+        const first = new Date(dateFrom);
+        const last = new Date(dateTo);
+        let count = 0;
+        const d = new Date(first);
+        while (d <= last) {
+          const dow = d.getDay();
+          if (dow !== 0 && dow !== 6) count++;
+          d.setDate(d.getDate() + 1);
+        }
+        activitySpan = count;
+      } else if (freqDates.length >= 2) {
         const first = new Date(freqDates[0]);
         const last = new Date(freqDates[freqDates.length - 1]);
         let count = 0;
