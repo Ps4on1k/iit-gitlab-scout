@@ -49,7 +49,7 @@ export function SchedulerPanel() {
   const lastClickRef = useRef(0);
   const beforeRunRef = useRef<Map<string, string | null>>(new Map());
 
-  const { isAnyRunning, activeJobs } = useCollectStatus();
+  const { isAnyRunning, activeJobs, ready } = useCollectStatus();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,6 +91,8 @@ export function SchedulerPanel() {
 
   // On mount: if any collection is running, show progress
   useEffect(() => {
+    if (!ready) return;
+
     if (isAnyRunning) {
       // Find which collector is running and map to scheduler task
       const runningCollector = activeJobs.find((j) => j.status === "running");
@@ -124,7 +126,7 @@ export function SchedulerPanel() {
       pollRef.current = null;
       setCollectProgress(null);
     }
-  }, [isAnyRunning, activeJobs, runningAll, tasks, checkSchedulerProgress, load]);
+  }, [ready, isAnyRunning, activeJobs, runningAll, tasks, checkSchedulerProgress, load]);
 
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };

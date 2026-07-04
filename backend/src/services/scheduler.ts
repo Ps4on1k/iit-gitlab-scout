@@ -31,6 +31,13 @@ async function runTask(taskName: string): Promise<void> {
   logFn(`[scheduler] ${taskName}: processing ${projectIds.length} projects`);
 
   for (const projectId of projectIds) {
+    // Verify project still exists before collecting
+    const exists = await pool.query("SELECT 1 FROM projects WHERE id = $1", [projectId]);
+    if (exists.rows.length === 0) {
+      logFn(`[scheduler] ${taskName}: project ${projectId} no longer exists, skipping`);
+      continue;
+    }
+
     try {
       switch (taskName) {
         case "collect_stack":
