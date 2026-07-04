@@ -489,14 +489,17 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
         {scoreModalData && (
           <div>
             <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ fontSize: 26, fontWeight: 700, wordBreak: "break-word", lineHeight: 1.3 }}>{scoreModalData.name}</div>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 16 }}>
               <span style={{
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
-                width: 48, height: 48, borderRadius: 24,
-                background: scoreModalData.score.color, color: "white", fontSize: 20, fontWeight: 700,
+                width: 52, height: 52, borderRadius: 26,
+                background: scoreModalData.score.color, color: "white", fontSize: 22, fontWeight: 700,
               }}>{scoreModalData.score.icon}</span>
-              <div style={{ fontSize: 28, fontWeight: 700, marginTop: 12, wordBreak: "break-word" }}>{scoreModalData.name}</div>
-              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>{scoreModalData.score.score}/100</div>
-              <div style={{ fontSize: 13, color: scoreModalData.score.color, fontWeight: 600 }}>{scoreModalData.score.grade}</div>
+              <div style={{ fontSize: 32, fontWeight: 800, marginTop: 8 }}>{scoreModalData.score.score}<span style={{ fontSize: 18, fontWeight: 600, color: "var(--ant-color-textSecondary)" }}>/100</span></div>
+              <div style={{ fontSize: 14, color: scoreModalData.score.color, fontWeight: 600 }}>{scoreModalData.score.grade}</div>
             </div>
 
             <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)", marginBottom: 16, textAlign: "center", lineHeight: 1.5 }}>
