@@ -80,12 +80,14 @@ export async function schedulerRoutes(app: FastifyInstance) {
     const progress = getSchedulerProgress();
     return {
       ok: true,
-      data: result.rows,
-      activeJobs: getActiveJobs(),
-      isRunning: isSchedulerBusy(),
-      currentTask: progress.currentTask,
-      taskCurrent: progress.taskCurrent,
-      taskTotal: progress.taskTotal,
+      data: {
+        tasks: result.rows,
+        activeJobs: getActiveJobs(),
+        isRunning: isSchedulerBusy(),
+        currentTask: progress.currentTask,
+        taskCurrent: progress.taskCurrent,
+        taskTotal: progress.taskTotal,
+      },
     };
   });
 
