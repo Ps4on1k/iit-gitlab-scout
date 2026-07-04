@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { runAllEnabledTasks } from "../../services/scheduler.js";
-import { getActiveJobs } from "../../utils/collect-tracker.js";
+import { isAnyCollectionRunning } from "../../utils/collect-tracker.js";
 
 export interface SchedulerTask {
   id: number;
@@ -76,8 +76,7 @@ export async function schedulerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/v1/scheduler/reset-stats", { preHandler: [requireAdmin] }, async (_, reply) => {
-    const activeJobs = getActiveJobs();
-    if (activeJobs.length > 0) {
+    if (isAnyCollectionRunning()) {
       return reply.status(409).send({ ok: false, error: "Невозможно сбросить: идёт сбор данных. Дождитесь завершения." });
     }
 

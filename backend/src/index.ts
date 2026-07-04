@@ -31,7 +31,7 @@ import { timeEntriesRoutes } from "./api/v1/time-entries.js";
 import { filterPresetRoutes } from "./api/v1/filter-presets.js";
 import { metricWeightsRoutes } from "./api/v1/metric-weights.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
-import { getActiveJobs } from "./utils/collect-tracker.js";
+import { getActiveJobs, isSchedulerRunning } from "./utils/collect-tracker.js";
 import { requireAuth } from "./utils/auth.js";
 
 const env = getEnv();
@@ -94,7 +94,7 @@ app.setErrorHandler((error, request, reply) => {
 app.get("/health", async () => ({ status: "ok" }));
 
 app.get("/api/v1/collect/status", { preHandler: [requireAuth] }, async () => {
-  return { ok: true, data: getActiveJobs() };
+  return { ok: true, data: getActiveJobs(), schedulerRunning: isSchedulerRunning() };
 });
 
 await app.register(authRoutes);

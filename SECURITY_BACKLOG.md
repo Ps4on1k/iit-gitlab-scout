@@ -19,11 +19,11 @@
 |---|-------|------|--------|
 | 7 | No Zod validation on user creation | users.ts:19 | ✅ Fixed |
 | 8 | No Zod validation on project creation | projects.ts:29 | ✅ Fixed |
-| 9 | filter-presets accepts unvalidated any body | filter-presets.ts:17 | 🔴 TODO |
-| 10 | time-entries: no type validation on hours/dates | time-entries.ts:42 | 🔴 TODO |
+| 9 | filter-presets accepts unvalidated any body | filter-presets.ts:17 | ✅ Fixed |
+| 10 | time-entries: no type validation on hours/dates | time-entries.ts:42 | ✅ Fixed |
 
 ## LOW
 | # | Issue | File | Status |
 |---|-------|------|--------|
-| 11 | No email format validation in contributor-directory | contributor-directory.ts:20 | 🔴 TODO |
-| 12 | No user self-service password change | users.ts | 🔴 TODO |
+| 11 | No email format validation in contributor-directory | contributor-directory.ts:20 | ✅ Fixed |
+| 12 | No user self-service password change | auth.ts:165 | ✅ Fixed |

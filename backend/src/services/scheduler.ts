@@ -5,6 +5,7 @@ import { collectProject } from "./contributor-collector.js";
 import { collectBranches } from "./branch-collector.js";
 import { collectMergeRequests } from "./mr-collector.js";
 import { collectPipelines } from "./pipeline-collector.js";
+import { setSchedulerRunning } from "../utils/collect-tracker.js";
 
 interface SchedulerTask {
   id: number;
@@ -90,10 +91,13 @@ async function checkAndRun(): Promise<void> {
   }
 
   const now = Date.now();
+  let hasRunning = false;
 
   for (const task of result.rows as SchedulerTask[]) {
     if (!task.last_run_at) {
       logFn(`[scheduler] Running ${task.task_name} (first run)`);
+      hasRunning = true;
+      setSchedulerRunning(true);
       await runTask(task.task_name);
       continue;
     }
@@ -103,8 +107,14 @@ async function checkAndRun(): Promise<void> {
 
     if (elapsed >= task.interval_minutes) {
       logFn(`[scheduler] Running ${task.task_name} (elapsed: ${Math.round(elapsed)} min, interval: ${task.interval_minutes} min)`);
+      hasRunning = true;
+      setSchedulerRunning(true);
       await runTask(task.task_name);
     }
+  }
+
+  if (hasRunning) {
+    setSchedulerRunning(false);
   }
 }
 
@@ -133,8 +143,13 @@ export async function runAllEnabledTasks(): Promise<void> {
     return;
   }
 
-  for (const task of result.rows as SchedulerTask[]) {
-    logFn(`[scheduler] Manual run: ${task.task_name}`);
-    await runTask(task.task_name);
+  setSchedulerRunning(true);
+  try {
+    for (const task of result.rows as SchedulerTask[]) {
+      logFn(`[scheduler] Manual run: ${task.task_name}`);
+      await runTask(task.task_name);
+    }
+  } finally {
+    setSchedulerRunning(false);
   }
 }

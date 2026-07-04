@@ -8,6 +8,7 @@ export { type CollectJob };
 
 export function useCollectStatus(onComplete?: () => void) {
   const [activeJobs, setActiveJobs] = useState<CollectJob[]>([]);
+  const [schedulerRunning, setSchedulerRunning] = useState(false);
   const [ready, setReady] = useState(false);
   const hadRunningRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
@@ -20,8 +21,9 @@ export function useCollectStatus(onComplete?: () => void) {
         if (res.ok) {
           const jobs = res.data!;
           setActiveJobs(jobs);
+          setSchedulerRunning((res as any).schedulerRunning || false);
           setReady(true);
-          const running = jobs.some((j) => j.status === "running");
+          const running = jobs.some((j) => j.status === "running") || (res as any).schedulerRunning;
           if (hadRunningRef.current && !running && onCompleteRef.current) {
             onCompleteRef.current();
           }
@@ -41,15 +43,16 @@ export function useCollectStatus(onComplete?: () => void) {
       if (res.ok) {
         const jobs = res.data!;
         setActiveJobs(jobs);
+        setSchedulerRunning((res as any).schedulerRunning || false);
         setReady(true);
-        const running = jobs.some((j) => j.status === "running");
+        const running = jobs.some((j) => j.status === "running") || (res as any).schedulerRunning;
         hadRunningRef.current = running;
       }
     } catch {}
   }, []);
 
-  const isAnyRunning = activeJobs.some((j) => j.status === "running");
+  const isAnyRunning = activeJobs.some((j) => j.status === "running") || schedulerRunning;
   const stuckJobs = activeJobs.filter((j) => j.status === "stuck" || (j.status === "running" && Date.now() - j.started_at > STUCK_TIMEOUT_MS));
 
-  return { activeJobs, isAnyRunning, stuckJobs, poll, ready };
+  return { activeJobs, isAnyRunning, stuckJobs, poll, ready, schedulerRunning };
 }

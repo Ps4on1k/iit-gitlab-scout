@@ -12,6 +12,7 @@ export interface CollectJob {
 const TIMEOUT_MS = 15 * 60 * 1000;
 const jobs = new Map<string, CollectJob>();
 let jobCounter = 0;
+let schedulerRunning = false;
 
 export function startBatchCollect(collector: string, projectIds: number[]): string {
   const id = `batch-${++jobCounter}`;
@@ -67,7 +68,20 @@ export function isCollectorActive(collector: string): boolean {
   return false;
 }
 
+export function setSchedulerRunning(running: boolean): void {
+  schedulerRunning = running;
+}
+
+export function isSchedulerRunning(): boolean {
+  return schedulerRunning;
+}
+
+export function isAnyCollectionRunning(): boolean {
+  return schedulerRunning || jobs.size > 0;
+}
+
 export function resetTracker(): void {
   jobs.clear();
   jobCounter = 0;
+  schedulerRunning = false;
 }
