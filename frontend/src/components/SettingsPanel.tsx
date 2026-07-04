@@ -41,7 +41,7 @@ export function SettingsPanel() {
           },
           {
             key: "scheduler",
-            label: <span><ClockCircleOutlined /> Периодичность</span>,
+            label: <span><ClockCircleOutlined /> Сбор статистики</span>,
             children: <SchedulerPanel />,
           },
           {

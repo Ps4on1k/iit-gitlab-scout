@@ -6,6 +6,7 @@ import { logAuditAction } from "../../utils/audit.js";
 import { resolveBaseUrl, validateBaseUrl } from "../../utils/project-token.js";
 import { getCached, setCache, clearCache } from "../../utils/cache.js";
 import { validate, projectSchema } from "../../utils/validation.js";
+import { getActiveJobs } from "../../utils/collect-tracker.js";
 import yamlLib from "js-yaml";
 import { safeErrorMessage } from "../../utils/safe-error.js";
 
@@ -119,6 +120,12 @@ export async function projectsRoutes(app: FastifyInstance) {
     Params: { id: string };
   }>("/api/v1/projects/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params;
+
+    const activeJobs = getActiveJobs();
+    if (activeJobs.length > 0) {
+      return reply.status(409).send({ ok: false, error: "Невозможно удалить: идёт сбор данных. Дождитесь завершения." });
+    }
+
     const pool = getPool();
     const result = await pool.query("DELETE FROM projects WHERE id = $1 RETURNING id", [id]);
     if (result.rows.length === 0) {
@@ -131,6 +138,11 @@ export async function projectsRoutes(app: FastifyInstance) {
   });
 
   app.delete("/api/v1/projects/all", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const activeJobs = getActiveJobs();
+    if (activeJobs.length > 0) {
+      return reply.status(409).send({ ok: false, error: "Невозможно удалить: идёт сбор данных. Дождитесь завершения." });
+    }
+
     const pool = getPool();
     const countResult = await pool.query("SELECT COUNT(*)::int AS count FROM projects");
     const count = countResult.rows[0].count;
