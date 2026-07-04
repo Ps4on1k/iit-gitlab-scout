@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { ConfigProvider, Layout, Menu, Button, Typography, Spin } from "antd";
-import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined } from "@ant-design/icons";
+import { ConfigProvider, Layout, Menu, Button, Typography, Spin, Tooltip } from "antd";
+import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
 import { getMe, clearToken, resolveContributor } from "./api/client";
 import { clearCache } from "./utils/cache";
 import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
+import { useCollectStatus } from "./hooks/useCollectStatus";
 import type { User } from "./types";
 
 const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -116,6 +117,7 @@ export default function App() {
   const [tabParams, setTabParams] = useState<Record<string, string>>(urlState.current.tabParams);
   const [darkMode, setDarkMode] = useState<boolean>(getInitialDarkMode);
   const isInitialLoad = useRef(true);
+  const { isRunning: collectionRunning } = useCollectStatus();
 
   const setTabParam = useCallback((key: string, value: string | undefined) => {
     setTabParams((prev) => {
@@ -192,6 +194,11 @@ export default function App() {
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
             <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.5.0</span>
           </div>
+          {collectionRunning && (
+            <Tooltip title="Идёт сбор данных">
+              <SyncOutlined spin style={{ color: "#42D9C8", fontSize: 16, marginLeft: 6 }} />
+            </Tooltip>
+          )}
           </div>
           <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
             onClick={({ key }) => setTab(key as TabKey)}

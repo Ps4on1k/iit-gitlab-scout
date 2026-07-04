@@ -229,7 +229,7 @@ export async function projectsRoutes(app: FastifyInstance) {
           continue;
         }
         try {
-          const encrypted = encrypt(proj.token);
+          const encrypted = proj.token ? encrypt(proj.token) : null;
           await pool.query(
             `INSERT INTO projects (path, label, token_encrypted, base_url, tags, description)
              VALUES ($1, $2, $3, $4, $5, $6)
