@@ -479,11 +479,12 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
       </div>
 
       <Modal
-        title={<span>Раскладка Score: {scoreModalData?.name}</span>}
+        title={null}
         open={scoreModalOpen}
         onCancel={() => setScoreModalOpen(false)}
         footer={null}
         width={520}
+        styles={{ header: { display: "none" } }}
       >
         {scoreModalData && (
           <div>
@@ -493,12 +494,13 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
                 width: 48, height: 48, borderRadius: 24,
                 background: scoreModalData.score.color, color: "white", fontSize: 20, fontWeight: 700,
               }}>{scoreModalData.score.icon}</span>
-              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8 }}>{scoreModalData.score.score}/100</div>
-              <div style={{ fontSize: 14, color: scoreModalData.score.color, fontWeight: 600 }}>{scoreModalData.score.grade}</div>
+              <div style={{ fontSize: 28, fontWeight: 700, marginTop: 12, wordBreak: "break-word" }}>{scoreModalData.name}</div>
+              <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4 }}>{scoreModalData.score.score}/100</div>
+              <div style={{ fontSize: 13, color: scoreModalData.score.color, fontWeight: 600 }}>{scoreModalData.score.grade}</div>
             </div>
 
-            <div style={{ fontSize: 13, color: "var(--ant-color-textSecondary)", marginBottom: 16, textAlign: "center" }}>
-              Формула: <code>Consistency × {weights.consistency ?? 25}% + Activity × {weights.activity ?? 20}% + Impact × {weights.impact ?? 20}% + Quality × {weights.sizeQuality ?? 15}% + Deploy × {weights.deploy ?? 20}%</code>
+            <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)", marginBottom: 16, textAlign: "center", lineHeight: 1.5 }}>
+              <code>Consistency × {weights.consistency ?? 25}% + Activity × {weights.activity ?? 20}% + Impact × {weights.impact ?? 20}% + Quality × {weights.sizeQuality ?? 15}% + Deploy × {weights.deploy ?? 20}%</code>
             </div>
 
             {(["consistency", "activity", "impact", "sizeQuality", "deploy"] as const).map((key) => {
