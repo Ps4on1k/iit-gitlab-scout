@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { collectDependenciesAudit } from "../../services/dependency-audit.js";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 
 export async function dependencyAuditRoutes(app: FastifyInstance) {
   app.post<{
@@ -15,7 +16,7 @@ export async function dependencyAuditRoutes(app: FastifyInstance) {
       const result = await collectDependenciesAudit(project_id);
       return { ok: true, data: result };
     } catch (err) {
-      return reply.status(500).send({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      return reply.status(500).send({ ok: false, error: safeErrorMessage(err) });
     }
   });
 

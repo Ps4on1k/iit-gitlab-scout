@@ -14,6 +14,7 @@ import { collectStack } from "../../services/stack-collector.js";
 import { collectIssues } from "../../services/issue-collector.js";
 import { collectDependenciesAudit } from "../../services/dependency-audit.js";
 import { logCollectionError } from "../../utils/collection-error.js";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 
 const COLLECT_DELAY_MS = 2000;
 
@@ -97,7 +98,7 @@ async function runBatchCollect(collector: string, projectIds: number[], dateFrom
         await collectorDef.fn(projectId);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = safeErrorMessage(err);
       addBatchError(batchId, projectId, msg);
       logCollectionError(collectorDef.errorType, projectId, "BATCH", msg, "scheduler");
     }
@@ -136,7 +137,7 @@ export async function batchCollectRoutes(app: FastifyInstance) {
         await client.request<any>("/user");
         results.push({ project_id: projectId, label, valid: true });
       } catch (err) {
-        results.push({ project_id: projectId, label, valid: false, error: err instanceof Error ? err.message : String(err) });
+        results.push({ project_id: projectId, label, valid: false, error: safeErrorMessage(err) });
       }
     }
 

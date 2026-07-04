@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import yamlLib from "js-yaml";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 
 export async function contributorDirectoryRoutes(app: FastifyInstance) {
   // List all directory entries
@@ -122,7 +123,7 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
           );
           imported.push({ display_name: entry.name, emails: entry.emails });
         } catch (err) {
-          errors.push({ display_name: entry.name, error: err instanceof Error ? err.message : String(err) });
+          errors.push({ display_name: entry.name, error: safeErrorMessage(err) });
         }
       }
 

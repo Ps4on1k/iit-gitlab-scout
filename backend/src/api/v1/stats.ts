@@ -15,6 +15,7 @@ import type {
   ProjectStats,
   BatchStatsResponse,
 } from "../../models/responses.js";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 
 async function getProjectsFromDb() {
   const pool = getPool();
@@ -63,7 +64,7 @@ export async function batchStatsRoutes(app: FastifyInstance) {
           label: proj.label || proj.path,
           contributors: [],
           stack: { language: null, dependency_files: [], total_dependencies: 0 },
-          error: err instanceof Error ? err.message : String(err),
+          error: safeErrorMessage(err),
         });
       }
     }

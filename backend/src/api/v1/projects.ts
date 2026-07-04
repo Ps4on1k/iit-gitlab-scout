@@ -6,6 +6,7 @@ import { logAuditAction } from "../../utils/audit.js";
 import { resolveBaseUrl, validateBaseUrl } from "../../utils/project-token.js";
 import { getCached, setCache, clearCache } from "../../utils/cache.js";
 import yamlLib from "js-yaml";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 
 export async function projectsRoutes(app: FastifyInstance) {
   app.get("/api/v1/projects", { preHandler: [requireAuth] }, async () => {
@@ -230,7 +231,7 @@ export async function projectsRoutes(app: FastifyInstance) {
           );
           imported.push({ path: proj.path, label: proj.label });
         } catch (err) {
-          errors.push({ path: proj.path, error: err instanceof Error ? err.message : String(err) });
+          errors.push({ path: proj.path, error: safeErrorMessage(err) });
         }
       }
 

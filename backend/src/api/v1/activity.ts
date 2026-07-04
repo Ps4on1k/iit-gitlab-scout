@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { collectActivity } from "../../services/activity-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 import { getActivity } from "../../db/activity-repository.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
@@ -18,10 +19,10 @@ export async function activityRoutes(app: FastifyInstance) {
       const result = await collectActivity(project_id, date_from, date_to);
       return { ok: true, data: { project_id, days: result.length } };
     } catch (err) {
-      logCollectionError("collect_activity", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
+      logCollectionError("collect_activity", project_id, "MANUAL", safeErrorMessage(err), "manual");
       return reply.status(500).send({
         ok: false,
-        error: err instanceof Error ? err.message : String(err),
+        error: safeErrorMessage(err),
       });
     }
   });

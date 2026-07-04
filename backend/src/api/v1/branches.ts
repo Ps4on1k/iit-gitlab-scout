@@ -3,6 +3,7 @@ import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js"
 import { getPool } from "../../db/pool.js";
 import { collectBranches } from "../../services/branch-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import { getCached, setCache, cacheKey } from "../../utils/cache.js";
 
@@ -18,8 +19,8 @@ export async function branchRoutes(app: FastifyInstance) {
       const result = await collectBranches(project_id);
       return { ok: true, data: result };
     } catch (err) {
-      logCollectionError("collect_branches", project_id, "MANUAL", err instanceof Error ? err.message : String(err), "manual");
-      return reply.status(500).send({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      logCollectionError("collect_branches", project_id, "MANUAL", safeErrorMessage(err), "manual");
+      return reply.status(500).send({ ok: false, error: safeErrorMessage(err) });
     }
   });
 

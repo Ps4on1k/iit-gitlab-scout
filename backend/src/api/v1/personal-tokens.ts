@@ -3,6 +3,7 @@ import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { encrypt, decrypt } from "../../utils/crypto.js";
 import { GitLabClient } from "../../services/gitlab-client.js";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 
 function normalizeBaseUrl(url: string): string {
   let u = url.trim().replace(/\/+$/, "");
@@ -110,7 +111,7 @@ export async function personalTokenRoutes(app: FastifyInstance) {
 
       return { ok: true, data: { added, skipped, total: glProjects.length } };
     } catch (err) {
-      return reply.status(500).send({ ok: false, error: err instanceof Error ? err.message : String(err) });
+      return reply.status(500).send({ ok: false, error: safeErrorMessage(err) });
     }
   });
 

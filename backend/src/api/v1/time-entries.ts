@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import yamlLib from "js-yaml";
+import { safeErrorMessage } from "../../utils/safe-error.js";
 
 export async function timeEntriesRoutes(app: FastifyInstance) {
   app.get<{
@@ -51,7 +52,7 @@ export async function timeEntriesRoutes(app: FastifyInstance) {
         );
         imported.push({ id: result.rows[0].id, email: entry.email, hours: entry.hours, period_from: entry.period_from, period_to: entry.period_to });
       } catch (err) {
-        errors.push({ email: entry.email, error: err instanceof Error ? err.message : String(err) });
+        errors.push({ email: entry.email, error: safeErrorMessage(err) });
       }
     }
 
