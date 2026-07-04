@@ -207,45 +207,52 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
                 key: "per-project",
                 label: <span style={{ fontSize: 14 }}>Здоровье по проектам ({summary.perProject.length})</span>,
                 children: (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 12 }}>
-                    {summary.perProject.sort((a, b) => {
-                      const aNonMerged = (a.total - a.merged) || 1;
-                      const bNonMerged = (b.total - b.merged) || 1;
-                      return (b.stale / bNonMerged) - (a.stale / aNonMerged);
-                    }).map((p) => {
-                      const healthColor = getHealthColor(p.active, p.stale, p.total - p.merged);
-                      const stalePct = (p.total - p.merged) > 0 ? Math.round(p.stale / (p.total - p.merged) * 100) : 0;
-                      return (
-                        <div key={p.project_id} style={{ padding: 12, border: `2px solid ${healthColor}`, borderRadius: 8, background: "var(--ant-color-fill-secondary)" }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>
-                            <ProjectLabel label={p.label} tag={p.tags?.join(", ")} description={projectMap.get(p.label)?.description} />
-                          </div>
-                          <div style={{ display: "flex", gap: 16, fontSize: 12, color: "var(--ant-color-text-secondary)" }}>
-                            <span>Всего: <b>{p.total}</b></span>
-                            <span style={{ color: "#21B573" }}>Актив: <b>{p.active}</b></span>
-                            <span style={{ color: "#E5484D" }}>Заброшен: <b>{p.stale}</b></span>
-                            <span style={{ color: "#3A8DFF" }}>Замержен: <b>{p.merged}</b></span>
-                          </div>
-                          <div style={{ marginTop: 6 }}>
-                            <div style={{ height: 6, borderRadius: 3, background: "var(--ant-color-border-secondary)", overflow: "hidden", display: "flex" }}>
-                              <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#21B573" }} />
-                              <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#E5484D" }} />
-                              <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#3A8DFF" }} />
-                            </div>
-                            {stalePct > 30 && (
-                              <div style={{ fontSize: 11, color: "#E5484D", marginTop: 4 }}>
-                                <WarningOutlined /> {stalePct}% веток заброшены — рекомендуется очистка
-                              </div>
-                            )}
-                            {stalePct <= 10 && (p.total - p.merged) > 0 && (
-                              <div style={{ fontSize: 11, color: "#21B573", marginTop: 4 }}>
-                                <CheckCircleOutlined /> Хорошее состояние
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th style={{ ...thStyle, cursor: "default" }}>Проект</th>
+                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Всего</th>
+                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Активные</th>
+                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Заброшены</th>
+                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Замержены</th>
+                          <th style={{ ...thStyle, cursor: "default", width: "30%" }}>Прогресс</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summary.perProject.sort((a, b) => {
+                          const aNonMerged = (a.total - a.merged) || 1;
+                          const bNonMerged = (b.total - b.merged) || 1;
+                          return (b.stale / bNonMerged) - (a.stale / aNonMerged);
+                        }).map((p) => {
+                          const healthColor = getHealthColor(p.active, p.stale, p.total - p.merged);
+                          const stalePct = (p.total - p.merged) > 0 ? Math.round(p.stale / (p.total - p.merged) * 100) : 0;
+                          return (
+                            <tr key={p.project_id} style={{ borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
+                              <td style={{ ...tdStyle, fontWeight: 500 }}>
+                                <ProjectLabel label={p.label} tag={p.tags?.join(", ")} description={projectMap.get(p.label)?.description} />
+                              </td>
+                              <td style={{ ...tdStyle, textAlign: "center" }}>{p.total}</td>
+                              <td style={{ ...tdStyle, textAlign: "center", color: "#21B573", fontWeight: 600 }}>{p.active}</td>
+                              <td style={{ ...tdStyle, textAlign: "center", color: "#E5484D", fontWeight: 600 }}>{p.stale}</td>
+                              <td style={{ ...tdStyle, textAlign: "center", color: "#3A8DFF", fontWeight: 600 }}>{p.merged}</td>
+                              <td style={tdStyle}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                  <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--ant-color-border-secondary)", overflow: "hidden", display: "flex" }}>
+                                    <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#21B573" }} />
+                                    <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#E5484D" }} />
+                                    <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#3A8DFF" }} />
+                                  </div>
+                                  <span style={{ fontSize: 11, color: healthColor, fontWeight: 600, minWidth: 36 }}>
+                                    {stalePct > 30 ? <><WarningOutlined /> {stalePct}%</> : stalePct <= 10 && (p.total - p.merged) > 0 ? <><CheckCircleOutlined /> OK</> : `${stalePct}%`}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 ),
               }]}
@@ -278,18 +285,22 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
                     {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : r.daysAgo > 90 ? <Tag color="red">заброшена</Tag> : <Tag color="green">активная</Tag>}
                   </td>
                   <td style={tdStyle}>
-                    <span style={{ color: getAgeColor(r.daysAgo) }}>
-                      {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "N/A"}
-                    </span>
-                    {(r as any).last_commit_additions > 0 || (r as any).last_commit_deletions > 0 ? (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: "var(--ant-color-textSecondary)" }}>
-                        <span style={{ color: "#21B573" }}>+{(r as any).last_commit_additions}</span>
-                        {" "}
-                        <span style={{ color: "#E5484D" }}>-{(r as any).last_commit_deletions}</span>
+                    <div>
+                      <span style={{ color: getAgeColor(r.daysAgo) }}>
+                        {lastDate ? `${lastDate.toLocaleDateString()} (${formatAge(r.daysAgo)})` : "N/A"}
                       </span>
-                    ) : lastDate ? (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: "var(--ant-color-textTertiary)" }}>N/A</span>
-                    ) : null}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--ant-color-textSecondary)", marginTop: 1 }}>
+                      {(r as any).last_commit_additions > 0 || (r as any).last_commit_deletions > 0 ? (
+                        <>
+                          <span style={{ color: "#21B573" }}>+{(r as any).last_commit_additions}</span>
+                          {" "}
+                          <span style={{ color: "#E5484D" }}>-{(r as any).last_commit_deletions}</span>
+                        </>
+                      ) : lastDate ? (
+                        <span>N/A</span>
+                      ) : null}
+                    </div>
                   </td>
                   <td style={tdStyle}>
                     {r.branchAge !== null ? <span style={{ color: "var(--ant-color-text-secondary)" }}>{formatAge(r.branchAge)}</span> : "N/A"}
