@@ -10,6 +10,7 @@ interface Props {
   onContributorClick?: (name: string) => void;
   dateFrom?: string;
   dateTo?: string;
+  projectIds?: number[];
 }
 
 type SortKey = "author_email" | "total_commits" | "total_additions" | "total_deletions" | "total_changes" | "cpc" | "active_days" | "commits_per_day" | "commits_per_week" | "avg_additions" | "avg_deletions" | "activity_span" | "score";
@@ -128,18 +129,18 @@ function downloadCsv(filename: string, headers: string[], rows: any[][]) {
   URL.revokeObjectURL(url);
 }
 
-function CommitPopup({ email, dateFrom, dateTo }: { email: string; dateFrom?: string; dateTo?: string }) {
+function CommitPopup({ email, dateFrom, dateTo, projectIds }: { email: string; dateFrom?: string; dateTo?: string; projectIds?: number[] }) {
   const [commits, setCommits] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setLoading(true);
-    fetchContributorCommits(email, undefined, dateFrom, dateTo).then((r) => {
+    fetchContributorCommits(email, projectIds, dateFrom, dateTo).then((r) => {
       if (r.ok) { setCommits(r.data!.commits); setTotal(r.data!.total); }
       setLoading(false);
     });
-  }, [email, dateFrom, dateTo]);
+  }, [email, dateFrom, dateTo, projectIds]);
 
   const handleExport = () => {
     const headers = ["Дата", "Проект", "SHA", "Автор", "Вставка", "Удаление", "Итого", "Сообщение"];
@@ -192,7 +193,7 @@ function CommitPopup({ email, dateFrom, dateTo }: { email: string; dateFrom?: st
   );
 }
 
-export function ContributorTable({ data, loading, onContributorClick, dateFrom, dateTo }: Props) {
+export function ContributorTable({ data, loading, onContributorClick, dateFrom, dateTo, projectIds }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("score");
   const [sortAsc, setSortAsc] = useState(false);
   const [page, setPage] = useState(1);
@@ -360,17 +361,21 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
                   <div>
                     <div style={{ fontWeight: 600 }}>
                       {c.author_name}
-                      <SearchOutlined
-                        style={{ color: "#3A8DFF", marginLeft: 6, cursor: "pointer", fontSize: 12 }}
-                        onClick={(e) => { e.stopPropagation(); setModalEmail(c.author_email); setModalName(c.author_name || c.author_email); setModalOpen(true); }}
-                      />
                     </div>
                     <div style={{ fontSize: 11, color: onContributorClick ? "#3A8DFF" : "var(--ant-color-textTertiary)", cursor: onContributorClick ? "pointer" : "default", fontWeight: c.author_name ? 400 : 500 }}
                       onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</div>
                   </div>
                 </td>
                 <td style={tdStyle}><ScoreCell score={c.score} onClick={() => { setScoreModalData({ name: c.author_name || c.author_email, score: c.score }); setScoreModalOpen(true); }} /></td>
-                <td style={tdStyle}>{Number(c.total_commits)}</td>
+                <td style={tdStyle}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    {Number(c.total_commits)}
+                    <SearchOutlined
+                      style={{ color: "#3A8DFF", cursor: "pointer", fontSize: 12 }}
+                      onClick={(e) => { e.stopPropagation(); setModalEmail(c.author_email); setModalName(c.author_name || c.author_email); setModalOpen(true); }}
+                    />
+                  </span>
+                </td>
                 <td style={{ ...tdStyle, color: "#21B573" }}>+{Number(c.total_additions).toLocaleString()}</td>
                 <td style={{ ...tdStyle, color: "#E5484D" }}>-{Number(c.total_deletions).toLocaleString()}</td>
                 <td style={tdStyle}>{cpc}</td>
@@ -418,7 +423,7 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
         width="80%"
         destroyOnClose
       >
-        <CommitPopup email={modalEmail} />
+        <CommitPopup email={modalEmail} dateFrom={dateFrom} dateTo={dateTo} projectIds={projectIds} />
       </Modal>
       <div style={{ padding: "16px 20px", borderTop: "1px solid var(--ant-color-border-secondary)", background: "var(--ant-color-fill-secondary)", borderRadius: "0 0 12px 12px" }}>
         <div style={{ fontWeight: 600, fontSize: 13, color: "var(--ant-color-text)", marginBottom: 10 }}>Индикатор эффективности</div>

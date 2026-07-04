@@ -255,7 +255,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
           <h3 style={{ margin: 0, fontSize: 16, color: "var(--ant-color-text)", borderLeft: "4px solid #B0C0D8", paddingLeft: 12 }}>Детальная таблица контрибуторов</h3>
         </div>
-        <div style={{ padding: 20 }}><ContributorTable data={contributorsWithDeployScore} loading={loading} onContributorClick={onContributorClick} dateFrom={filters.dateFrom} dateTo={filters.dateTo} /></div>
+        <div style={{ padding: 20 }}><ContributorTable data={contributorsWithDeployScore} loading={loading} onContributorClick={onContributorClick} dateFrom={filters.dateFrom} dateTo={filters.dateTo} projectIds={effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined} /></div>
       </div>
       )}
 
