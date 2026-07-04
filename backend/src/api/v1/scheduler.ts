@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireAdmin } from "../../utils/auth.js";
+import { requireAuth, requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { runAllEnabledTasks, getSchedulerProgress, isSchedulerBusy } from "../../services/scheduler.js";
 import { isAnyCollectionRunning, getActiveJobs } from "../../utils/collect-tracker.js";
@@ -72,7 +72,7 @@ export async function schedulerRoutes(app: FastifyInstance) {
     return { ok: true, data: result.rows[0] };
   });
 
-  app.get("/api/v1/scheduler/status", { preHandler: [requireAdmin] }, async () => {
+  app.get("/api/v1/scheduler/status", { preHandler: [requireAuth] }, async () => {
     const pool = getPool();
     const result = await pool.query(
       "SELECT task_name, enabled, interval_minutes, last_run_at FROM scheduler_settings ORDER BY id"
