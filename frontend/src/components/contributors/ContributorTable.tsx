@@ -211,11 +211,14 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
       const avgDeletions = c.total_commits > 0 ? c.total_deletions / c.total_commits : 0;
       const avgChangesPerCommit = c.total_commits > 0 ? c.total_changes / c.total_commits : 0;
 
+      const freqDates = Object.keys(freq).filter((d) => freq[d] > 0).sort();
       let activitySpan = 0;
-      if (c.first_commit_date && c.last_commit_date) {
-        const first = new Date(c.first_commit_date).getTime();
-        const last = new Date(c.last_commit_date).getTime();
-        activitySpan = Math.ceil((last - first) / 86400000);
+      if (freqDates.length >= 2) {
+        const first = new Date(freqDates[0]).getTime();
+        const last = new Date(freqDates[freqDates.length - 1]).getTime();
+        activitySpan = Math.ceil((last - first) / 86400000) + 1;
+      } else if (freqDates.length === 1) {
+        activitySpan = 1;
       }
 
       const score = computeScore({
