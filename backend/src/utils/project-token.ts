@@ -2,6 +2,49 @@ import { getPool } from "../db/pool.js";
 import { decrypt } from "./crypto.js";
 import { GitLabClient } from "../services/gitlab-client.js";
 
+const BLOCKED_IP_RANGES = [
+  /^127\./,
+  /^10\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^169\.254\./,
+  /^0\./,
+  /^::1$/,
+  /^fc00:/,
+  /^fd/,
+  /^fe80:/,
+];
+
+function isPrivateOrReservedHost(hostname: string): boolean {
+  if (hostname === "localhost" || hostname === "0.0.0.0" || hostname === "[::1]") {
+    return true;
+  }
+  return BLOCKED_IP_RANGES.some((re) => re.test(hostname));
+}
+
+export function validateBaseUrl(url: string): { valid: boolean; error?: string } {
+  let parsed: URL;
+  try {
+    parsed = new URL(url.trim());
+  } catch {
+    return { valid: false, error: "Invalid URL format" };
+  }
+
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return { valid: false, error: "Only HTTP and HTTPS protocols are allowed" };
+  }
+
+  if (isPrivateOrReservedHost(parsed.hostname)) {
+    return { valid: false, error: "Private/reserved IP addresses are not allowed (SSRF protection)" };
+  }
+
+  if (parsed.port && !["80", "443", "8080", "8443", "3000"].includes(parsed.port)) {
+    return { valid: false, error: `Port ${parsed.port} is not allowed` };
+  }
+
+  return { valid: true };
+}
+
 function normalizeBaseUrl(url: string): string {
   let u = url.trim().replace(/\/+$/, "");
   if (!u.includes("/api/v4")) {

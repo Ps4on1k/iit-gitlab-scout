@@ -83,3 +83,12 @@ export async function clearSchedulerErrors(taskName?: string): Promise<ApiRespon
   const qs = taskName ? `?task_name=${encodeURIComponent(taskName)}` : "";
   return fetchJson(`/v1/scheduler/errors${qs}`, { method: "DELETE" });
 }
+
+export async function runAllSchedulerTasks(): Promise<ApiResponse<{ started: boolean }>> {
+  const result = await fetchJson<{ started: boolean }>("/v1/scheduler/run-all", { method: "POST" });
+  if (result.ok) {
+    const { clearCache } = await import("../utils/cache");
+    clearCache("scheduler");
+  }
+  return result;
+}

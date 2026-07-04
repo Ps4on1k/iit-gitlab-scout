@@ -66,3 +66,8 @@ export function isCollectorActive(collector: string): boolean {
   }
   return false;
 }
+
+export function resetTracker(): void {
+  jobs.clear();
+  jobCounter = 0;
+}

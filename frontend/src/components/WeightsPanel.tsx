@@ -16,7 +16,7 @@ const CONTRIBUTOR_DESCRIPTIONS: Record<string, string> = {
   activity: "Коммитов в неделю (нормализовано до 15)",
   impact: "Суммарные изменения за активный день (нормализовано до 200)",
   sizeQuality: "Средний размер коммита (идеал 10–50 строк)",
-  deploy: "Составной скор деплоя: Success Rate × 50% + Coverage × 30% + Volume × 20%",
+  deploy: "Составной скор деплоя из группы «Надёжность деплоя»",
 };
 
 const DEPLOY_LABELS: Record<string, string> = {

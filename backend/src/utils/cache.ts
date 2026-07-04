@@ -1,38 +1,46 @@
-export class TTLDict<T> {
-  private store = new Map<string, { value: T; expiresAt: number }>();
-  private ttlMs: number;
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
 
-  constructor(ttlSeconds: number) {
-    this.ttlMs = ttlSeconds * 1000;
-  }
+const cache = new Map<string, CacheEntry<any>>();
+let cleanupInterval: ReturnType<typeof setInterval> | null = null;
 
-  get(key: string): T | undefined {
-    const entry = this.store.get(key);
-    if (!entry) return undefined;
-    if (Date.now() > entry.expiresAt) {
-      this.store.delete(key);
-      return undefined;
+function startCleanup(): void {
+  if (cleanupInterval) return;
+  cleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of cache) {
+      if (now > entry.expiresAt) cache.delete(key);
     }
-    return entry.value;
-  }
+  }, 60_000);
+}
 
-  set(key: string, value: T): void {
-    this.store.set(key, { value, expiresAt: Date.now() + this.ttlMs });
+export function getCached<T>(key: string): T | undefined {
+  const entry = cache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() > entry.expiresAt) {
+    cache.delete(key);
+    return undefined;
   }
+  return entry.data as T;
+}
 
-  has(key: string): boolean {
-    return this.get(key) !== undefined;
-  }
+export function setCache<T>(key: string, data: T, ttlMs = 60_000): void {
+  startCleanup();
+  cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+}
 
-  delete(key: string): void {
-    this.store.delete(key);
+export function clearCache(pattern?: string): void {
+  if (!pattern) {
+    cache.clear();
+    return;
   }
+  for (const key of cache.keys()) {
+    if (key.startsWith(pattern)) cache.delete(key);
+  }
+}
 
-  clear(): void {
-    this.store.clear();
-  }
-
-  get size(): number {
-    return this.store.size;
-  }
+export function cacheKey(...parts: (string | number | undefined)[]): string {
+  return parts.filter((p) => p !== undefined && p !== "").join(":");
 }

@@ -96,8 +96,6 @@ export async function userManagementRoutes(app: FastifyInstance) {
     const admin = (request as any).user as JwtPayload;
     logAuditAction(admin.userId, "user_update", `Updated user ${id}: ${auditFields.join("; ")}`);
     return { ok: true, data: result.rows[0] };
-
-    return { ok: true, data: result.rows[0] };
   });
 
   app.put<{
@@ -107,8 +105,8 @@ export async function userManagementRoutes(app: FastifyInstance) {
     const { id } = request.params;
     const { password } = request.body;
 
-    if (!password || password.length < 4) {
-      return reply.status(400).send({ ok: false, error: "Password must be at least 4 characters" });
+    if (!password || password.length < 8) {
+      return reply.status(400).send({ ok: false, error: "Password must be at least 8 characters" });
     }
 
     const pool = getPool();
@@ -119,6 +117,8 @@ export async function userManagementRoutes(app: FastifyInstance) {
 
     const hash = await bcrypt.hash(password, 10);
     await pool.query("UPDATE app_users SET password_hash = $1 WHERE id = $2", [hash, id]);
+    const admin = (request as any).user as JwtPayload;
+    logAuditAction(admin.userId, "user_password_change", `Changed password for user ${id}`);
     return { ok: true, data: { message: "Password updated" } };
   });
 

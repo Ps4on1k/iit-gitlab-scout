@@ -2,6 +2,7 @@ import type { FastifyRequest, FastifyReply } from "fastify";
 import jwt from "jsonwebtoken";
 import { getEnv } from "../config.js";
 import { getPool } from "../db/pool.js";
+import { logAuditAction } from "./audit.js";
 
 export type Role = "admin" | "user" | "manager";
 
@@ -43,7 +44,21 @@ export async function requireAdmin(
   if (reply.sent) return;
   const user = (request as any).user as JwtPayload;
   if (user.role !== "admin") {
+    logAuditAction(user.userId, "permission_denied", `Admin access denied for ${user.username} on ${request.url}`);
     return reply.status(403).send({ ok: false, error: "Admin role required" });
+  }
+}
+
+export async function requireManager(
+  request: FastifyRequest,
+  reply: FastifyReply
+): Promise<void> {
+  await requireAuth(request, reply);
+  if (reply.sent) return;
+  const user = (request as any).user as JwtPayload;
+  if (user.role !== "admin" && user.role !== "manager") {
+    logAuditAction(user.userId, "permission_denied", `Manager access denied for ${user.username} on ${request.url}`);
+    return reply.status(403).send({ ok: false, error: "Admin or manager role required" });
   }
 }
 

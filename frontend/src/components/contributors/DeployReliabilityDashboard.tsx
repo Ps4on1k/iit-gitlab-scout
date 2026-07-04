@@ -1,15 +1,21 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card, Spin, Empty, Button, Table } from "antd";
 import { ReloadOutlined, RocketOutlined } from "@ant-design/icons";
-import { fetchProjects, fetchDeployReliability, type DeployReliabilityEntry } from "../../api/client";
+import { fetchProjects, fetchDeployReliability, fetchMetricWeights, type DeployReliabilityEntry } from "../../api/client";
 import type { ProjectConfig } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
 
-function computeScore(d: DeployReliabilityEntry): number {
+function computeScore(d: DeployReliabilityEntry, weights?: Record<string, number>): number {
   const quality = d.deploy_success_rate;
   const consistency = d.pipeline_coverage_rate;
   const volume = Math.min(d.successful_pipelines, 100);
-  return Math.round((quality * 0.5 + consistency * 0.3 + volume * 0.2) * 10) / 10;
+  const w = {
+    successRate: weights?.successRate ?? 50,
+    coverage: weights?.coverage ?? 30,
+    volume: weights?.volume ?? 20,
+  };
+  const total = w.successRate + w.coverage + w.volume;
+  return Math.round(((quality * w.successRate + consistency * w.coverage + volume * w.volume) / total) * 10) / 10;
 }
 
 interface Props {
@@ -21,8 +27,12 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<ProjectConfig[]>([]);
   const [deployData, setDeployData] = useState<DeployReliabilityEntry[]>([]);
+  const [deployWeights, setDeployWeights] = useState<Record<string, number>>({});
 
-  useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); }); }, []);
+  useEffect(() => {
+    fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); });
+    fetchMetricWeights().then((r) => { if (r.ok && r.data?.deploy_reliability) setDeployWeights(r.data.deploy_reliability); });
+  }, []);
 
   const effectiveProjectIds = useMemo(() => {
     if (filters.tags.length === 0) return filters.projectIds;
@@ -43,9 +53,9 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
 
   const sortedData = useMemo(() => {
     return [...deployData]
-      .map((d) => ({ ...d, _score: computeScore(d) }))
+      .map((d) => ({ ...d, _score: computeScore(d, deployWeights) }))
       .sort((a, b) => b._score - a._score);
-  }, [deployData]);
+  }, [deployData, deployWeights]);
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
@@ -78,7 +88,7 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
 
           <Card size="small" style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)", lineHeight: 1.8 }}>
-              <b>Рейтинг</b> — составной скор: <code>Success Rate × 50% + Coverage × 30% + min(Successful, 100) × 20%</code>.
+              <b>Рейтинг</b> — составной скор: <code>Success Rate × {deployWeights.successRate ?? 50}% + Coverage × {deployWeights.coverage ?? 30}% + min(Successful, 100) × {deployWeights.volume ?? 20}%</code>.
               Учитывает качество (доля успешных), стабильность (охват MR pipeline) и объём (количество успешных деплоев, до 100).
               <span style={{ marginLeft: 16 }}><b>Deploy Success Rate</b> — % успешных pipeline из завершённых.</span>
               <span style={{ marginLeft: 16 }}><b>Pipeline Coverage</b> — % MR с запущенным pipeline.</span>

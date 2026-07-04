@@ -3,16 +3,22 @@ import { getPool } from "../../db/pool.js";
 import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { encrypt, decrypt } from "../../utils/crypto.js";
 import { logAuditAction } from "../../utils/audit.js";
-import { resolveBaseUrl } from "../../utils/project-token.js";
+import { resolveBaseUrl, validateBaseUrl } from "../../utils/project-token.js";
+import { getCached, setCache, clearCache } from "../../utils/cache.js";
 import yamlLib from "js-yaml";
 
 export async function projectsRoutes(app: FastifyInstance) {
   app.get("/api/v1/projects", { preHandler: [requireAuth] }, async () => {
+    const cached = getCached<any>("projects:list");
+    if (cached) return cached;
+
     const pool = getPool();
     const result = await pool.query(
       "SELECT id, path, label, tags, base_url, description, created_at, updated_at FROM projects ORDER BY created_at DESC"
     );
-    return { ok: true, data: result.rows };
+    const response = { ok: true, data: result.rows };
+    setCache("projects:list", response, 60_000);
+    return response;
   });
 
   app.post<{
@@ -22,6 +28,12 @@ export async function projectsRoutes(app: FastifyInstance) {
 
     if (!path || !label || !token || token.trim().length === 0) {
       return reply.status(400).send({ ok: false, error: "path, label, token are required" });
+    }
+
+    const urlToValidate = base_url || "https://gitlab.com/api/v4";
+    const urlCheck = validateBaseUrl(urlToValidate);
+    if (!urlCheck.valid) {
+      return reply.status(400).send({ ok: false, error: urlCheck.error });
     }
 
     const encrypted = encrypt(token);
@@ -37,6 +49,7 @@ export async function projectsRoutes(app: FastifyInstance) {
       );
       const user = (request as any).user as JwtPayload;
       logAuditAction(user.userId, "project_create", `Created project: ${label} (${path})`);
+      clearCache("projects");
       return { ok: true, data: result.rows[0] };
     } catch (err: any) {
       if (err.code === "23505") {
@@ -52,6 +65,13 @@ export async function projectsRoutes(app: FastifyInstance) {
   }>("/api/v1/projects/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params;
     const { path, label, token, base_url, tags, description } = request.body;
+
+    if (base_url !== undefined) {
+      const urlCheck = validateBaseUrl(base_url);
+      if (!urlCheck.valid) {
+        return reply.status(400).send({ ok: false, error: urlCheck.error });
+      }
+    }
 
     const pool = getPool();
     const existing = await pool.query("SELECT id FROM projects WHERE id = $1", [id]);
@@ -90,6 +110,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     );
     const user = (request as any).user as JwtPayload;
     logAuditAction(user.userId, "project_update", `Updated project ${id}: ${auditFields.join("; ")}`);
+    clearCache("projects");
     return { ok: true, data: result.rows[0] };
   });
 
@@ -104,6 +125,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     }
     const user = (request as any).user as JwtPayload;
     logAuditAction(user.userId, "project_delete", `Deleted project ${id}`);
+    clearCache("projects");
     return { ok: true, data: { deleted: true } };
   });
 
@@ -131,6 +153,7 @@ export async function projectsRoutes(app: FastifyInstance) {
     await pool.query("DELETE FROM projects");
     const user = (request as any).user as JwtPayload;
     logAuditAction(user.userId, "project_delete", `Deleted ALL projects (${count} total)`);
+    clearCache("projects");
     return { ok: true, data: { deleted: count } };
   });
 
@@ -186,6 +209,12 @@ export async function projectsRoutes(app: FastifyInstance) {
       for (const proj of projects) {
         if (!proj.path || !proj.label || !proj.token) {
           errors.push({ path: proj.path || "unknown", error: "Missing path, label, or token" });
+          continue;
+        }
+        const urlToValidate = proj.base_url || "https://gitlab.com/api/v4";
+        const urlCheck = validateBaseUrl(urlToValidate);
+        if (!urlCheck.valid) {
+          errors.push({ path: proj.path, error: urlCheck.error || "Invalid URL" });
           continue;
         }
         try {

@@ -4,6 +4,7 @@ import { getPool } from "../../db/pool.js";
 import { collectBranches } from "../../services/branch-collector.js";
 import { logCollectionError } from "../../utils/collection-error.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
+import { getCached, setCache, cacheKey } from "../../utils/cache.js";
 
 export async function branchRoutes(app: FastifyInstance) {
   app.post<{
@@ -27,6 +28,11 @@ export async function branchRoutes(app: FastifyInstance) {
   }>("/api/v1/branches", { preHandler: [requireAuth] }, async (request) => {
     const { project_id, project_ids, tag, status, search, date_from, date_to, contributor } = request.query;
     const user = (request as any).user as JwtPayload;
+
+    const cacheK = cacheKey("branches", user.userId, project_ids, tag, status, search, date_from, date_to, contributor);
+    const cached = getCached<any>(cacheK);
+    if (cached) return cached;
+
     const pool = getPool();
     const conditions: string[] = [];
     const params: any[] = [];
@@ -168,12 +174,15 @@ export async function branchRoutes(app: FastifyInstance) {
       return Array.from(map.entries()).map(([id, s]) => ({ project_id: id, ...s }));
     })();
 
-    return {
+    const response = {
       ok: true,
       data: {
         branches: result.rows,
         summary: { total, active, stale, merged: mergedCount, protected: protectedCount, avgDaysSinceCommit, perProject },
       },
     };
+
+    setCache(cacheK, response, 60_000);
+    return response;
   });
 }

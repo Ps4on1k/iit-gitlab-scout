@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
+import { getCached, setCache, cacheKey } from "../../utils/cache.js";
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.get<{
@@ -11,6 +12,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const pool = getPool();
     const allowedIds = await getFilteredProjectIds(user.userId);
     const periodDays = Math.max(1, Math.min(365, parseInt(request.query.period || "30") || 30));
+
+    const cacheK = cacheKey("dashboard", user.userId, periodDays, allowedIds?.join(","));
+    const cached = getCached<any>(cacheK);
+    if (cached) return cached;
 
     const projectWhere = allowedIds !== null
       ? allowedIds.length > 0 ? `WHERE p.id = ANY($1)` : `WHERE 1=0`
@@ -235,7 +240,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
 
     const doraFreq = deploys.total > 0 ? Math.round((deploys.total / Math.max(1, Math.ceil((new Date(todayStr).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1)) * 100) / 100 : 0;
 
-    return {
+    const response = {
       ok: true,
       data: {
         period: periodDays,
@@ -269,5 +274,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
         mrByProject: mrByProjectResult,
       },
     };
+
+    setCache(cacheK, response, 60_000);
+    return response;
   });
 }
