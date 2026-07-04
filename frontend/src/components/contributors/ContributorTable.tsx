@@ -17,6 +17,15 @@ interface ScoreResult {
   grade: string;
   color: string;
   icon: string;
+  breakdown: ScoreBreakdown;
+}
+
+interface ScoreBreakdown {
+  consistency: { raw: number; normalized: number; weight: number; description: string };
+  activity: { raw: number; normalized: number; weight: number; description: string };
+  impact: { raw: number; normalized: number; weight: number; description: string };
+  sizeQuality: { raw: number; normalized: number; weight: number; description: string };
+  deploy: { raw: number; normalized: number; weight: number; description: string };
 }
 
 function computeScore(c: {
@@ -30,41 +39,76 @@ function computeScore(c: {
 }): ScoreResult {
   const { total_commits, total_changes, activeDays, activitySpan, commitsPerWeek, avgChangesPerCommit, deployScore } = c;
 
-  if (total_commits === 0) return { score: 0, grade: "Нет данных", color: "#d9d9d9", icon: "—" };
+  if (total_commits === 0) return { score: 0, grade: "Нет данных", color: "#d9d9d9", icon: "—", breakdown: { consistency: { raw: 0, normalized: 0, weight: 25, description: "Нет данных" }, activity: { raw: 0, normalized: 0, weight: 20, description: "Нет данных" }, impact: { raw: 0, normalized: 0, weight: 20, description: "Нет данных" }, sizeQuality: { raw: 0, normalized: 0, weight: 15, description: "Нет данных" }, deploy: { raw: 0, normalized: 0, weight: 20, description: "Нет данных" } } };
 
   const consistency = activitySpan > 0 ? Math.min(activeDays / activitySpan, 1) : 0;
-
   const activity = Math.min(commitsPerWeek / 15, 1);
-
   const changesPerDay = activeDays > 0 ? total_changes / activeDays : 0;
   const impact = Math.min(changesPerDay / 200, 1);
-
   const sizeQuality = avgChangesPerCommit <= 10 ? 0.3
     : avgChangesPerCommit <= 50 ? 1
     : avgChangesPerCommit <= 200 ? 0.8
     : avgChangesPerCommit <= 500 ? 0.5
     : 0.2;
-
   const deploy = deployScore !== undefined ? deployScore / 100 : 0.5;
 
   const raw = (consistency * 25) + (activity * 20) + (impact * 20) + (sizeQuality * 15) + (deploy * 20);
   const score = Math.round(Math.min(100, Math.max(0, raw)));
 
-  if (score >= 80) return { score, grade: "Превосходно", color: "#21B573", icon: "★" };
-  if (score >= 60) return { score, grade: "Отлично", color: "#3A8DFF", icon: "●" };
-  if (score >= 40) return { score, grade: "Хорошо", color: "#FFB020", icon: "◆" };
-  if (score >= 20) return { score, grade: "Требует внимания", color: "#FFB020", icon: "▲" };
-  return { score, grade: "Критично", color: "#E5484D", icon: "!" };
+  const sizeDesc = avgChangesPerCommit <= 10 ? "Мелкие коммиты (≤10 строк) — хорошо для ревью" :
+    avgChangesPerCommit <= 50 ? "Оптимальный размер (10–50 строк)" :
+    avgChangesPerCommit <= 200 ? "Крупноватые коммиты (50–200 строк)" :
+    avgChangesPerCommit <= 500 ? "Очень крупные коммиты (>200 строк)" :
+    "Критически крупные коммиты (>500 строк)";
+
+  const breakdown: ScoreBreakdown = {
+    consistency: {
+      raw: activitySpan > 0 ? activeDays / activitySpan : 0,
+      normalized: consistency,
+      weight: 25,
+      description: `${activeDays} активных дней из ${activitySpan} дней участия (${Math.round(consistency * 100)}%)`,
+    },
+    activity: {
+      raw: commitsPerWeek,
+      normalized: activity,
+      weight: 20,
+      description: `${commitsPerWeek.toFixed(1)} коммитов/нед. (норма: ≤15)`,
+    },
+    impact: {
+      raw: changesPerDay,
+      normalized: impact,
+      weight: 20,
+      description: `${Math.round(changesPerDay)} строк/день (норма: ≤200)`,
+    },
+    sizeQuality: {
+      raw: avgChangesPerCommit,
+      normalized: sizeQuality,
+      weight: 15,
+      description: `${avgChangesPerCommit.toFixed(0)} строк/коммит — ${sizeDesc}`,
+    },
+    deploy: {
+      raw: deployScore ?? 50,
+      normalized: deploy,
+      weight: 20,
+      description: deployScore !== undefined ? `Score надёжности деплоя: ${deployScore}/100` : "Нет данных о деплоях (нейтральное значение)",
+    },
+  };
+
+  if (score >= 80) return { score, grade: "Превосходно", color: "#21B573", icon: "★", breakdown };
+  if (score >= 60) return { score, grade: "Отлично", color: "#3A8DFF", icon: "●", breakdown };
+  if (score >= 40) return { score, grade: "Хорошо", color: "#FFB020", icon: "◆", breakdown };
+  if (score >= 20) return { score, grade: "Требует внимания", color: "#FFB020", icon: "▲", breakdown };
+  return { score, grade: "Критично", color: "#E5484D", icon: "!", breakdown };
 }
 
-function ScoreCell({ score }: { score: ScoreResult }) {
+function ScoreCell({ score, onClick }: { score: ScoreResult; onClick?: () => void }) {
   return (
-    <Tooltip title={<span>{score.score}/100 — {score.grade}</span>} placement="top">
-      <span style={{
+    <Tooltip title={<span>{score.score}/100 — {score.grade}. Нажмите для подробностей</span>} placement="top">
+      <span onClick={onClick} style={{
         display: "inline-flex", alignItems: "center", justifyContent: "center",
         width: 24, height: 24, borderRadius: 12,
         background: score.color, color: "white", fontSize: 12, fontWeight: 700,
-        cursor: "default",
+        cursor: onClick ? "pointer" : "default",
       }}>{score.icon}</span>
     </Tooltip>
   );
@@ -154,6 +198,8 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalEmail, setModalEmail] = useState("");
   const [modalName, setModalName] = useState("");
+  const [scoreModalOpen, setScoreModalOpen] = useState(false);
+  const [scoreModalData, setScoreModalData] = useState<{ name: string; score: ScoreResult } | null>(null);
 
   const withMetrics = useMemo(() => {
     return data.map((c) => {
@@ -299,7 +345,7 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
                       onClick={onContributorClick ? () => onContributorClick(c.author_email) : undefined}>{c.author_email}</div>
                   </div>
                 </td>
-                <td style={tdStyle}><ScoreCell score={c.score} /></td>
+                <td style={tdStyle}><ScoreCell score={c.score} onClick={() => { setScoreModalData({ name: c.author_name || c.author_email, score: c.score }); setScoreModalOpen(true); }} /></td>
                 <td style={tdStyle}>{Number(c.total_commits)}</td>
                 <td style={{ ...tdStyle, color: "#21B573" }}>+{Number(c.total_additions).toLocaleString()}</td>
                 <td style={{ ...tdStyle, color: "#E5484D" }}>-{Number(c.total_deletions).toLocaleString()}</td>
@@ -385,6 +431,51 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
           Все метрики вычисляются на основе коммитов за выбранный диапазон дат. Фильтры по проектам и тегам влияют на результат. Индикатор не учитывает контекст проекта, сложность задач и код-ревью.
         </div>
       </div>
+
+      <Modal
+        title={<span>Раскладка Score: {scoreModalData?.name}</span>}
+        open={scoreModalOpen}
+        onCancel={() => setScoreModalOpen(false)}
+        footer={null}
+        width={520}
+      >
+        {scoreModalData && (
+          <div>
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <span style={{
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                width: 48, height: 48, borderRadius: 24,
+                background: scoreModalData.score.color, color: "white", fontSize: 20, fontWeight: 700,
+              }}>{scoreModalData.score.icon}</span>
+              <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8 }}>{scoreModalData.score.score}/100</div>
+              <div style={{ fontSize: 14, color: scoreModalData.score.color, fontWeight: 600 }}>{scoreModalData.score.grade}</div>
+            </div>
+
+            <div style={{ fontSize: 13, color: "var(--ant-color-textSecondary)", marginBottom: 16, textAlign: "center" }}>
+              Формула: <code>Consistency × 25% + Activity × 20% + Impact × 20% + Quality × 15% + Deploy × 20%</code>
+            </div>
+
+            {(["consistency", "activity", "impact", "sizeQuality", "deploy"] as const).map((key) => {
+              const b = scoreModalData.score.breakdown[key];
+              const barWidth = b.normalized * 100;
+              const labels = { consistency: "Последовательность", activity: "Активность", impact: "Влияние", sizeQuality: "Качество коммитов", deploy: "Надёжность деплоя" };
+              const colors = { consistency: "#3A8DFF", activity: "#B8A8D8", impact: "#21B573", sizeQuality: "#FFB020", deploy: "#42D9C8" };
+              return (
+                <div key={key} style={{ marginBottom: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13 }}>{labels[key]} ({b.weight}%)</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: colors[key] }}>{Math.round(b.normalized * b.weight * 10) / 10} баллов</span>
+                  </div>
+                  <div style={{ height: 8, borderRadius: 4, background: "var(--ant-color-fill-secondary)", overflow: "hidden", marginBottom: 4 }}>
+                    <div style={{ width: `${barWidth}%`, height: "100%", background: colors[key], borderRadius: 4 }} />
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)" }}>{b.description}</div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
