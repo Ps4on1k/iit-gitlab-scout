@@ -6,6 +6,7 @@ import { collectBranches } from "./branch-collector.js";
 import { collectMergeRequests } from "./mr-collector.js";
 import { collectPipelines } from "./pipeline-collector.js";
 import { setSchedulerRunning } from "../utils/collect-tracker.js";
+import { setSchedulerStartedAt, clearSchedulerStartedAt } from "../api/v1/scheduler.js";
 
 interface SchedulerTask {
   id: number;
@@ -17,6 +18,7 @@ interface SchedulerTask {
 
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let logFn: (...args: any[]) => void = console.log;
+let isRunning = false;
 
 async function runTask(taskName: string): Promise<void> {
   const pool = getPool();
@@ -81,41 +83,45 @@ async function runTask(taskName: string): Promise<void> {
 }
 
 async function checkAndRun(): Promise<void> {
-  const pool = getPool();
-
-  let result;
-  try {
-    result = await pool.query("SELECT * FROM scheduler_settings WHERE enabled = true");
-  } catch {
+  if (isRunning) {
+    logFn("[scheduler] Previous cycle still running, skipping");
     return;
   }
+  isRunning = true;
+  setSchedulerRunning(true);
+  setSchedulerStartedAt(Date.now());
 
-  const now = Date.now();
+  try {
+    const pool = getPool();
 
-  for (const task of result.rows as SchedulerTask[]) {
-    if (!task.last_run_at) {
-      logFn(`[scheduler] Running ${task.task_name} (first run)`);
-      setSchedulerRunning(true);
-      try {
-        await runTask(task.task_name);
-      } finally {
-        setSchedulerRunning(false);
-      }
-      continue;
+    let result;
+    try {
+      result = await pool.query("SELECT * FROM scheduler_settings WHERE enabled = true");
+    } catch {
+      return;
     }
 
-    const lastRun = new Date(task.last_run_at).getTime();
-    const elapsed = (now - lastRun) / 1000 / 60;
+    const now = Date.now();
 
-    if (elapsed >= task.interval_minutes) {
-      logFn(`[scheduler] Running ${task.task_name} (elapsed: ${Math.round(elapsed)} min, interval: ${task.interval_minutes} min)`);
-      setSchedulerRunning(true);
-      try {
+    for (const task of result.rows as SchedulerTask[]) {
+      if (!task.last_run_at) {
+        logFn(`[scheduler] Running ${task.task_name} (first run)`);
         await runTask(task.task_name);
-      } finally {
-        setSchedulerRunning(false);
+        continue;
+      }
+
+      const lastRun = new Date(task.last_run_at).getTime();
+      const elapsed = (now - lastRun) / 1000 / 60;
+
+      if (elapsed >= task.interval_minutes) {
+        logFn(`[scheduler] Running ${task.task_name} (elapsed: ${Math.round(elapsed)} min, interval: ${task.interval_minutes} min)`);
+        await runTask(task.task_name);
       }
     }
+  } finally {
+    setSchedulerRunning(false);
+    clearSchedulerStartedAt();
+    isRunning = false;
   }
 }
 
@@ -136,21 +142,29 @@ export function stopScheduler(): void {
 }
 
 export async function runAllEnabledTasks(): Promise<void> {
-  const pool = getPool();
-  let result;
-  try {
-    result = await pool.query("SELECT * FROM scheduler_settings WHERE enabled = true");
-  } catch {
-    return;
+  if (isRunning) {
+    throw new Error("Scheduler is already running");
   }
+  isRunning = true;
+  setSchedulerRunning(true);
+  setSchedulerStartedAt(Date.now());
 
-  for (const task of result.rows as SchedulerTask[]) {
-    logFn(`[scheduler] Manual run: ${task.task_name}`);
-    setSchedulerRunning(true);
+  try {
+    const pool = getPool();
+    let result;
     try {
-      await runTask(task.task_name);
-    } finally {
-      setSchedulerRunning(false);
+      result = await pool.query("SELECT * FROM scheduler_settings WHERE enabled = true");
+    } catch {
+      return;
     }
+
+    for (const task of result.rows as SchedulerTask[]) {
+      logFn(`[scheduler] Manual run: ${task.task_name}`);
+      await runTask(task.task_name);
+    }
+  } finally {
+    setSchedulerRunning(false);
+    clearSchedulerStartedAt();
+    isRunning = false;
   }
 }

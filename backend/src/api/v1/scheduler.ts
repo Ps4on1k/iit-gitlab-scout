@@ -4,6 +4,11 @@ import { getPool } from "../../db/pool.js";
 import { runAllEnabledTasks } from "../../services/scheduler.js";
 import { isAnyCollectionRunning } from "../../utils/collect-tracker.js";
 
+let schedulerStartedAt: number | null = null;
+
+export function setSchedulerStartedAt(ts: number) { schedulerStartedAt = ts; }
+export function clearSchedulerStartedAt() { schedulerStartedAt = null; }
+
 export interface SchedulerTask {
   id: number;
   task_name: string;
@@ -72,7 +77,12 @@ export async function schedulerRoutes(app: FastifyInstance) {
     const result = await pool.query(
       "SELECT task_name, enabled, interval_minutes, last_run_at FROM scheduler_settings ORDER BY id"
     );
-    return { ok: true, data: result.rows };
+    return {
+      ok: true,
+      data: result.rows,
+      schedulerRunning: isAnyCollectionRunning(),
+      startedAt: schedulerStartedAt,
+    };
   });
 
   app.post("/api/v1/scheduler/reset-stats", { preHandler: [requireAdmin] }, async (_, reply) => {
