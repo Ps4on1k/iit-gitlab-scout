@@ -52,6 +52,13 @@ export async function getMe(): Promise<ApiResponse<User>> {
   return cachedGet<User>("/v1/auth/me", "me");
 }
 
+export async function changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<{ message: string }>> {
+  return fetchJson("/v1/auth/change-password", {
+    method: "POST",
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  });
+}
+
 export async function fetchProjects(): Promise<ApiResponse<ProjectConfig[]>> {
   return cachedGet<ProjectConfig[]>("/v1/projects", "projects");
 }

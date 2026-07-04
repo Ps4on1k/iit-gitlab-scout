@@ -1,8 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
+import { z } from "zod";
 import yamlLib from "js-yaml";
 import { safeErrorMessage } from "../../utils/safe-error.js";
+
+const emailSchema = z.string().email().max(255);
+
+const contributorDirectorySchema = z.object({
+  display_name: z.string().min(1).max(200),
+  emails: z.array(emailSchema).min(1).max(20),
+});
 
 export async function contributorDirectoryRoutes(app: FastifyInstance) {
   // List all directory entries
@@ -18,10 +26,11 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
   app.post<{
     Body: { display_name: string; emails: string[] };
   }>("/api/v1/contributor-directory", { preHandler: [requireAdmin] }, async (request, reply) => {
-    const { display_name, emails } = request.body;
-    if (!display_name || !emails || emails.length === 0) {
-      return reply.status(400).send({ ok: false, error: "display_name and emails are required" });
+    const v = contributorDirectorySchema.safeParse(request.body);
+    if (!v.success) {
+      return reply.status(400).send({ ok: false, error: v.error.errors.map((e) => e.message).join(", ") });
     }
+    const { display_name, emails } = v.data;
 
     const pool = getPool();
     try {

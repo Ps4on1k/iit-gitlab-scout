@@ -159,4 +159,38 @@ export async function authRoutes(app: FastifyInstance) {
     const allowed_tags = result.rows[0]?.allowed_tags || [];
     return { ok: true, data: { id: user.userId, username: user.username, role: user.role, allowed_tags } };
   });
+
+  app.post<{
+    Body: { current_password: string; new_password: string };
+  }>("/api/v1/auth/change-password", { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = (request as any).user as JwtPayload;
+    const { current_password, new_password } = request.body;
+
+    if (!current_password || !new_password) {
+      return reply.status(400).send({ ok: false, error: "current_password and new_password are required" });
+    }
+    if (new_password.length < 8) {
+      return reply.status(400).send({ ok: false, error: "New password must be at least 8 characters" });
+    }
+    if (current_password === new_password) {
+      return reply.status(400).send({ ok: false, error: "New password must differ from current" });
+    }
+
+    const pool = getPool();
+    const result = await pool.query("SELECT password_hash FROM app_users WHERE id = $1", [user.userId]);
+    const dbUser = result.rows[0];
+    if (!dbUser) {
+      return reply.status(404).send({ ok: false, error: "User not found" });
+    }
+
+    const valid = await verifyPassword(current_password, dbUser.password_hash);
+    if (!valid) {
+      return reply.status(401).send({ ok: false, error: "Current password is incorrect" });
+    }
+
+    const hash = await hashPassword(new_password);
+    await pool.query("UPDATE app_users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2", [hash, user.userId]);
+    logAuditAction(user.userId, "password_change", `User changed own password`);
+    return { ok: true, data: { message: "Password changed. Please log in again." } };
+  });
 }

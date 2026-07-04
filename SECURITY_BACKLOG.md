@@ -17,8 +17,8 @@
 ## MEDIUM
 | # | Issue | File | Status |
 |---|-------|------|--------|
-| 7 | No Zod validation on user creation | users.ts:19 | 🔴 TODO |
-| 8 | No Zod validation on project creation | projects.ts:29 | 🔴 TODO |
+| 7 | No Zod validation on user creation | users.ts:19 | ✅ Fixed |
+| 8 | No Zod validation on project creation | projects.ts:29 | ✅ Fixed |
 | 9 | filter-presets accepts unvalidated any body | filter-presets.ts:17 | 🔴 TODO |
 | 10 | time-entries: no type validation on hours/dates | time-entries.ts:42 | 🔴 TODO |
 

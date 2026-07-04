@@ -1,6 +1,20 @@
 import type { FastifyInstance } from "fastify";
 import { requireAuth } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
+import { z } from "zod";
+
+const filterPresetSchema = z.object({
+  name: z.string().min(1).max(200),
+  filters: z.object({
+    projectIds: z.array(z.number()).optional(),
+    tags: z.array(z.string()).optional(),
+    dateFrom: z.string().optional(),
+    dateTo: z.string().optional(),
+    contributors: z.array(z.string()).optional(),
+  }),
+  relative_days_from: z.number().int().min(0).max(365).optional(),
+  relative_days_to: z.number().int().min(0).max(365).optional(),
+});
 
 export async function filterPresetRoutes(app: FastifyInstance) {
   app.get("/api/v1/filter-presets", { preHandler: [requireAuth] }, async (request) => {
@@ -17,10 +31,11 @@ export async function filterPresetRoutes(app: FastifyInstance) {
     Body: { name: string; filters: any; relative_days_from?: number; relative_days_to?: number };
   }>("/api/v1/filter-presets", { preHandler: [requireAuth] }, async (request, reply) => {
     const user = (request as any).user;
-    const { name, filters, relative_days_from, relative_days_to } = request.body;
-    if (!name?.trim()) {
-      return reply.status(400).send({ ok: false, error: "Name is required" });
+    const v = filterPresetSchema.safeParse(request.body);
+    if (!v.success) {
+      return reply.status(400).send({ ok: false, error: v.error.errors.map((e) => e.message).join(", ") });
     }
+    const { name, filters, relative_days_from, relative_days_to } = v.data;
     const pool = getPool();
     const result = await pool.query(
       `INSERT INTO filter_presets (user_id, name, filters, relative_days_from, relative_days_to)

@@ -1,8 +1,21 @@
 import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
+import { z } from "zod";
 import yamlLib from "js-yaml";
 import { safeErrorMessage } from "../../utils/safe-error.js";
+
+const timeEntrySchema = z.object({
+  email: z.string().email(),
+  hours: z.number().min(0).max(24),
+  period_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  period_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD"),
+  note: z.string().max(500).optional(),
+});
+
+const timeEntriesBulkSchema = z.object({
+  entries: z.array(timeEntrySchema).min(1).max(1000),
+});
 
 export async function timeEntriesRoutes(app: FastifyInstance) {
   app.get<{
@@ -30,10 +43,11 @@ export async function timeEntriesRoutes(app: FastifyInstance) {
   app.post<{
     Body: { entries: { email: string; hours: number; period_from: string; period_to: string; note?: string }[] };
   }>("/api/v1/time-entries", { preHandler: [requireAdmin] }, async (request, reply) => {
-    const { entries } = request.body;
-    if (!entries?.length) {
-      return reply.status(400).send({ ok: false, error: "entries array is required" });
+    const v = timeEntriesBulkSchema.safeParse(request.body);
+    if (!v.success) {
+      return reply.status(400).send({ ok: false, error: v.error.errors.map((e) => e.message).join(", ") });
     }
+    const { entries } = v.data;
 
     const pool = getPool();
     const imported: any[] = [];
