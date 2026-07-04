@@ -243,9 +243,9 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
           d.setDate(d.getDate() + 1);
         }
         activitySpan = count;
-      } else if (freqDates.length >= 2) {
+      } else if (freqDates.length >= 1) {
         const first = new Date(freqDates[0]);
-        const last = new Date(freqDates[freqDates.length - 1]);
+        const last = new Date();
         let count = 0;
         const d = new Date(first);
         while (d <= last) {
@@ -254,9 +254,6 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
           d.setDate(d.getDate() + 1);
         }
         activitySpan = count;
-      } else if (freqDates.length === 1) {
-        const dow = new Date(freqDates[0]).getDay();
-        activitySpan = (dow !== 0 && dow !== 6) ? 1 : 0;
       }
 
       const score = computeScore({

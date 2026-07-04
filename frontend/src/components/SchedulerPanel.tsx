@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select, Progress } from "antd";
-import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined } from "@ant-design/icons";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select, Progress, Tooltip } from "antd";
+import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined, WarningOutlined } from "@ant-design/icons";
 import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
+import { useCollectStatus } from "../hooks/useCollectStatus";
 
 const { Text } = Typography;
 
@@ -23,6 +24,15 @@ const TASK_DESCRIPTIONS: Record<string, string> = {
   collect_pipelines: "Автоматический сбор CI/CD пайплайнов из GitLab",
 };
 
+const COLLECTOR_TO_SCHEDULER: Record<string, string> = {
+  stack: "collect_stack",
+  activity_mr: "collect_activity",
+  contributors: "collect_contributors",
+  branches: "collect_branches",
+  mr: "collect_merge_requests",
+  pipelines: "collect_pipelines",
+};
+
 export function SchedulerPanel() {
   const [tasks, setTasks] = useState<SchedulerTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,11 +43,15 @@ export function SchedulerPanel() {
   const [errorsLoading, setErrorsLoading] = useState(false);
   const [errorsPage, setErrorsPage] = useState(1);
   const [errorsTaskFilter, setErrorsTaskFilter] = useState<string | undefined>();
+  const [runningAll, setRunningAll] = useState(false);
   const [collectProgress, setCollectProgress] = useState<{ done: number; total: number; current: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const [runningAll, setRunningAll] = useState(false);
+  const lastClickRef = useRef(0);
+  const beforeRunRef = useRef<Map<string, string | null>>(new Map());
 
-  const load = async () => {
+  const { isAnyRunning, activeJobs } = useCollectStatus();
+
+  const load = useCallback(async () => {
     setLoading(true);
     const res = await fetchSchedulerSettings();
     if (res.ok) {
@@ -49,9 +63,72 @@ export function SchedulerPanel() {
       setEditValues(vals);
     }
     setLoading(false);
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
+
+  // Check if any scheduler task is running based on last_run_at changes
+  const checkSchedulerProgress = useCallback(async () => {
+    const statusRes = await fetchSchedulerSettings();
+    if (!statusRes.ok) return;
+    const before = beforeRunRef.current;
+    const enabledTasks = statusRes.data!.filter((t) => t.enabled);
+    const total = enabledTasks.length;
+    let done = 0;
+    let current = "";
+    for (const t of enabledTasks) {
+      if (t.last_run_at && t.last_run_at !== before.get(t.task_name)) {
+        done++;
+      } else if (done === done) {
+        current = t.task_name;
+      }
+    }
+    if (done > 0 || done < total) {
+      setCollectProgress({ done, total, current: TASK_LABELS[current] || current });
+    }
+    return { done, total };
+  }, []);
+
+  // On mount: if any collection is running, show progress
+  useEffect(() => {
+    if (isAnyRunning) {
+      // Find which collector is running and map to scheduler task
+      const runningCollector = activeJobs.find((j) => j.status === "running");
+      if (runningCollector) {
+        const schedulerTask = COLLECTOR_TO_SCHEDULER[runningCollector.collector];
+        if (schedulerTask) {
+          setCollectProgress({
+            done: runningCollector.current,
+            total: runningCollector.total,
+            current: TASK_LABELS[schedulerTask] || runningCollector.collector,
+          });
+        }
+      }
+      // Start polling for progress
+      if (!pollRef.current) {
+        beforeRunRef.current = new Map(tasks.map((t) => [t.task_name, t.last_run_at]));
+        pollRef.current = setInterval(async () => {
+          const result = await checkSchedulerProgress();
+          if (result && result.done >= result.total && result.total > 0) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setCollectProgress(null);
+            setRunningAll(false);
+            load();
+          }
+        }, 3000);
+      }
+    } else if (!runningAll && collectProgress) {
+      // Collection finished
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
+      setCollectProgress(null);
+    }
+  }, [isAnyRunning, activeJobs, runningAll, tasks, checkSchedulerProgress, load]);
+
+  useEffect(() => {
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
 
   const loadErrors = async () => {
     setErrorsLoading(true);
@@ -86,46 +163,30 @@ export function SchedulerPanel() {
   };
 
   const handleRunAll = async () => {
+    const now = Date.now();
+    if (now - lastClickRef.current < 3000) return;
+    if (isAnyRunning) {
+      message.warning("Другой сбор уже запущен. Дождитесь завершения.");
+      return;
+    }
+    lastClickRef.current = now;
+
     setRunningAll(true);
     const res = await runAllSchedulerTasks();
     if (res.ok) {
-      const beforeRun = new Map(tasks.map((t) => [t.task_name, t.last_run_at]));
+      beforeRunRef.current = new Map(tasks.map((t) => [t.task_name, t.last_run_at]));
       const enabledTasks = tasks.filter((t) => t.enabled);
-      const total = enabledTasks.length;
-      let done = 0;
-      let current = enabledTasks[0]?.task_name || "";
-
-      setCollectProgress({ done: 0, total, current: TASK_LABELS[current] || current });
+      setCollectProgress({ done: 0, total: enabledTasks.length, current: TASK_LABELS[enabledTasks[0]?.task_name] || "" });
 
       pollRef.current = setInterval(async () => {
-        const statusRes = await fetchSchedulerSettings();
-        if (statusRes.ok) {
-          let completed = 0;
-          let running = "";
-          for (const t of statusRes.data!) {
-            if (!t.enabled) continue;
-            if (t.last_run_at && t.last_run_at !== beforeRun.get(t.task_name)) {
-              completed++;
-            } else if (completed === done) {
-              running = t.task_name;
-            }
-          }
-          done = completed;
-          current = running || enabledTasks[done]?.task_name || "";
-          setCollectProgress({
-            done,
-            total,
-            current: TASK_LABELS[current] || current,
-          });
-
-          if (done >= total) {
-            if (pollRef.current) clearInterval(pollRef.current);
-            pollRef.current = null;
-            setCollectProgress(null);
-            setRunningAll(false);
-            message.success("Сбор всех данных завершён");
-            load();
-          }
+        const result = await checkSchedulerProgress();
+        if (result && result.done >= result.total && result.total > 0) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setCollectProgress(null);
+          setRunningAll(false);
+          message.success("Сбор всех данных завершён");
+          load();
         }
       }, 3000);
     } else {
@@ -196,28 +257,56 @@ export function SchedulerPanel() {
     },
   ];
 
+  const batchCollectRunning = isAnyRunning;
+  const batchJob = activeJobs.find((j) => j.status === "running");
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Typography.Title level={4} style={{ margin: 0 }}>Периодичность обновления</Typography.Title>
         <Space>
-          <Button icon={<DatabaseOutlined />} onClick={handleRunAll} loading={runningAll}>Собрать все</Button>
+          <Tooltip title={batchCollectRunning ? `Идёт сбор: ${batchJob?.collector} (${batchJob?.current}/${batchJob?.total})` : isAnyRunning ? "Другой сбор уже запущен" : undefined}>
+            <Button
+              icon={<DatabaseOutlined />}
+              onClick={handleRunAll}
+              loading={runningAll}
+              disabled={batchCollectRunning}
+            >Собрать все</Button>
+          </Tooltip>
           <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Обновить</Button>
         </Space>
       </div>
 
-      {collectProgress && (
+      {(collectProgress || batchCollectRunning) && (
         <Card size="small" style={{ marginBottom: 16, background: "var(--ant-color-fill-secondary)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Progress
-              percent={Math.round((collectProgress.done / collectProgress.total) * 100)}
-              status="active"
-              style={{ flex: 1 }}
-              format={() => `${collectProgress.done}/${collectProgress.total}`}
-            />
-            <Typography.Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
-              {collectProgress.current ? `Сбор: ${collectProgress.current}` : "Завершено"}
-            </Typography.Text>
+            {collectProgress ? (
+              <>
+                <Progress
+                  percent={collectProgress.total > 0 ? Math.round((collectProgress.done / collectProgress.total) * 100) : 0}
+                  status="active"
+                  style={{ flex: 1 }}
+                  format={() => `${collectProgress.done}/${collectProgress.total}`}
+                />
+                <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
+                  {collectProgress.current ? `Сбор: ${collectProgress.current}` : "Завершено"}
+                </Text>
+              </>
+            ) : batchCollectRunning && batchJob ? (
+              <>
+                <Progress
+                  percent={batchJob.total > 0 ? Math.round((batchJob.current / batchJob.total) * 100) : 0}
+                  status="active"
+                  style={{ flex: 1 }}
+                  format={() => `${batchJob.current}/${batchJob.total}`}
+                />
+                <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
+                  Сбор: {batchJob.collector}
+                </Text>
+              </>
+            ) : (
+              <Text type="secondary" style={{ fontSize: 12 }}>Сбор данных...</Text>
+            )}
           </div>
         </Card>
       )}
