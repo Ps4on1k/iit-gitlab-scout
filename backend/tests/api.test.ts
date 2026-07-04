@@ -12,13 +12,24 @@ vi.mock("../src/config.js", () => ({
   }),
 }));
 
+vi.mock("../src/db/pool.js", () => ({
+  getPool: () => ({
+    query: async (sql: string) => {
+      if (sql.includes("token_version")) {
+        return { rows: [{ token_version: 1 }] };
+      }
+      return { rows: [] };
+    },
+  }),
+}));
+
 import Fastify from "fastify";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = "test-secret-1234567890";
 
 function makeToken(role: "admin" | "user" = "admin") {
-  return jwt.sign({ userId: 1, username: "test", role }, JWT_SECRET, { expiresIn: "1h" });
+  return jwt.sign({ userId: 1, username: "test", role, tokenVersion: 1 }, JWT_SECRET, { expiresIn: "1h" });
 }
 
 import { contributorsRoutes } from "../src/api/v1/contributors.js";
