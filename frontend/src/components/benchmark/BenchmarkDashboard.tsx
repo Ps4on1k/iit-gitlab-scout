@@ -103,6 +103,19 @@ export function BenchmarkDashboard({ filters }: Props) {
     if (groups.length < 1) return [];
     if (mode === "contributors") {
       return [
+        { section: "Score", rows: [
+          { label: "Score", key: "score", sub: "total", higher: true, unit: "" },
+          { label: "Последовательность", key: "score", sub: "consistency", higher: true, unit: "%" },
+          { label: "Активность", key: "score", sub: "activity", higher: true, unit: "%" },
+          { label: "Влияние", key: "score", sub: "impact", higher: true, unit: "%" },
+          { label: "Качество коммитов", key: "score", sub: "sizeQuality", higher: true, unit: "%" },
+        ]},
+        { section: "Надёжность деплоя", rows: [
+          { label: "Deploy Success Rate", key: "score", sub: "deploySuccessRate", higher: true, unit: "%" },
+          { label: "Pipeline Coverage", key: "score", sub: "pipelineCoverage", higher: true, unit: "%" },
+          { label: "MR замержено", key: "score", sub: "totalMergedMrs", higher: true },
+          { label: "Pipeline запусков", key: "score", sub: "totalPipelines", higher: true },
+        ]},
         { section: "Коммиты", rows: [
           { label: "Всего коммитов", key: "commits", sub: "total", higher: true },
           { label: "Коммитов в день", key: "commits", sub: "perDay", higher: true },
@@ -220,8 +233,9 @@ export function BenchmarkDashboard({ filters }: Props) {
                     <span style={{ color: "var(--ant-color-textTertiary)" }}>MR</span><span style={{ fontWeight: 600 }}>{g.mr?.total || 0}</span>
                     {mode === "tags" && <><span style={{ color: "var(--ant-color-textTertiary)" }}>Деплоев</span><span style={{ fontWeight: 600 }}>{g.dora?.total || 0}</span>
                     <span style={{ color: "var(--ant-color-textTertiary)" }}>Health</span><span style={{ fontWeight: 600 }}>{g.branches?.health || 0}%</span></>}
-                    {mode === "contributors" && <><span style={{ color: "var(--ant-color-textTertiary)" }}>MR замержено</span><span style={{ fontWeight: 600 }}>{g.mr?.merged || 0}</span>
-                    <span style={{ color: "var(--ant-color-textTertiary)" }}>Активных дн.</span><span style={{ fontWeight: 600 }}>{g.commits?.activeDays || 0}</span></>}
+                    {mode === "contributors" && <><span style={{ color: "var(--ant-color-textTertiary)" }}>Score</span><span style={{ fontWeight: 700, color: (g.score?.total ?? 0) >= 60 ? "#21B573" : (g.score?.total ?? 0) >= 40 ? "#FFB020" : "#E5484D" }}>{g.score?.total ?? "—"}</span>
+                    <span style={{ color: "var(--ant-color-textTertiary)" }}>MR замержено</span><span style={{ fontWeight: 600 }}>{g.mr?.merged || 0}</span>
+                    <span style={{ color: "var(--ant-color-textTertiary)" }}>Deploy</span><span style={{ fontWeight: 600 }}>{g.score?.deploySuccessRate ?? 0}%</span></>}
                   </div>
                 </Card>
               </Col>

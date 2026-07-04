@@ -238,7 +238,7 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     } else {
       grouped.set(displayName, {
         author_email: primaryEmail,
-        author_name: row.author_name,
+        author_name: displayName,
         total_commits: Number(row.total_commits),
         total_additions: Number(row.total_additions),
         total_deletions: Number(row.total_deletions),
@@ -290,7 +290,7 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     } else {
       grouped.set(displayName, {
         author_email: primaryEmail,
-        author_name: name,
+        author_name: displayName,
         total_commits: 0,
         total_additions: 0,
         total_deletions: 0,

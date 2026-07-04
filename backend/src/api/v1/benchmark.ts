@@ -243,6 +243,63 @@ export async function benchmarkRoutes(app: FastifyInstance) {
       const mergeRate = mrResult.rows[0].total > 0
         ? Math.round((mrResult.rows[0].merged / mrResult.rows[0].total) * 100) : 0;
 
+      // Compute score components
+      const freqResult = await pool.query(
+        `SELECT frequency FROM contributor_profiles WHERE author_email = ANY($1)`,
+        [allEmails]
+      );
+      const mergedFreq: Record<string, number> = {};
+      for (const fr of freqResult.rows) {
+        for (const [k, v] of Object.entries(fr.frequency || {})) {
+          mergedFreq[k] = (mergedFreq[k] || 0) + Number(v);
+        }
+      }
+      const freqDates = Object.keys(mergedFreq).sort();
+      const activeDays = freqDates.filter((d) => mergedFreq[d] > 0).length;
+      const totalCommits = commitsResult.rows[0].total || 1;
+      const avgChangesPerCommit = totalCommits > 0 ? (commitsResult.rows[0].changes || 0) / totalCommits : 0;
+      const commitsPerWeek = activeDays > 0 ? totalCommits / (activeDays / 7) : 0;
+
+      // Activity span = business days in freq range
+      let activitySpan = 0;
+      if (freqDates.length >= 2) {
+        const first = new Date(freqDates[0]);
+        const last = new Date(freqDates[freqDates.length - 1]);
+        let count = 0;
+        const d = new Date(first);
+        while (d <= last) { const dow = d.getDay(); if (dow !== 0 && dow !== 6) count++; d.setDate(d.getDate() + 1); }
+        activitySpan = count;
+      } else if (freqDates.length === 1) {
+        const dow = new Date(freqDates[0]).getDay();
+        activitySpan = (dow !== 0 && dow !== 6) ? 1 : 0;
+      }
+      const consistency = activitySpan > 0 ? Math.min(activeDays / activitySpan, 1) : 0;
+      const activity = Math.min(commitsPerWeek / 15, 1);
+      const changesPerDay = activeDays > 0 ? (commitsResult.rows[0].changes || 0) / activeDays : 0;
+      const impact = Math.min(changesPerDay / 200, 1);
+      const sizeQuality = avgChangesPerCommit <= 10 ? 0.3 : avgChangesPerCommit <= 50 ? 1 : avgChangesPerCommit <= 200 ? 0.8 : avgChangesPerCommit <= 500 ? 0.5 : 0.2;
+
+      // Deploy reliability
+      const deployResult = await pool.query(
+        `WITH mr_data AS (
+           SELECT mr.project_id, mr.source_branch, mr.gitlab_iid, mr.state
+           FROM project_merge_requests mr WHERE mr.author_email = ANY($1) AND mr.created_at >= $2
+         )
+         SELECT COUNT(DISTINCT md.gitlab_iid) FILTER (WHERE md.state = 'merged') as merged_mrs,
+                COUNT(DISTINCT p.gitlab_id) as total_pipelines,
+                COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'success') as success_pipelines,
+                COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status IN ('success','failed')) as completed_pipelines
+         FROM mr_data md
+         LEFT JOIN project_pipelines p ON p.project_id = md.project_id AND p.ref = md.source_branch`,
+        projParams
+      );
+      const dr = deployResult.rows[0];
+      const deploySuccessRate = dr.completed_pipelines > 0 ? Math.round((dr.success_pipelines / dr.completed_pipelines) * 100) : 0;
+      const pipelineCoverage = dr.merged_mrs > 0 ? Math.round((Number(dr.completed_pipelines) > 0 ? 1 : 0) * 100) : 0;
+
+      const raw = (consistency * 25) + (activity * 20) + (impact * 20) + (sizeQuality * 15) + (0.5 * 20);
+      const score = Math.round(Math.min(100, Math.max(0, raw)));
+
       groups.push({
         tag: displayName,
         email,
@@ -263,6 +320,18 @@ export async function benchmarkRoutes(app: FastifyInstance) {
           mergeRate,
         },
         branches: { total: 0, active: 0, stale: 0, merged: 0, health: 0 },
+        score: {
+          total: score,
+          consistency: Math.round(consistency * 100),
+          activity: Math.round(activity * 100),
+          impact: Math.round(impact * 100),
+          sizeQuality: Math.round(sizeQuality * 100),
+          deploySuccessRate,
+          pipelineCoverage,
+          totalMergedMrs: Number(dr.merged_mrs),
+          totalPipelines: Number(dr.total_pipelines),
+          successPipelines: Number(dr.success_pipelines),
+        },
         topContributors: [],
       });
     }
