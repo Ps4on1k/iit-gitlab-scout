@@ -233,7 +233,7 @@ export default function App() {
             {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
             {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
             {tab === "stack" && <StackDashboard userRole={user.role} />}
-            {tab === "benchmark" && <BenchmarkDashboard filters={filters} />}
+            {tab === "benchmark" && (user.role === "admin" || user.role === "manager") && <BenchmarkDashboard filters={filters} />}
             {tab === "settings" && user.role === "admin" && <SettingsPanel />}
           </Suspense>
         </Content>

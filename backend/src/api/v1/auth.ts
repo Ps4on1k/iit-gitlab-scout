@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import crypto from "crypto";
 import { getPool } from "../../db/pool.js";
 import { verifyPassword, hashPassword } from "../../utils/password.js";
 import { signToken, requireAuth } from "../../utils/auth.js";
@@ -17,12 +18,20 @@ async function seedDefaultUsers() {
   const pool = getPool();
   const result = await pool.query("SELECT COUNT(*) as cnt FROM app_users");
   if (Number(result.rows[0].cnt) === 0) {
-    const adminHash = await hashPassword("admin");
-    const userHash = await hashPassword("user");
+    const adminPassword = process.env.ADMIN_PASSWORD || crypto.randomBytes(12).toString("base64url");
+    const userPassword = process.env.USER_PASSWORD || crypto.randomBytes(12).toString("base64url");
+    const adminHash = await hashPassword(adminPassword);
+    const userHash = await hashPassword(userPassword);
     await pool.query(
       "INSERT INTO app_users (username, password_hash, role) VALUES ($1, $2, 'admin'), ($3, $4, 'user')",
       ["admin", adminHash, "user", userHash]
     );
+    console.log("=".repeat(60));
+    console.log("DEFAULT USERS CREATED:");
+    console.log(`  admin / ${adminPassword}`);
+    console.log(`  user  / ${userPassword}`);
+    console.log("Change these passwords immediately after first login!");
+    console.log("=".repeat(60));
   }
 }
 
@@ -60,7 +69,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const pool = getPool();
     const result = await pool.query(
-      "SELECT id, username, password_hash, role, is_active, failed_login_attempts, locked_until FROM app_users WHERE username = $1",
+      "SELECT id, username, password_hash, role, is_active, failed_login_attempts, locked_until, token_version FROM app_users WHERE username = $1",
       [username]
     );
 
@@ -127,6 +136,7 @@ export async function authRoutes(app: FastifyInstance) {
       userId: user.id,
       username: user.username,
       role: user.role,
+      tokenVersion: user.token_version || 1,
     });
 
     return {

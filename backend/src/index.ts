@@ -39,7 +39,7 @@ const app = Fastify({ logger: true });
 
 const corsOrigins = env.CORS_ORIGINS
   ? env.CORS_ORIGINS.split(",").map((s) => s.trim())
-  : true;
+  : false;
 await app.register(cors, { origin: corsOrigins, credentials: true });
 await app.register(helmet, {
   crossOriginEmbedderPolicy: false,

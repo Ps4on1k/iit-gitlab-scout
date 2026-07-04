@@ -67,10 +67,12 @@ export async function userManagementRoutes(app: FastifyInstance) {
       }
       updates.push(`role = $${idx++}`);
       values.push(role);
+      updates.push(`token_version = token_version + 1`);
     }
     if (is_active !== undefined) {
       updates.push(`is_active = $${idx++}`);
       values.push(is_active);
+      updates.push(`token_version = token_version + 1`);
     }
     if (allowed_tags !== undefined) {
       updates.push(`allowed_tags = $${idx++}`);
@@ -116,7 +118,7 @@ export async function userManagementRoutes(app: FastifyInstance) {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    await pool.query("UPDATE app_users SET password_hash = $1 WHERE id = $2", [hash, id]);
+    await pool.query("UPDATE app_users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2", [hash, id]);
     const admin = (request as any).user as JwtPayload;
     logAuditAction(admin.userId, "user_password_change", `Changed password for user ${id}`);
     return { ok: true, data: { message: "Password updated" } };

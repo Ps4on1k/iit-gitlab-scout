@@ -211,10 +211,11 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
 
   // Merge frequency from all project rows per email
   for (const row of result.rows) {
-    const freqResult = await pool.query(
-      `SELECT frequency FROM contributor_profiles WHERE author_email = $1 ${filters.project_id ? "AND project_id = " + filters.project_id : ""}`,
-      [row.author_email]
-    );
+    const freqQuery = filters.project_id
+      ? `SELECT frequency FROM contributor_profiles WHERE author_email = $1 AND project_id = $2`
+      : `SELECT frequency FROM contributor_profiles WHERE author_email = $1`;
+    const freqParams = filters.project_id ? [row.author_email, filters.project_id] : [row.author_email];
+    const freqResult = await pool.query(freqQuery, freqParams);
     const merged: Record<string, number> = {};
     for (const fr of freqResult.rows) {
       for (const [k, v] of Object.entries(fr.frequency || {})) {

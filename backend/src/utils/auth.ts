@@ -10,10 +10,15 @@ export interface JwtPayload {
   userId: number;
   username: string;
   role: Role;
+  tokenVersion: number;
 }
 
 export function signToken(payload: JwtPayload): string {
   return jwt.sign(payload, getEnv().JWT_SECRET, { expiresIn: "24h" });
+}
+
+export function signTokenWithVersion(userId: number, username: string, role: Role, tokenVersion: number): string {
+  return signToken({ userId, username, role, tokenVersion });
 }
 
 export function verifyToken(token: string): JwtPayload {
@@ -30,6 +35,12 @@ export async function requireAuth(
   }
   try {
     const payload = verifyToken(auth.slice(7));
+    const pool = getPool();
+    const result = await pool.query("SELECT token_version FROM app_users WHERE id = $1", [payload.userId]);
+    const dbVersion = result.rows[0]?.token_version ?? 1;
+    if (dbVersion !== payload.tokenVersion) {
+      return reply.status(401).send({ ok: false, error: "Token revoked" });
+    }
     (request as any).user = payload;
   } catch {
     return reply.status(401).send({ ok: false, error: "Invalid token" });
