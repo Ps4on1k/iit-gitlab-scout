@@ -66,7 +66,7 @@ function computeScore(c: {
       raw: activitySpan > 0 ? activeDays / activitySpan : 0,
       normalized: consistency,
       weight: 25,
-      description: `${activeDays} активных дней из ${activitySpan} дней участия (${Math.round(consistency * 100)}%)`,
+      description: `${activeDays} активных дней из ${activitySpan} рабочих (${Math.round(consistency * 100)}%)`,
     },
     activity: {
       raw: commitsPerWeek,
@@ -211,14 +211,22 @@ export function ContributorTable({ data, loading, onContributorClick }: Props) {
       const avgDeletions = c.total_commits > 0 ? c.total_deletions / c.total_commits : 0;
       const avgChangesPerCommit = c.total_commits > 0 ? c.total_changes / c.total_commits : 0;
 
-      const freqDates = Object.keys(freq).filter((d) => freq[d] > 0).sort();
+      const freqDates = Object.keys(freq).sort();
       let activitySpan = 0;
       if (freqDates.length >= 2) {
-        const first = new Date(freqDates[0]).getTime();
-        const last = new Date(freqDates[freqDates.length - 1]).getTime();
-        activitySpan = Math.ceil((last - first) / 86400000) + 1;
+        const first = new Date(freqDates[0]);
+        const last = new Date(freqDates[freqDates.length - 1]);
+        let count = 0;
+        const d = new Date(first);
+        while (d <= last) {
+          const dow = d.getDay();
+          if (dow !== 0 && dow !== 6) count++;
+          d.setDate(d.getDate() + 1);
+        }
+        activitySpan = count;
       } else if (freqDates.length === 1) {
-        activitySpan = 1;
+        const dow = new Date(freqDates[0]).getDay();
+        activitySpan = (dow !== 0 && dow !== 6) ? 1 : 0;
       }
 
       const score = computeScore({
