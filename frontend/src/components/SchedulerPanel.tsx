@@ -88,9 +88,12 @@ export function SchedulerPanel() {
     if (!ready) return;
 
     if (isAnyRunning) {
+      // Immediately fetch real progress
+      checkSchedulerProgress();
+
       // Find which collector is running and map to scheduler task
       const runningCollector = activeJobs.find((j) => j.status === "running");
-      if (runningCollector) {
+      if (runningCollector && !collectProgress) {
         const schedulerTask = COLLECTOR_TO_SCHEDULER[runningCollector.collector];
         if (schedulerTask) {
           setCollectProgress({
@@ -300,9 +303,9 @@ export function SchedulerPanel() {
                   Сбор: {batchJob.collector}
                 </Text>
               </>
-            ) : (
-              <Text type="secondary" style={{ fontSize: 12 }}>Сбор данных...</Text>
-            )}
+            ) : batchCollectRunning ? (
+              <Text type="secondary" style={{ fontSize: 12 }}>Ожидание данных о сборе...</Text>
+            ) : null}
           </div>
         </Card>
       )}

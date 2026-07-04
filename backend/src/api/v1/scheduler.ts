@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { runAllEnabledTasks, getSchedulerProgress } from "../../services/scheduler.js";
-import { isAnyCollectionRunning } from "../../utils/collect-tracker.js";
+import { isAnyCollectionRunning, getActiveJobs } from "../../utils/collect-tracker.js";
 
 let schedulerStartedAt: number | null = null;
 
@@ -81,6 +81,7 @@ export async function schedulerRoutes(app: FastifyInstance) {
     return {
       ok: true,
       data: result.rows,
+      activeJobs: getActiveJobs(),
       schedulerRunning: isAnyCollectionRunning(),
       startedAt: schedulerStartedAt,
       currentTask: progress.currentTask,

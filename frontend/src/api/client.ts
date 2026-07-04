@@ -332,8 +332,8 @@ export interface CollectJob {
   errors: { project_id: number; error: string }[];
 }
 
-export async function fetchCollectStatus(): Promise<ApiResponse<CollectJob[]>> {
-  return fetchJson<CollectJob[]>("/v1/collect/status");
+export async function fetchCollectStatus(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/scheduler/status");
 }
 
 export async function validateProjectTokens(projectIds: number[]): Promise<ApiResponse<{ total: number; valid: number; invalid: { project_id: number; label: string; error: string }[] }>> {

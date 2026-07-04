@@ -19,11 +19,12 @@ export function useCollectStatus(onComplete?: () => void) {
       try {
         const res = await fetchCollectStatus();
         if (res.ok) {
-          const jobs = res.data!;
+          const d = res.data!;
+          const jobs = (d as any).activeJobs || (Array.isArray(d) ? d : []);
           setActiveJobs(jobs);
-          setSchedulerRunning((res as any).schedulerRunning || false);
+          setSchedulerRunning((d as any).schedulerRunning || false);
           setReady(true);
-          const running = jobs.some((j) => j.status === "running") || (res as any).schedulerRunning;
+          const running = jobs.some((j: CollectJob) => j.status === "running") || (d as any).schedulerRunning;
           if (hadRunningRef.current && !running && onCompleteRef.current) {
             onCompleteRef.current();
           }
@@ -41,11 +42,12 @@ export function useCollectStatus(onComplete?: () => void) {
     try {
       const res = await fetchCollectStatus();
       if (res.ok) {
-        const jobs = res.data!;
+        const d = res.data!;
+        const jobs = (d as any).activeJobs || (Array.isArray(d) ? d : []);
         setActiveJobs(jobs);
-        setSchedulerRunning((res as any).schedulerRunning || false);
+        setSchedulerRunning((d as any).schedulerRunning || false);
         setReady(true);
-        const running = jobs.some((j) => j.status === "running") || (res as any).schedulerRunning;
+        const running = jobs.some((j: CollectJob) => j.status === "running") || (d as any).schedulerRunning;
         hadRunningRef.current = running;
       }
     } catch {}
