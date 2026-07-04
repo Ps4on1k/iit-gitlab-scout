@@ -13,6 +13,7 @@ import type { GlobalFilters } from "../GlobalFilterBar";
 interface Props { userRole: Role; filters: GlobalFilters; onContributorClick?: (name: string) => void; }
 
 type SortKey = "project_label" | "name" | "status" | "last_commit_date" | "last_commit_author" | "days_ago" | "branch_age";
+type HealthSortKey = "label" | "total" | "active" | "stale" | "merged" | "stalePct";
 
 function formatAge(days: number): string {
   if (days < 1) return "1 дн.";
@@ -57,6 +58,10 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
   const [sortAsc, setSortAsc] = useState(true);
   const [page, setPage] = useState(1);
   const pageSize = 50;
+  const [healthSortKey, setHealthSortKey] = useState<HealthSortKey>("stalePct");
+  const [healthSortAsc, setHealthSortAsc] = useState(false);
+  const [healthPage, setHealthPage] = useState(1);
+  const healthPageSize = 10;
 
   useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data as ProjectConfig[]); }); }, []);
 
@@ -208,51 +213,82 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
                 label: <span style={{ fontSize: 14 }}>Здоровье по проектам ({summary.perProject.length})</span>,
                 children: (
                   <div style={{ overflowX: "auto" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                      <thead>
-                        <tr>
-                          <th style={{ ...thStyle, cursor: "default" }}>Проект</th>
-                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Всего</th>
-                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Активные</th>
-                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Заброшены</th>
-                          <th style={{ ...thStyle, cursor: "default", textAlign: "center" }}>Замержены</th>
-                          <th style={{ ...thStyle, cursor: "default", width: "30%" }}>Прогресс</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {summary.perProject.sort((a, b) => {
-                          const aNonMerged = (a.total - a.merged) || 1;
-                          const bNonMerged = (b.total - b.merged) || 1;
-                          return (b.stale / bNonMerged) - (a.stale / aNonMerged);
-                        }).map((p) => {
-                          const healthColor = getHealthColor(p.active, p.stale, p.total - p.merged);
-                          const stalePct = (p.total - p.merged) > 0 ? Math.round(p.stale / (p.total - p.merged) * 100) : 0;
-                          return (
-                            <tr key={p.project_id} style={{ borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
-                              <td style={{ ...tdStyle, fontWeight: 500 }}>
-                                <ProjectLabel label={p.label} tag={p.tags?.join(", ")} description={projectMap.get(p.label)?.description} />
-                              </td>
-                              <td style={{ ...tdStyle, textAlign: "center" }}>{p.total}</td>
-                              <td style={{ ...tdStyle, textAlign: "center", color: "#21B573", fontWeight: 600 }}>{p.active}</td>
-                              <td style={{ ...tdStyle, textAlign: "center", color: "#E5484D", fontWeight: 600 }}>{p.stale}</td>
-                              <td style={{ ...tdStyle, textAlign: "center", color: "#3A8DFF", fontWeight: 600 }}>{p.merged}</td>
-                              <td style={tdStyle}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                  <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--ant-color-border-secondary)", overflow: "hidden", display: "flex" }}>
-                                    <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#21B573" }} />
-                                    <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#E5484D" }} />
-                                    <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#3A8DFF" }} />
-                                  </div>
-                                  <span style={{ fontSize: 11, color: healthColor, fontWeight: 600, minWidth: 36 }}>
-                                    {stalePct > 30 ? <><WarningOutlined /> {stalePct}%</> : stalePct <= 10 && (p.total - p.merged) > 0 ? <><CheckCircleOutlined /> OK</> : `${stalePct}%`}
-                                  </span>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    {(() => {
+                      const withStalePct = summary.perProject.map((p) => ({
+                        ...p,
+                        stalePct: (p.total - p.merged) > 0 ? Math.round(p.stale / (p.total - p.merged) * 100) : 0,
+                      }));
+                      const sorted = [...withStalePct].sort((a, b) => {
+                        let aVal: any, bVal: any;
+                        if (healthSortKey === "label") { aVal = a.label; bVal = b.label; }
+                        else if (healthSortKey === "stalePct") { aVal = a.stalePct; bVal = b.stalePct; }
+                        else { aVal = a[healthSortKey]; bVal = b[healthSortKey]; }
+                        if (typeof aVal === "string") return healthSortAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                        return healthSortAsc ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal);
+                      });
+                      const paged = sorted.slice((healthPage - 1) * healthPageSize, healthPage * healthPageSize);
+                      const hArrow = (key: HealthSortKey) => healthSortKey === key ? (healthSortAsc ? " ↑" : " ↓") : " ↕";
+                      const hSort = (key: HealthSortKey) => {
+                        if (healthSortKey === key) setHealthSortAsc(!healthSortAsc);
+                        else { setHealthSortKey(key); setHealthSortAsc(key === "label"); }
+                      };
+                      return (
+                        <>
+                          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                            <thead>
+                              <tr>
+                                <th style={{ ...thStyle, cursor: "pointer" }} onClick={() => hSort("label")}>Проект{hArrow("label")}</th>
+                                <th style={{ ...thStyle, cursor: "pointer", textAlign: "center" }} onClick={() => hSort("total")}>Всего{hArrow("total")}</th>
+                                <th style={{ ...thStyle, cursor: "pointer", textAlign: "center" }} onClick={() => hSort("active")}>Активные{hArrow("active")}</th>
+                                <th style={{ ...thStyle, cursor: "pointer", textAlign: "center" }} onClick={() => hSort("stale")}>Заброшены{hArrow("stale")}</th>
+                                <th style={{ ...thStyle, cursor: "pointer", textAlign: "center" }} onClick={() => hSort("merged")}>Замержены{hArrow("merged")}</th>
+                                <th style={{ ...thStyle, cursor: "pointer", width: "30%" }} onClick={() => hSort("stalePct")}>Здоровье{hArrow("stalePct")}</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paged.map((p) => {
+                                const healthColor = getHealthColor(p.active, p.stale, p.total - p.merged);
+                                return (
+                                  <tr key={p.project_id} style={{ borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
+                                    <td style={{ ...tdStyle, fontWeight: 500 }}>
+                                      <ProjectLabel label={p.label} tag={p.tags?.join(", ")} description={projectMap.get(p.label)?.description} />
+                                    </td>
+                                    <td style={{ ...tdStyle, textAlign: "center" }}>{p.total}</td>
+                                    <td style={{ ...tdStyle, textAlign: "center", color: "#21B573", fontWeight: 600 }}>{p.active}</td>
+                                    <td style={{ ...tdStyle, textAlign: "center", color: "#E5484D", fontWeight: 600 }}>{p.stale}</td>
+                                    <td style={{ ...tdStyle, textAlign: "center", color: "#3A8DFF", fontWeight: 600 }}>{p.merged}</td>
+                                    <td style={tdStyle}>
+                                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                        <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--ant-color-border-secondary)", overflow: "hidden", display: "flex" }}>
+                                          <div style={{ width: `${p.total > 0 ? p.active / p.total * 100 : 0}%`, background: "#21B573" }} />
+                                          <div style={{ width: `${p.total > 0 ? p.stale / p.total * 100 : 0}%`, background: "#E5484D" }} />
+                                          <div style={{ width: `${p.total > 0 ? p.merged / p.total * 100 : 0}%`, background: "#3A8DFF" }} />
+                                        </div>
+                                        <span style={{ fontSize: 11, color: healthColor, fontWeight: 600, minWidth: 36 }}>
+                                          {p.stalePct > 30 ? <><WarningOutlined /> {p.stalePct}%</> : p.stalePct <= 10 && (p.total - p.merged) > 0 ? <><CheckCircleOutlined /> OK</> : `${p.stalePct}%`}
+                                        </span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                          {sorted.length > healthPageSize && (
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", marginTop: 8, borderTop: "1px solid var(--ant-color-border-secondary)" }}>
+                              <span style={{ fontSize: 12, color: "var(--ant-color-textSecondary)" }}>
+                                {paged.length} из {sorted.length} проектов
+                              </span>
+                              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                                <Button size="small" disabled={healthPage <= 1} onClick={() => setHealthPage(healthPage - 1)}>←</Button>
+                                <span style={{ fontSize: 12, color: "var(--ant-color-textSecondary)" }}>{healthPage}/{Math.ceil(sorted.length / healthPageSize)}</span>
+                                <Button size="small" disabled={healthPage >= Math.ceil(sorted.length / healthPageSize)} onClick={() => setHealthPage(healthPage + 1)}>→</Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 ),
               }]}
