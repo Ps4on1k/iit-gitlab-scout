@@ -118,7 +118,7 @@ export function SchedulerPanel() {
             setRunningAll(false);
             load();
           }
-        }, 3000);
+        }, 15000);
       }
     } else if (!runningAll && collectProgress) {
       // Collection finished
@@ -190,7 +190,7 @@ export function SchedulerPanel() {
           message.success("Сбор всех данных завершён");
           load();
         }
-      }, 3000);
+      }, 15000);
     } else {
       message.error(res.error!);
       setRunningAll(false);

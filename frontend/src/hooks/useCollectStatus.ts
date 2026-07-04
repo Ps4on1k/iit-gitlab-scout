@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchCollectStatus, type CollectJob } from "../api/client";
 
-const POLL_MS = 3000;
+const POLL_MS = 15000;
 const STUCK_TIMEOUT_MS = 15 * 60 * 1000;
 
 export { type CollectJob };
