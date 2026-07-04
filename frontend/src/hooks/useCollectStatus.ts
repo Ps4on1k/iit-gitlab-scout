@@ -1,60 +1,48 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { fetchCollectStatus, type CollectJob } from "../api/client";
+import { fetchSchedulerStatus, type CollectJob } from "../api/scheduler-client";
 
-const POLL_MS = 15000;
-const STUCK_TIMEOUT_MS = 15 * 60 * 1000;
-
-export { type CollectJob };
+const POLL_MS = 5000;
 
 export function useCollectStatus(onComplete?: () => void) {
-  const [activeJobs, setActiveJobs] = useState<CollectJob[]>([]);
-  const [schedulerRunning, setSchedulerRunning] = useState(false);
+  const [status, setStatus] = useState<{
+    activeJobs: CollectJob[];
+    isRunning: boolean;
+    currentTask: string;
+    taskCurrent: number;
+    taskTotal: number;
+  }>({ activeJobs: [], isRunning: false, currentTask: "", taskCurrent: 0, taskTotal: 0 });
   const [ready, setReady] = useState(false);
-  const hadRunningRef = useRef(false);
+  const wasRunningRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  useEffect(() => {
-    const pollOnce = async () => {
-      try {
-        const res = await fetchCollectStatus();
-        if (res.ok) {
-          const d = res.data!;
-          const jobs = (d as any).activeJobs || (Array.isArray(d) ? d : []);
-          setActiveJobs(jobs);
-          setSchedulerRunning((d as any).schedulerRunning || false);
-          setReady(true);
-          const running = jobs.some((j: CollectJob) => j.status === "running") || (d as any).schedulerRunning;
-          if (hadRunningRef.current && !running && onCompleteRef.current) {
-            onCompleteRef.current();
-          }
-          hadRunningRef.current = running;
-        }
-      } catch {}
-    };
-
-    pollOnce();
-    const interval = setInterval(pollOnce, POLL_MS);
-    return () => clearInterval(interval);
-  }, []);
-
   const poll = useCallback(async () => {
     try {
-      const res = await fetchCollectStatus();
+      const res = await fetchSchedulerStatus();
       if (res.ok) {
-        const d = res.data!;
-        const jobs = (d as any).activeJobs || (Array.isArray(d) ? d : []);
-        setActiveJobs(jobs);
-        setSchedulerRunning((d as any).schedulerRunning || false);
+        const s = res.data!;
+        setStatus({
+          activeJobs: s.activeJobs || [],
+          isRunning: s.isRunning,
+          currentTask: s.currentTask || "",
+          taskCurrent: s.taskCurrent,
+          taskTotal: s.taskTotal,
+        });
         setReady(true);
-        const running = jobs.some((j: CollectJob) => j.status === "running") || (d as any).schedulerRunning;
-        hadRunningRef.current = running;
+
+        if (wasRunningRef.current && !s.isRunning && onCompleteRef.current) {
+          onCompleteRef.current();
+        }
+        wasRunningRef.current = s.isRunning;
       }
     } catch {}
   }, []);
 
-  const isAnyRunning = activeJobs.some((j) => j.status === "running") || schedulerRunning;
-  const stuckJobs = activeJobs.filter((j) => j.status === "stuck" || (j.status === "running" && Date.now() - j.started_at > STUCK_TIMEOUT_MS));
+  useEffect(() => {
+    poll();
+    const interval = setInterval(poll, POLL_MS);
+    return () => clearInterval(interval);
+  }, [poll]);
 
-  return { activeJobs, isAnyRunning, stuckJobs, poll, ready, schedulerRunning };
+  return { ...status, poll, ready };
 }

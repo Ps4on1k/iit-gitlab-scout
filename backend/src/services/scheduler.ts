@@ -5,7 +5,6 @@ import { collectProject } from "./contributor-collector.js";
 import { collectBranches } from "./branch-collector.js";
 import { collectMergeRequests } from "./mr-collector.js";
 import { collectPipelines } from "./pipeline-collector.js";
-import { setSchedulerRunning } from "../utils/collect-tracker.js";
 import { setSchedulerStartedAt, clearSchedulerStartedAt } from "../api/v1/scheduler.js";
 
 interface SchedulerTask {
@@ -102,7 +101,6 @@ async function checkAndRun(): Promise<void> {
     return;
   }
   isRunning = true;
-  setSchedulerRunning(true);
   setSchedulerStartedAt(Date.now());
 
   try {
@@ -133,7 +131,6 @@ async function checkAndRun(): Promise<void> {
       }
     }
   } finally {
-    setSchedulerRunning(false);
     clearSchedulerStartedAt();
     isRunning = false;
   }
@@ -158,7 +155,6 @@ export async function runAllEnabledTasks(): Promise<void> {
     throw new Error("Scheduler is already running");
   }
   isRunning = true;
-  setSchedulerRunning(true);
   setSchedulerStartedAt(Date.now());
 
   try {
@@ -175,7 +171,6 @@ export async function runAllEnabledTasks(): Promise<void> {
       await runTask(task.task_name);
     }
   } finally {
-    setSchedulerRunning(false);
     clearSchedulerStartedAt();
     isRunning = false;
   }

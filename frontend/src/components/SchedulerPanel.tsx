@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select, Progress, Tooltip } from "antd";
-import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined, WarningOutlined } from "@ant-design/icons";
-import { fetchSchedulerSettings, fetchSchedulerStatus, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
+import { useState, useEffect, useCallback } from "react";
+import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select, Progress } from "antd";
+import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined } from "@ant-design/icons";
+import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
 import { useCollectStatus } from "../hooks/useCollectStatus";
 
 const { Text } = Typography;
@@ -24,15 +24,6 @@ const TASK_DESCRIPTIONS: Record<string, string> = {
   collect_pipelines: "Автоматический сбор CI/CD пайплайнов из GitLab",
 };
 
-const COLLECTOR_TO_SCHEDULER: Record<string, string> = {
-  stack: "collect_stack",
-  activity_mr: "collect_activity",
-  contributors: "collect_contributors",
-  branches: "collect_branches",
-  mr: "collect_merge_requests",
-  pipelines: "collect_pipelines",
-};
-
 export function SchedulerPanel() {
   const [tasks, setTasks] = useState<SchedulerTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,13 +34,8 @@ export function SchedulerPanel() {
   const [errorsLoading, setErrorsLoading] = useState(false);
   const [errorsPage, setErrorsPage] = useState(1);
   const [errorsTaskFilter, setErrorsTaskFilter] = useState<string | undefined>();
-  const [runningAll, setRunningAll] = useState(false);
-  const [collectProgress, setCollectProgress] = useState<{ done: number; total: number; current: string } | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastClickRef = useRef(0);
-  const beforeRunRef = useRef<Map<string, string | null>>(new Map());
 
-  const { isAnyRunning, activeJobs, ready } = useCollectStatus();
+  const { isRunning, currentTask, taskCurrent, taskTotal, poll } = useCollectStatus();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,68 +52,6 @@ export function SchedulerPanel() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  // Check scheduler progress via status endpoint
-  const checkSchedulerProgress = useCallback(async () => {
-    const statusRes = await fetchSchedulerStatus();
-    if (!statusRes.ok) return null;
-    const s = statusRes.data!;
-    if (s.currentTask) {
-      setCollectProgress({
-        done: s.taskCurrent,
-        total: s.taskTotal,
-        current: TASK_LABELS[s.currentTask] || s.currentTask,
-      });
-      return { done: s.taskCurrent, total: s.taskTotal, running: true };
-    }
-    return { done: 0, total: 0, running: false };
-  }, []);
-
-  // On mount: if any collection is running, show progress
-  useEffect(() => {
-    if (!ready) return;
-
-    if (isAnyRunning) {
-      // Immediately fetch real progress
-      checkSchedulerProgress();
-
-      // Find which collector is running and map to scheduler task
-      const runningCollector = activeJobs.find((j) => j.status === "running");
-      if (runningCollector && !collectProgress) {
-        const schedulerTask = COLLECTOR_TO_SCHEDULER[runningCollector.collector];
-        if (schedulerTask) {
-          setCollectProgress({
-            done: runningCollector.current,
-            total: runningCollector.total,
-            current: TASK_LABELS[schedulerTask] || runningCollector.collector,
-          });
-        }
-      }
-      // Start polling for progress
-      if (!pollRef.current) {
-        beforeRunRef.current = new Map(tasks.map((t) => [t.task_name, t.last_run_at]));
-        pollRef.current = setInterval(async () => {
-          const result = await checkSchedulerProgress();
-          if (result && !result.running) {
-            if (pollRef.current) clearInterval(pollRef.current);
-            pollRef.current = null;
-            setCollectProgress(null);
-            setRunningAll(false);
-            load();
-          }
-        }, 15000);
-      }
-    } else if (!runningAll && collectProgress) {
-      // Collection finished
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = null;
-      setCollectProgress(null);
-    }
-  }, [ready, isAnyRunning, activeJobs, runningAll, tasks, checkSchedulerProgress, load]);
-
-  useEffect(() => {
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, []);
 
   const loadErrors = async () => {
     setErrorsLoading(true);
@@ -162,35 +86,16 @@ export function SchedulerPanel() {
   };
 
   const handleRunAll = async () => {
-    const now = Date.now();
-    if (now - lastClickRef.current < 3000) return;
-    if (isAnyRunning) {
-      message.warning("Другой сбор уже запущен. Дождитесь завершения.");
+    if (isRunning) {
+      message.warning("Сбор уже запущен. Дождитесь завершения.");
       return;
     }
-    lastClickRef.current = now;
-
-    setRunningAll(true);
     const res = await runAllSchedulerTasks();
     if (res.ok) {
-      beforeRunRef.current = new Map(tasks.map((t) => [t.task_name, t.last_run_at]));
-      const enabledTasks = tasks.filter((t) => t.enabled);
-      setCollectProgress({ done: 0, total: enabledTasks.length, current: TASK_LABELS[enabledTasks[0]?.task_name] || "" });
-
-      pollRef.current = setInterval(async () => {
-        const result = await checkSchedulerProgress();
-        if (result && !result.running) {
-          if (pollRef.current) clearInterval(pollRef.current);
-          pollRef.current = null;
-          setCollectProgress(null);
-          setRunningAll(false);
-          message.success("Сбор всех данных завершён");
-          load();
-        }
-      }, 15000);
+      message.success("Запущен сбор всех данных");
+      poll();
     } else {
       message.error(res.error!);
-      setRunningAll(false);
     }
   };
 
@@ -256,56 +161,33 @@ export function SchedulerPanel() {
     },
   ];
 
-  const batchCollectRunning = isAnyRunning;
-  const batchJob = activeJobs.find((j) => j.status === "running");
-
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>Периодичность обновления</Typography.Title>
+        <Typography.Title level={4} style={{ margin: 0 }}>Сбор статистики</Typography.Title>
         <Space>
-          <Tooltip title={batchCollectRunning ? `Идёт сбор: ${batchJob?.collector} (${batchJob?.current}/${batchJob?.total})` : isAnyRunning ? "Другой сбор уже запущен" : undefined}>
-            <Button
-              icon={<DatabaseOutlined />}
-              onClick={handleRunAll}
-              loading={runningAll}
-              disabled={batchCollectRunning}
-            >Собрать все</Button>
-          </Tooltip>
+          <Button
+            icon={<DatabaseOutlined />}
+            onClick={handleRunAll}
+            loading={isRunning}
+            disabled={isRunning}
+          >Собрать все</Button>
           <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Обновить</Button>
         </Space>
       </div>
 
-      {(collectProgress || batchCollectRunning) && (
+      {isRunning && (
         <Card size="small" style={{ marginBottom: 16, background: "var(--ant-color-fill-secondary)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            {collectProgress ? (
-              <>
-                <Progress
-                  percent={collectProgress.total > 0 ? Math.round((collectProgress.done / collectProgress.total) * 100) : 0}
-                  status="active"
-                  style={{ flex: 1 }}
-                  format={() => `${collectProgress.done}/${collectProgress.total}`}
-                />
-                <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
-                  {collectProgress.current ? `Сбор: ${collectProgress.current}` : "Завершено"}
-                </Text>
-              </>
-            ) : batchCollectRunning && batchJob ? (
-              <>
-                <Progress
-                  percent={batchJob.total > 0 ? Math.round((batchJob.current / batchJob.total) * 100) : 0}
-                  status="active"
-                  style={{ flex: 1 }}
-                  format={() => `${batchJob.current}/${batchJob.total}`}
-                />
-                <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
-                  Сбор: {batchJob.collector}
-                </Text>
-              </>
-            ) : batchCollectRunning ? (
-              <Text type="secondary" style={{ fontSize: 12 }}>Ожидание данных о сборе...</Text>
-            ) : null}
+            <Progress
+              percent={taskTotal > 0 ? Math.round((taskCurrent / taskTotal) * 100) : 0}
+              status="active"
+              style={{ flex: 1 }}
+              format={() => taskTotal > 0 ? `${taskCurrent}/${taskTotal}` : ""}
+            />
+            <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
+              {currentTask ? `Сбор: ${TASK_LABELS[currentTask] || currentTask}` : "Подготовка..."}
+            </Text>
           </div>
         </Card>
       )}
@@ -340,9 +222,9 @@ export function SchedulerPanel() {
             onConfirm={handleResetStats}
             okText="Да, обнулить"
             cancelText="Отмена"
-            okButtonProps={{ danger: true }}
+            okButtonProps={{ danger: true, disabled: isRunning }}
           >
-            <Button danger icon={<DeleteOutlined />}>Обнулить статистику</Button>
+            <Button danger icon={<DeleteOutlined />} disabled={isRunning}>Обнулить статистику</Button>
           </Popconfirm>
         </Space>
       </Card>
@@ -371,7 +253,7 @@ export function SchedulerPanel() {
                 { title: "Задача", dataIndex: "task_name", key: "task_name", width: 180,
                   render: (v: string) => <Tag>{TASK_LABELS[v] || v}</Tag> },
                 { title: "Проект", key: "project",
-                  render: (_: any, r: any) => r.project_label || <Text type="secondary">N/А</Text> },
+                  render: (_: any, r: any) => r.project_label || <Text type="secondary">N/A</Text> },
                 { title: "Код", dataIndex: "error_code", key: "error_code", width: 100 },
                 { title: "Источник", dataIndex: "source", key: "source", width: 100,
                   render: (v: string) => <Tag color={v === "manual" ? "blue" : "green"}>{v === "manual" ? "Ручной" : "Шедулер"}</Tag> },

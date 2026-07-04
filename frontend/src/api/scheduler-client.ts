@@ -1,5 +1,4 @@
 import type { ApiResponse } from "../types";
-import { getCached, setCache } from "../utils/cache";
 
 const BASE_URL = "/api";
 
@@ -15,20 +14,12 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResp
     ...(options?.headers as Record<string, string> || {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: 'no-store' });
+  const res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     return { ok: false, error: (body as any).error || `HTTP ${res.status}` };
   }
   return res.json() as Promise<ApiResponse<T>>;
-}
-
-async function cachedGet<T>(url: string, cacheKey: string): Promise<ApiResponse<T>> {
-  const cached = getCached<ApiResponse<T>>(cacheKey);
-  if (cached) return cached;
-  const result = await fetchJson<T>(url);
-  if (result.ok) setCache(cacheKey, result);
-  return result;
 }
 
 export interface SchedulerTask {
@@ -41,47 +32,40 @@ export interface SchedulerTask {
   updated_at: string;
 }
 
+export interface CollectJob {
+  id: string;
+  collector: string;
+  project_ids: number[];
+  started_at: number;
+  current: number;
+  total: number;
+  status: "running" | "done" | "error" | "stuck";
+  errors: { project_id: number; error: string }[];
+}
+
 export interface SchedulerStatus {
-  data: SchedulerTask[];
-  schedulerRunning: boolean;
-  startedAt: number | null;
+  tasks: SchedulerTask[];
+  activeJobs: CollectJob[];
+  isRunning: boolean;
   currentTask: string;
   taskCurrent: number;
   taskTotal: number;
 }
 
 export async function fetchSchedulerSettings(): Promise<ApiResponse<SchedulerTask[]>> {
-  return cachedGet<SchedulerTask[]>("/v1/scheduler", "scheduler");
+  return fetchJson<SchedulerTask[]>("/v1/scheduler");
 }
 
 export async function fetchSchedulerStatus(): Promise<ApiResponse<SchedulerStatus>> {
   return fetchJson<SchedulerStatus>("/v1/scheduler/status");
 }
 
-export async function updateSchedulerTask(
-  id: number,
-  data: { enabled?: boolean; interval_minutes?: number }
-): Promise<ApiResponse<SchedulerTask>> {
-  const result = await fetchJson<SchedulerTask>(`/v1/scheduler/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
-  if (result.ok) {
-    const { clearCache } = await import("../utils/cache");
-    clearCache("scheduler");
-  }
-  return result;
+export async function updateSchedulerTask(id: number, data: { enabled?: boolean; interval_minutes?: number }): Promise<ApiResponse<SchedulerTask>> {
+  return fetchJson<SchedulerTask>(`/v1/scheduler/${id}`, { method: "PUT", body: JSON.stringify(data) });
 }
 
 export async function resetStatistics(): Promise<ApiResponse<{ cleared: string[] }>> {
-  const result = await fetchJson<{ cleared: string[] }>("/v1/scheduler/reset-stats", {
-    method: "POST",
-  });
-  if (result.ok) {
-    const { clearCache } = await import("../utils/cache");
-    clearCache("scheduler");
-  }
-  return result;
+  return fetchJson<{ cleared: string[] }>("/v1/scheduler/reset-stats", { method: "POST" });
 }
 
 export async function fetchSchedulerErrors(limit?: number, offset?: number, taskName?: string): Promise<ApiResponse<{ entries: any[]; total: number }>> {
@@ -98,10 +82,5 @@ export async function clearSchedulerErrors(taskName?: string): Promise<ApiRespon
 }
 
 export async function runAllSchedulerTasks(): Promise<ApiResponse<{ started: boolean }>> {
-  const result = await fetchJson<{ started: boolean }>("/v1/scheduler/run-all", { method: "POST" });
-  if (result.ok) {
-    const { clearCache } = await import("../utils/cache");
-    clearCache("scheduler");
-  }
-  return result;
+  return fetchJson<{ started: boolean }>("/v1/scheduler/run-all", { method: "POST" });
 }

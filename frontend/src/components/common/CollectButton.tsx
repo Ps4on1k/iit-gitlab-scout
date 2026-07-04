@@ -17,14 +17,15 @@ interface Props {
 const DEBOUNCE_MS = 3000;
 
 export function CollectButton({ collector, projectIds, dateFrom, dateTo, onComplete, color = "#3A8DFF", label = "Собрать" }: Props) {
-  const { activeJobs, isAnyRunning, stuckJobs, poll, ready } = useCollectStatus(onComplete);
+  const { activeJobs, isRunning, poll, ready } = useCollectStatus(onComplete);
   const [localStarting, setLocalStarting] = useState(false);
   const [validating, setValidating] = useState(false);
   const lastClickRef = useRef(0);
 
   const currentJob = activeJobs.find((j) => j.collector === collector && j.status === "running");
   const backendCollecting = !!currentJob;
-  const isDisabled = !ready || localStarting || validating || isAnyRunning;
+  const isDisabled = !ready || localStarting || validating || isRunning;
+  const stuckJobs = activeJobs.filter((j) => j.status === "stuck" || (j.status === "running" && Date.now() - j.started_at > 15 * 60 * 1000));
 
   const doStartCollect = async (validIds: number[]) => {
     setLocalStarting(true);
@@ -120,7 +121,7 @@ export function CollectButton({ collector, projectIds, dateFrom, dateTo, onCompl
     ? `Есть зависшие сборки (${stuckJobs.length})`
     : backendCollecting && currentJob
     ? `Сбор на сервере: ${currentJob.collector} — ${currentJob.current}/${currentJob.total}`
-    : isAnyRunning && !backendCollecting
+    : isRunning && !backendCollecting
     ? "Другой сбор уже идёт"
     : undefined;
 
