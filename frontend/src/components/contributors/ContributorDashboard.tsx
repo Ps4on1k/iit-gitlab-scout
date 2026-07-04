@@ -92,7 +92,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
     });
   }, [allContributors, filters.contributors]);
 
-  // Merge deploy reliability score into contributors
+  // Merge deploy reliability score into contributors and filter frequency by date range
   const contributorsWithDeployScore = useMemo(() => {
     const deployMap = new Map<string, DeployReliabilityEntry>();
     for (const d of deployData) {
@@ -103,9 +103,18 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       const deployScore = deploy
         ? Math.round((deploy.deploy_success_rate * 0.5 + deploy.pipeline_coverage_rate * 0.3 + Math.min(deploy.successful_pipelines, 100) * 0.2) * 10) / 10
         : undefined;
-      return { ...c, deployScore };
+
+      const freq = c.frequency || {};
+      const filteredFreq: Record<string, number> = {};
+      for (const [date, count] of Object.entries(freq)) {
+        if (filters.dateFrom && date < filters.dateFrom) continue;
+        if (filters.dateTo && date > filters.dateTo) continue;
+        filteredFreq[date] = count;
+      }
+
+      return { ...c, frequency: filteredFreq, deployScore };
     });
-  }, [filteredContributors, deployData]);
+  }, [filteredContributors, deployData, filters.dateFrom, filters.dateTo]);
 
   // Metrics from filtered contributors
   const filteredMetrics = useMemo((): ContributorMetrics | null => {
