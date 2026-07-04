@@ -38,7 +38,7 @@ export async function projectsRoutes(app: FastifyInstance) {
       return reply.status(400).send({ ok: false, error: urlCheck.error });
     }
 
-    const encrypted = encrypt(token);
+    const encrypted = token ? encrypt(token) : null;
     const pool = getPool();
 
     try {
@@ -218,8 +218,8 @@ export async function projectsRoutes(app: FastifyInstance) {
       const errors: { path: string; error: string }[] = [];
 
       for (const proj of projects) {
-        if (!proj.path || !proj.label || !proj.token) {
-          errors.push({ path: proj.path || "unknown", error: "Missing path, label, or token" });
+        if (!proj.path || !proj.label) {
+          errors.push({ path: proj.path || "unknown", error: "Missing path or label" });
           continue;
         }
         const urlToValidate = proj.base_url || "https://gitlab.com/api/v4";

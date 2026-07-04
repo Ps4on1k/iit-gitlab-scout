@@ -21,9 +21,11 @@ let isRunning = false;
 let currentTask = "";
 let taskCurrent = 0;
 let taskTotal = 0;
+let completedTasks = 0;
+let totalTasks = 0;
 
 export function getSchedulerProgress() {
-  return { currentTask, taskCurrent, taskTotal, isRunning };
+  return { currentTask, taskCurrent, taskTotal, isRunning, completedTasks, totalTasks };
 }
 
 export function isSchedulerBusy(): boolean {
@@ -106,6 +108,7 @@ async function checkAndRun(): Promise<void> {
   }
   isRunning = true;
   setSchedulerStartedAt(Date.now());
+  completedTasks = 0;
 
   try {
     const pool = getPool();
@@ -118,24 +121,37 @@ async function checkAndRun(): Promise<void> {
     }
 
     const now = Date.now();
+    const tasksToRun: SchedulerTask[] = [];
 
     for (const task of result.rows as SchedulerTask[]) {
       if (!task.last_run_at) {
-        logFn(`[scheduler] Running ${task.task_name} (first run)`);
-        await runTask(task.task_name);
+        tasksToRun.push(task);
         continue;
       }
-
       const lastRun = new Date(task.last_run_at).getTime();
       const elapsed = (now - lastRun) / 1000 / 60;
-
       if (elapsed >= task.interval_minutes) {
-        logFn(`[scheduler] Running ${task.task_name} (elapsed: ${Math.round(elapsed)} min, interval: ${task.interval_minutes} min)`);
-        await runTask(task.task_name);
+        tasksToRun.push(task);
       }
+    }
+
+    totalTasks = tasksToRun.length;
+
+    for (const task of tasksToRun) {
+      if (!task.last_run_at) {
+        logFn(`[scheduler] Running ${task.task_name} (first run)`);
+      } else {
+        const lastRun = new Date(task.last_run_at).getTime();
+        const elapsed = (now - lastRun) / 1000 / 60;
+        logFn(`[scheduler] Running ${task.task_name} (elapsed: ${Math.round(elapsed)} min, interval: ${task.interval_minutes} min)`);
+      }
+      await runTask(task.task_name);
+      completedTasks++;
     }
   } finally {
     clearSchedulerStartedAt();
+    completedTasks = 0;
+    totalTasks = 0;
     isRunning = false;
   }
 }
@@ -160,6 +176,7 @@ export async function runAllEnabledTasks(): Promise<void> {
   }
   isRunning = true;
   setSchedulerStartedAt(Date.now());
+  completedTasks = 0;
 
   try {
     const pool = getPool();
@@ -170,12 +187,17 @@ export async function runAllEnabledTasks(): Promise<void> {
       return;
     }
 
+    totalTasks = result.rows.length;
+
     for (const task of result.rows as SchedulerTask[]) {
       logFn(`[scheduler] Manual run: ${task.task_name}`);
       await runTask(task.task_name);
+      completedTasks++;
     }
   } finally {
     clearSchedulerStartedAt();
+    completedTasks = 0;
+    totalTasks = 0;
     isRunning = false;
   }
 }

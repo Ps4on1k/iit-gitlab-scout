@@ -10,7 +10,9 @@ export function useCollectStatus(onComplete?: () => void) {
     currentTask: string;
     taskCurrent: number;
     taskTotal: number;
-  }>({ activeJobs: [], isRunning: false, currentTask: "", taskCurrent: 0, taskTotal: 0 });
+    completedTasks: number;
+    totalTasks: number;
+  }>({ activeJobs: [], isRunning: false, currentTask: "", taskCurrent: 0, taskTotal: 0, completedTasks: 0, totalTasks: 0 });
   const [ready, setReady] = useState(false);
   const wasRunningRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
@@ -27,6 +29,8 @@ export function useCollectStatus(onComplete?: () => void) {
           currentTask: s.currentTask || "",
           taskCurrent: s.taskCurrent,
           taskTotal: s.taskTotal,
+          completedTasks: s.completedTasks || 0,
+          totalTasks: s.totalTasks || 0,
         });
         setReady(true);
 

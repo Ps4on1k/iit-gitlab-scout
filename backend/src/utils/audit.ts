@@ -7,7 +7,7 @@ export async function logAuditAction(userId: number, action: string, details?: s
       `INSERT INTO audit_log (user_id, action, details) VALUES ($1, $2, $3)`,
       [userId, action, details || ""]
     );
-  } catch {
-    // Don't let audit logging failures break the main request
+  } catch (err) {
+    console.error("[audit] Failed to log action:", action, "userId:", userId, "error:", err instanceof Error ? err.message : err);
   }
 }

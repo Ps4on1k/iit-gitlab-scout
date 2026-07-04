@@ -50,6 +50,8 @@ export interface SchedulerStatus {
   currentTask: string;
   taskCurrent: number;
   taskTotal: number;
+  completedTasks: number;
+  totalTasks: number;
 }
 
 export async function fetchSchedulerSettings(): Promise<ApiResponse<SchedulerTask[]>> {

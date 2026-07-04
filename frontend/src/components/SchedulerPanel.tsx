@@ -35,7 +35,7 @@ export function SchedulerPanel() {
   const [errorsPage, setErrorsPage] = useState(1);
   const [errorsTaskFilter, setErrorsTaskFilter] = useState<string | undefined>();
 
-  const { isRunning, currentTask, taskCurrent, taskTotal, poll } = useCollectStatus();
+  const { isRunning, currentTask, taskCurrent, taskTotal, completedTasks, totalTasks, poll } = useCollectStatus();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -178,17 +178,40 @@ export function SchedulerPanel() {
 
       {isRunning && (
         <Card size="small" style={{ marginBottom: 16, background: "var(--ant-color-fill-secondary)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Progress
-              percent={taskTotal > 0 ? Math.round((taskCurrent / taskTotal) * 100) : 0}
-              status="active"
-              style={{ flex: 1 }}
-              format={() => taskTotal > 0 ? `${taskCurrent}/${taskTotal}` : ""}
-            />
-            <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
-              {currentTask ? TASK_LABELS[currentTask] || currentTask : "Подготовка..."}
-            </Text>
+          <div style={{ marginBottom: totalTasks > 0 ? 8 : 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                {totalTasks > 0 ? `Категории: ${completedTasks}/${totalTasks}` : "Подготовка..."}
+              </Text>
+              {currentTask && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  {TASK_LABELS[currentTask] || currentTask}
+                </Text>
+              )}
+            </div>
+            {totalTasks > 0 && (
+              <Progress
+                percent={totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0}
+                status="active"
+                size="small"
+                format={() => `${completedTasks}/${totalTasks}`}
+              />
+            )}
           </div>
+          {currentTask && taskTotal > 0 && (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                <Text type="secondary" style={{ fontSize: 11 }}>Текущая задача</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>{taskCurrent}/{taskTotal} проектов</Text>
+              </div>
+              <Progress
+                percent={taskTotal > 0 ? Math.round((taskCurrent / taskTotal) * 100) : 0}
+                status="active"
+                size="small"
+                strokeColor="#3A8DFF"
+              />
+            </div>
+          )}
         </Card>
       )}
 

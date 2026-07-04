@@ -3,7 +3,7 @@ import { z } from "zod";
 export const projectSchema = z.object({
   path: z.string().min(1).max(500).regex(/^[a-zA-Z0-9_\-/.]+$/, "Path contains invalid characters"),
   label: z.string().min(1).max(200),
-  token: z.string().min(10).max(500),
+  token: z.string().min(1).max(500).optional(),
   base_url: z.string().url().optional(),
   tags: z.array(z.string().max(50)).max(20).optional(),
   description: z.string().max(2000).optional(),
