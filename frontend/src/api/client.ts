@@ -334,11 +334,18 @@ export async function validateProjectTokens(projectIds: number[]): Promise<ApiRe
 }
 
 export async function fetchBenchmark(tags: string[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<any>> {
-  const qs = new URLSearchParams();
-  qs.set("tags", tags.join(","));
+  const qs = new URLSearchParams({ tags: tags.join(",") });
   if (dateFrom) qs.set("date_from", dateFrom);
   if (dateTo) qs.set("date_to", dateTo);
   return fetchJson(`/v1/benchmark?${qs.toString()}`);
+}
+
+export async function fetchContributorBenchmark(contributors: string[], projectIds?: number[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<any>> {
+  const qs = new URLSearchParams({ contributors: contributors.join(",") });
+  if (projectIds && projectIds.length > 0) qs.set("project_ids", projectIds.join(","));
+  if (dateFrom) qs.set("date_from", dateFrom);
+  if (dateTo) qs.set("date_to", dateTo);
+  return fetchJson(`/v1/benchmark/contributors?${qs.toString()}`);
 }
 
 export async function startBatchCollect(collector: string, projectIds: number[], dateFrom?: string, dateTo?: string): Promise<ApiResponse<{ started: boolean; total: number }>> {

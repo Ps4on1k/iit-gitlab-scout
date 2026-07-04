@@ -186,4 +186,87 @@ export async function benchmarkRoutes(app: FastifyInstance) {
       },
     };
   });
+
+  app.get<{
+    Querystring: { contributors?: string; project_ids?: string; date_from?: string; date_to?: string };
+  }>("/api/v1/benchmark/contributors", { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = (request as any).user as JwtPayload;
+    if (user.role !== "admin" && user.role !== "manager") {
+      return reply.status(403).send({ ok: false, error: "Access denied: admin or manager role required" });
+    }
+
+    const { contributors, project_ids, date_from, date_to } = request.query;
+    if (!contributors) {
+      return { ok: true, data: { groups: [] } };
+    }
+
+    const pool = getPool();
+    const emails = contributors.split(",").filter(Boolean);
+    const projIds = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : null;
+    const dateFrom = date_from || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+    const dateTo = date_to || new Date().toISOString().slice(0, 10);
+    const deployDays = Math.max(1, Math.ceil((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1);
+
+    const groups: any[] = [];
+
+    for (const email of emails) {
+      const nameResult = await pool.query(
+        "SELECT display_name, emails FROM contributor_directory WHERE emails @> ARRAY[$1]::text[]",
+        [email]
+      );
+      let allEmails = [email];
+      let displayName = email;
+      if (nameResult.rows.length > 0) {
+        allEmails = nameResult.rows[0].emails;
+        displayName = nameResult.rows[0].display_name;
+      } else {
+        const nameR = await pool.query("SELECT author_name FROM contributor_profiles WHERE author_email = $1 LIMIT 1", [email]);
+        if (nameR.rows[0]?.author_name) displayName = nameR.rows[0].author_name;
+      }
+
+      const projCond = projIds && projIds.length > 0 ? "AND project_id = ANY($3)" : "";
+      const projParams = projIds && projIds.length > 0 ? [allEmails, dateFrom, projIds] : [allEmails, dateFrom];
+
+      const commitsResult = await pool.query(
+        `SELECT COUNT(*)::int as total, COALESCE(SUM(additions + deletions), 0)::int as changes,
+                COUNT(DISTINCT TO_CHAR(committed_date, 'YYYY-MM-DD'))::int as active_days
+         FROM commits WHERE author_email = ANY($1) AND committed_date >= $2 ${projCond}`,
+        projParams
+      );
+      const commitsPerDay = Math.round((commitsResult.rows[0].total / deployDays) * 100) / 100;
+
+      const mrResult = await pool.query(
+        `SELECT COUNT(*)::int as total, COUNT(*) FILTER (WHERE state = 'merged')::int as merged
+         FROM project_merge_requests WHERE author_email = ANY($1) AND created_at >= $2 ${projCond}`,
+        projParams
+      );
+      const mergeRate = mrResult.rows[0].total > 0
+        ? Math.round((mrResult.rows[0].merged / mrResult.rows[0].total) * 100) : 0;
+
+      groups.push({
+        tag: displayName,
+        email,
+        projectCount: 0,
+        dora: { deployFrequency: 0, avgLeadTimeSec: 0, failureRate: 0, avgMttrMin: 0, total: 0 },
+        commits: {
+          total: commitsResult.rows[0].total,
+          perDay: commitsPerDay,
+          contributors: 1,
+          activeDays: commitsResult.rows[0].active_days,
+          changes: commitsResult.rows[0].changes,
+        },
+        pipelines: { total: 0, successRate: 0 },
+        mr: {
+          total: mrResult.rows[0].total,
+          merged: mrResult.rows[0].merged,
+          opened: 0,
+          mergeRate,
+        },
+        branches: { total: 0, active: 0, stale: 0, merged: 0, health: 0 },
+        topContributors: [],
+      });
+    }
+
+    return { ok: true, data: { groups } };
+  });
 }
