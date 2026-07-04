@@ -26,6 +26,10 @@ export function getSchedulerProgress() {
   return { currentTask, taskCurrent, taskTotal, isRunning };
 }
 
+export function isSchedulerBusy(): boolean {
+  return isRunning;
+}
+
 async function runTask(taskName: string): Promise<void> {
   const pool = getPool();
 
