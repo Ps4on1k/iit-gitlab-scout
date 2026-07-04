@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
-import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select } from "antd";
-
-const { Text } = Typography;
+import { useState, useEffect, useRef } from "react";
+import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select, Progress } from "antd";
 import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined } from "@ant-design/icons";
 import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
+
+const { Text } = Typography;
 
 const TASK_LABELS: Record<string, string> = {
   collect_stack: "Сбор стека технологий",
@@ -33,6 +33,8 @@ export function SchedulerPanel() {
   const [errorsLoading, setErrorsLoading] = useState(false);
   const [errorsPage, setErrorsPage] = useState(1);
   const [errorsTaskFilter, setErrorsTaskFilter] = useState<string | undefined>();
+  const [collectProgress, setCollectProgress] = useState<{ done: number; total: number; current: string } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [runningAll, setRunningAll] = useState(false);
 
   const load = async () => {
@@ -87,12 +89,49 @@ export function SchedulerPanel() {
     setRunningAll(true);
     const res = await runAllSchedulerTasks();
     if (res.ok) {
-      message.success("Запущен сбор всех данных");
-      setTimeout(load, 2000);
+      const beforeRun = new Map(tasks.map((t) => [t.task_name, t.last_run_at]));
+      const enabledTasks = tasks.filter((t) => t.enabled);
+      const total = enabledTasks.length;
+      let done = 0;
+      let current = enabledTasks[0]?.task_name || "";
+
+      setCollectProgress({ done: 0, total, current: TASK_LABELS[current] || current });
+
+      pollRef.current = setInterval(async () => {
+        const statusRes = await fetchSchedulerSettings();
+        if (statusRes.ok) {
+          let completed = 0;
+          let running = "";
+          for (const t of statusRes.data!) {
+            if (!t.enabled) continue;
+            if (t.last_run_at && t.last_run_at !== beforeRun.get(t.task_name)) {
+              completed++;
+            } else if (completed === done) {
+              running = t.task_name;
+            }
+          }
+          done = completed;
+          current = running || enabledTasks[done]?.task_name || "";
+          setCollectProgress({
+            done,
+            total,
+            current: TASK_LABELS[current] || current,
+          });
+
+          if (done >= total) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setCollectProgress(null);
+            setRunningAll(false);
+            message.success("Сбор всех данных завершён");
+            load();
+          }
+        }
+      }, 3000);
     } else {
       message.error(res.error!);
+      setRunningAll(false);
     }
-    setRunningAll(false);
   };
 
   const columns = [
@@ -166,6 +205,22 @@ export function SchedulerPanel() {
           <Button icon={<ReloadOutlined />} onClick={load} loading={loading}>Обновить</Button>
         </Space>
       </div>
+
+      {collectProgress && (
+        <Card size="small" style={{ marginBottom: 16, background: "var(--ant-color-fill-secondary)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Progress
+              percent={Math.round((collectProgress.done / collectProgress.total) * 100)}
+              status="active"
+              style={{ flex: 1 }}
+              format={() => `${collectProgress.done}/${collectProgress.total}`}
+            />
+            <Typography.Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>
+              {collectProgress.current ? `Сбор: ${collectProgress.current}` : "Завершено"}
+            </Typography.Text>
+          </div>
+        </Card>
+      )}
 
       <Card>
         <Table
