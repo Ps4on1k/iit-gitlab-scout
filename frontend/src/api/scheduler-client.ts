@@ -41,8 +41,21 @@ export interface SchedulerTask {
   updated_at: string;
 }
 
+export interface SchedulerStatus {
+  data: SchedulerTask[];
+  schedulerRunning: boolean;
+  startedAt: number | null;
+  currentTask: string;
+  taskCurrent: number;
+  taskTotal: number;
+}
+
 export async function fetchSchedulerSettings(): Promise<ApiResponse<SchedulerTask[]>> {
   return cachedGet<SchedulerTask[]>("/v1/scheduler", "scheduler");
+}
+
+export async function fetchSchedulerStatus(): Promise<ApiResponse<SchedulerStatus>> {
+  return fetchJson<SchedulerStatus>("/v1/scheduler/status");
 }
 
 export async function updateSchedulerTask(

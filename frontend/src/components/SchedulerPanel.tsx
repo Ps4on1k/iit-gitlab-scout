@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select, Progress, Tooltip } from "antd";
 import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined, WarningOutlined } from "@ant-design/icons";
-import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
+import { fetchSchedulerSettings, fetchSchedulerStatus, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
 import { useCollectStatus } from "../hooks/useCollectStatus";
 
 const { Text } = Typography;
@@ -67,26 +67,20 @@ export function SchedulerPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Check if any scheduler task is running based on last_run_at changes
+  // Check scheduler progress via status endpoint
   const checkSchedulerProgress = useCallback(async () => {
-    const statusRes = await fetchSchedulerSettings();
-    if (!statusRes.ok) return;
-    const before = beforeRunRef.current;
-    const enabledTasks = statusRes.data!.filter((t) => t.enabled);
-    const total = enabledTasks.length;
-    let done = 0;
-    let current = "";
-    for (const t of enabledTasks) {
-      if (t.last_run_at && t.last_run_at !== before.get(t.task_name)) {
-        done++;
-      } else if (done === done) {
-        current = t.task_name;
-      }
+    const statusRes = await fetchSchedulerStatus();
+    if (!statusRes.ok) return null;
+    const s = statusRes.data!;
+    if (s.currentTask) {
+      setCollectProgress({
+        done: s.taskCurrent,
+        total: s.taskTotal,
+        current: TASK_LABELS[s.currentTask] || s.currentTask,
+      });
+      return { done: s.taskCurrent, total: s.taskTotal, running: true };
     }
-    if (done > 0 || done < total) {
-      setCollectProgress({ done, total, current: TASK_LABELS[current] || current });
-    }
-    return { done, total };
+    return { done: 0, total: 0, running: false };
   }, []);
 
   // On mount: if any collection is running, show progress
@@ -111,7 +105,7 @@ export function SchedulerPanel() {
         beforeRunRef.current = new Map(tasks.map((t) => [t.task_name, t.last_run_at]));
         pollRef.current = setInterval(async () => {
           const result = await checkSchedulerProgress();
-          if (result && result.done >= result.total && result.total > 0) {
+          if (result && !result.running) {
             if (pollRef.current) clearInterval(pollRef.current);
             pollRef.current = null;
             setCollectProgress(null);
@@ -182,7 +176,7 @@ export function SchedulerPanel() {
 
       pollRef.current = setInterval(async () => {
         const result = await checkSchedulerProgress();
-        if (result && result.done >= result.total && result.total > 0) {
+        if (result && !result.running) {
           if (pollRef.current) clearInterval(pollRef.current);
           pollRef.current = null;
           setCollectProgress(null);

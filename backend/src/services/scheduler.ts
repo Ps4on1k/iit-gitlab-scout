@@ -19,6 +19,13 @@ interface SchedulerTask {
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let logFn: (...args: any[]) => void = console.log;
 let isRunning = false;
+let currentTask = "";
+let taskCurrent = 0;
+let taskTotal = 0;
+
+export function getSchedulerProgress() {
+  return { currentTask, taskCurrent, taskTotal, isRunning };
+}
 
 async function runTask(taskName: string): Promise<void> {
   const pool = getPool();
@@ -31,9 +38,13 @@ async function runTask(taskName: string): Promise<void> {
     return;
   }
 
+  currentTask = taskName;
+  taskTotal = projectIds.length;
+  taskCurrent = 0;
   logFn(`[scheduler] ${taskName}: processing ${projectIds.length} projects`);
 
   for (const projectId of projectIds) {
+    taskCurrent++;
     // Verify project still exists before collecting
     const exists = await pool.query("SELECT 1 FROM projects WHERE id = $1", [projectId]);
     if (exists.rows.length === 0) {
@@ -79,6 +90,9 @@ async function runTask(taskName: string): Promise<void> {
     "UPDATE scheduler_settings SET last_run_at = now() WHERE task_name = $1",
     [taskName]
   );
+  currentTask = "";
+  taskCurrent = 0;
+  taskTotal = 0;
   logFn(`[scheduler] ${taskName}: last_run_at updated`);
 }
 
@@ -127,10 +141,8 @@ async function checkAndRun(): Promise<void> {
 
 export function startScheduler(appLog?: (...args: any[]) => void): void {
   if (appLog) logFn = appLog;
-  logFn("[scheduler] Starting scheduler (check every 60s)");
+  logFn("[scheduler] Starting scheduler (check every 60s, no immediate run)");
   intervalId = setInterval(checkAndRun, 60 * 1000);
-  // Run once immediately on startup
-  checkAndRun().catch((err) => logFn("[scheduler] Initial run error:", err));
 }
 
 export function stopScheduler(): void {

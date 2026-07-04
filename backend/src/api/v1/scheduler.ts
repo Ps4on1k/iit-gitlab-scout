@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
-import { runAllEnabledTasks } from "../../services/scheduler.js";
+import { runAllEnabledTasks, getSchedulerProgress } from "../../services/scheduler.js";
 import { isAnyCollectionRunning } from "../../utils/collect-tracker.js";
 
 let schedulerStartedAt: number | null = null;
@@ -77,11 +77,15 @@ export async function schedulerRoutes(app: FastifyInstance) {
     const result = await pool.query(
       "SELECT task_name, enabled, interval_minutes, last_run_at FROM scheduler_settings ORDER BY id"
     );
+    const progress = getSchedulerProgress();
     return {
       ok: true,
       data: result.rows,
       schedulerRunning: isAnyCollectionRunning(),
       startedAt: schedulerStartedAt,
+      currentTask: progress.currentTask,
+      taskCurrent: progress.taskCurrent,
+      taskTotal: progress.taskTotal,
     };
   });
 
