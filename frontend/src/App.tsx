@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { ConfigProvider, Layout, Button, Typography, Spin, Tooltip } from "antd";
-import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined } from "@ant-design/icons";
+import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined, UpOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
@@ -98,6 +98,7 @@ export default function App() {
   const [tabParams, setTabParams] = useState<Record<string, string>>(urlState.current.tabParams);
   const [darkMode, setDarkMode] = useState<boolean>(getInitialDarkMode);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const isInitialLoad = useRef(true);
   const { isRunning: collectionRunning } = useCollectStatus();
 
@@ -106,6 +107,11 @@ export default function App() {
   }, []);
 
   useEffect(() => { getMe().then((res) => { if (res.ok) setUser(res.data!); setLoading(false); }); }, []);
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
   useEffect(() => { try { localStorage.setItem("darkMode", String(darkMode)); } catch {} }, [darkMode]);
   useEffect(() => { clearCache(); }, [filters, analyticsTab]);
   useEffect(() => { if (isInitialLoad.current) { isInitialLoad.current = false; return; } writeUrlState(tab, analyticsTab, filters, tabParams); }, [tab, analyticsTab, filters, tabParams]);
@@ -218,6 +224,17 @@ export default function App() {
           </div>
         </div>
       </Layout>
+
+      {/* Scroll to top button */}
+      {showScrollTop && (
+        <Button
+          type="primary"
+          shape="circle"
+          icon={<UpOutlined />}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          style={{ position: "fixed", bottom: 15, right: 15, width: 40, height: 40, zIndex: 1000, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
+        />
+      )}
     </ConfigProvider>
   );
 }
