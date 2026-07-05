@@ -1,7 +1,6 @@
 import { getPool } from "../db/pool.js";
 import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
-import { safeErrorMessage } from "../utils/safe-error.js";
 
 export async function collectDependenciesAudit(projectId: number): Promise<{ total: number; outdated: number }> {
   const pool = getPool();
@@ -9,24 +8,30 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
 
   const client = new GitLabClient({ token, baseUrl });
 
-  // Get tree to find dependency files — use path for CE compatibility
-  let tree;
-  try {
-    tree = await client.requestPaginated<any>(
-      `/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=main&per_page=100`
-    );
-    console.log(`[deps] ${projectPath}: found ${tree.length} files in main`);
-  } catch (err) {
-    console.log(`[deps] ${projectPath}: main branch failed, trying master: ${err}`);
+  // Try main branch first, then master
+  let tree: any[] = [];
+  for (const ref of ["main", "master"]) {
     try {
-      tree = await client.requestPaginated<any>(
-        `/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=master&per_page=100`
+      const res = await fetch(
+        `${baseUrl}/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=${ref}&per_page=100`,
+        {
+          headers: { "PRIVATE-TOKEN": token, Accept: "application/json" },
+          signal: AbortSignal.timeout(30000),
+        }
       );
-      console.log(`[deps] ${projectPath}: found ${tree.length} files in master`);
-    } catch (err2) {
-      console.log(`[deps] ${projectPath}: both branches failed: ${err2}`);
-      return { total: 0, outdated: 0 };
+      if (!res.ok) continue;
+      const body = await res.json();
+      // GitLab returns array directly for tree endpoint
+      tree = Array.isArray(body) ? body : (body.tree || []);
+      if (tree.length > 0) break;
+    } catch {
+      continue;
     }
+  }
+
+  if (tree.length === 0) {
+    console.log(`[deps] ${projectPath}: no files found in tree`);
+    return { total: 0, outdated: 0 };
   }
 
   const depFileNames = ["package.json", "go.mod", "requirements.txt", "Cargo.toml", "pom.xml", "build.gradle", "composer.json", "pubspec.yaml", "Package.swift"];
@@ -34,18 +39,27 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
     (item: any) => item.type === "blob" && depFileNames.includes(item.name)
   );
 
+  console.log(`[deps] ${projectPath}: found ${depFiles.length} dependency files out of ${tree.length} total`);
+
   const deps: { name: string; current_version: string; source: string }[] = [];
 
   for (const file of depFiles) {
-    if (file.size && file.size > 1024 * 1024) continue;
+    if (file.size && file.size > 1024 * 1024) {
+      console.log(`[deps] ${projectPath}: skipping ${file.name} (too large: ${file.size})`);
+      continue;
+    }
     try {
       const content = await client.getFile(projectId, file.path, "main");
       const parsed = parseDepFile(file.name, content);
+      console.log(`[deps] ${projectPath}: ${file.name} → ${parsed.length} deps`);
       deps.push(...parsed);
-    } catch {
+    } catch (err) {
+      console.log(`[deps] ${projectPath}: failed to read ${file.name}: ${err}`);
       continue;
     }
   }
+
+  console.log(`[deps] ${projectPath}: total ${deps.length} dependencies found`);
 
   await pool.query("DELETE FROM project_dependencies_audit WHERE project_id = $1", [projectId]);
 
@@ -74,7 +88,9 @@ function parseDepFile(fileName: string, content: string): { name: string; curren
       for (const [name, version] of Object.entries(allDeps || {})) {
         deps.push({ name, current_version: String(version), source: "npm" });
       }
-    } catch {}
+    } catch (err) {
+      console.log(`[deps] package.json parse error: ${err}`);
+    }
   } else if (fileName === "requirements.txt") {
     content.split("\n").filter((l) => l.trim() && !l.startsWith("#") && !l.startsWith("-")).forEach((line) => {
       const match = line.match(/^([a-zA-Z0-9_.-]+)\s*[=<>!~]+\s*(.+)/);
@@ -88,6 +104,46 @@ function parseDepFile(fileName: string, content: string): { name: string; curren
         const match = line.trim().match(/^([\w./-]+)\s+(\S+)/);
         if (match && !match[1].startsWith("//")) deps.push({ name: match[1], current_version: match[2], source: "go" });
       });
+    }
+  } else if (fileName === "Cargo.toml") {
+    const sections = content.split(/\[(?:dependencies|dev-dependencies|build-dependencies)/);
+    for (const section of sections.slice(1)) {
+      const matches = section.matchAll(/^([a-zA-Z0-9_-]+)\s*=\s*["{].*?["{]?\s*(?:version\s*=\s*["']([^"']+)["'])?/gm);
+      for (const m of matches) {
+        if (m[1] && m[2]) deps.push({ name: m[1], current_version: m[2], source: "cargo" });
+      }
+    }
+  } else if (fileName === "pom.xml") {
+    const matches = content.matchAll(/<dependency>\s*<groupId>([^<]+)<\/groupId>\s*<artifactId>([^<]+)<\/artifactId>\s*<version>([^<]+)<\/version>/g);
+    for (const m of matches) {
+      deps.push({ name: `${m[1]}:${m[2]}`, current_version: m[3], source: "maven" });
+    }
+  } else if (fileName === "build.gradle" || fileName === "build.gradle.kts") {
+    const matches = content.matchAll(/(?:implementation|api|compile)\s+['"]([^'"]+):([^'"]+):([^'"]+)['"]/g);
+    for (const m of matches) {
+      deps.push({ name: `${m[1]}:${m[2]}`, current_version: m[3], source: "gradle" });
+    }
+  } else if (fileName === "composer.json") {
+    try {
+      const pkg = JSON.parse(content);
+      const allDeps = { ...pkg.require, ...pkg["require-dev"] };
+      for (const [name, version] of Object.entries(allDeps || {})) {
+        deps.push({ name, current_version: String(version), source: "composer" });
+      }
+    } catch (err) {
+      console.log(`[deps] composer.json parse error: ${err}`);
+    }
+  } else if (fileName === "pubspec.yaml") {
+    const matches = content.matchAll(/^  ([a-zA-Z0-9_]+):\s*(["']?[^"'\n]+["']?)/gm);
+    for (const m of matches) {
+      if (!m[1].startsWith("_") && !["name", "description", "version", "environment", "flutter", "sdk"].includes(m[1])) {
+        deps.push({ name: m[1], current_version: m[2].replace(/['"]/g, ""), source: "pub" });
+      }
+    }
+  } else if (fileName === "Package.swift") {
+    const matches = content.matchAll(/\.package\s*\(\s*name:\s*["']([^"']+)["'].*?from:\s*["']([^"']+)["']/g);
+    for (const m of matches) {
+      deps.push({ name: m[1], current_version: m[2], source: "swift-pm" });
     }
   }
 
