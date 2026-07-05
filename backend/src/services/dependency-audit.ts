@@ -13,7 +13,7 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
   for (const ref of ["main", "master"]) {
     try {
       const res = await fetch(
-        `${baseUrl}/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=${ref}&recursive=true&per_page=100`,
+        `${baseUrl}/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=${ref}&recursive=true&per_page=1000`,
         {
           headers: { "PRIVATE-TOKEN": token, Accept: "application/json" },
           signal: AbortSignal.timeout(30000),
