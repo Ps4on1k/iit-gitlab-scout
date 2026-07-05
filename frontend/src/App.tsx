@@ -37,7 +37,7 @@ function Watermark({ dark }: { dark: boolean }) {
   );
 }
 
-function Logo({ isDark }: { isDark: boolean }) {
+function Logo() {
   return <img src="/logo.svg" alt="GitLab Scout" style={{ width: 28, height: 28 }} />;
 }
 
@@ -52,58 +52,41 @@ type TabKey = "dashboard" | "analytics" | "stack" | "dependencies" | "benchmark"
 type AnalyticsTab = "contributors" | "deploy-reliability" | "activity" | "branches" | "pipelines" | "dora";
 
 function getInitialDarkMode(): boolean {
-  try { const stored = localStorage.getItem("darkMode"); if (stored !== null) return stored === "true"; } catch {}
-  return true;
+  try { const s = localStorage.getItem("darkMode"); if (s !== null) return s === "true"; } catch {} return true;
 }
 
 function readUrlState() {
-  const params = new URLSearchParams(window.location.search);
-  const tab = (params.get("tab") as TabKey) || "dashboard";
-  const aTab = (params.get("view") as AnalyticsTab) || "contributors";
+  const p = new URLSearchParams(window.location.search);
+  const tab = (p.get("tab") as TabKey) || "dashboard";
+  const aTab = (p.get("view") as AnalyticsTab) || "contributors";
   const filters: Partial<GlobalFilters> = {};
-  const projectIds = params.get("projects");
-  if (projectIds) filters.projectIds = projectIds.split(",").map(Number).filter(Boolean);
-  const tags = params.get("tags");
-  if (tags) filters.tags = tags.split(",").filter(Boolean);
-  const contributors = params.get("contributors");
-  if (contributors) filters.contributors = contributors.split(",").filter(Boolean);
-  const dateFrom = params.get("dateFrom");
-  if (dateFrom) filters.dateFrom = dateFrom;
-  const dateTo = params.get("dateTo");
-  if (dateTo) filters.dateTo = dateTo;
-  const tabParams: Record<string, string> = {};
-  for (const [k, v] of params.entries()) {
-    if (["tab", "view", "projects", "tags", "contributors", "dateFrom", "dateTo"].includes(k)) continue;
-    tabParams[k] = v;
-  }
-  return { tab, analyticsTab: aTab, filters, tabParams };
+  const pid = p.get("projects"); if (pid) filters.projectIds = pid.split(",").map(Number).filter(Boolean);
+  const tags = p.get("tags"); if (tags) filters.tags = tags.split(",").filter(Boolean);
+  const contribs = p.get("contributors"); if (contribs) filters.contributors = contribs.split(",").filter(Boolean);
+  const df = p.get("dateFrom"); if (df) filters.dateFrom = df;
+  const dt = p.get("dateTo"); if (dt) filters.dateTo = dt;
+  const tp: Record<string, string> = {};
+  for (const [k, v] of p.entries()) { if (!["tab", "view", "projects", "tags", "contributors", "dateFrom", "dateTo"].includes(k)) tp[k] = v; }
+  return { tab, analyticsTab: aTab, filters, tabParams: tp };
 }
 
 function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalFilters, tabParams: Record<string, string>) {
-  const params = new URLSearchParams();
-  params.set("tab", tab);
+  const p = new URLSearchParams(); p.set("tab", tab);
   if (tab === "analytics") {
-    params.set("view", analyticsTab);
-    if (filters.projectIds.length > 0) params.set("projects", filters.projectIds.join(","));
-    if (filters.tags.length > 0) params.set("tags", filters.tags.join(","));
-    if (filters.contributors.length > 0) params.set("contributors", filters.contributors.join(","));
-    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
-    if (filters.dateTo) params.set("dateTo", filters.dateTo);
+    p.set("view", analyticsTab);
+    if (filters.projectIds.length > 0) p.set("projects", filters.projectIds.join(","));
+    if (filters.tags.length > 0) p.set("tags", filters.tags.join(","));
+    if (filters.contributors.length > 0) p.set("contributors", filters.contributors.join(","));
+    if (filters.dateFrom) p.set("dateFrom", filters.dateFrom);
+    if (filters.dateTo) p.set("dateTo", filters.dateTo);
   }
-  for (const [k, v] of Object.entries(tabParams)) { if (v) params.set(k, v); }
-  const qs = params.toString();
+  for (const [k, v] of Object.entries(tabParams)) { if (v) p.set(k, v); }
+  const qs = p.toString();
   window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
 }
 
-const TAB_LABELS: Record<TabKey, string> = {
-  dashboard: "Обзор", analytics: "Аналитика", stack: "Языки",
-  dependencies: "Зависимости", benchmark: "Бенчмарк", settings: "Настройки",
-};
-
-const ANALYTICS_LABELS: Record<AnalyticsTab, string> = {
-  contributors: "Контрибьюторы", "deploy-reliability": "Надёжность",
-  activity: "Активность", branches: "Ветки", pipelines: "CI/CD", dora: "DORA",
-};
+const TAB_LABELS: Record<TabKey, string> = { dashboard: "Обзор", analytics: "Аналитика", stack: "Языки", dependencies: "Зависимости", benchmark: "Бенчмарк", settings: "Настройки" };
+const ANALYTICS_LABELS: Record<AnalyticsTab, string> = { contributors: "Контрибьюторы", "deploy-reliability": "Надёжность", activity: "Активность", branches: "Ветки", pipelines: "CI/CD", dora: "DORA" };
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -114,7 +97,7 @@ export default function App() {
   const [filters, setFilters] = useState<GlobalFilters>(() => ({ ...defaultFilters, ...urlState.current.filters }));
   const [tabParams, setTabParams] = useState<Record<string, string>>(urlState.current.tabParams);
   const [darkMode, setDarkMode] = useState<boolean>(getInitialDarkMode);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const isInitialLoad = useRef(true);
   const { isRunning: collectionRunning } = useCollectStatus();
 
@@ -128,7 +111,6 @@ export default function App() {
   useEffect(() => { if (isInitialLoad.current) { isInitialLoad.current = false; return; } writeUrlState(tab, analyticsTab, filters, tabParams); }, [tab, analyticsTab, filters, tabParams]);
 
   const handleLogout = () => { clearToken(); setUser(null); };
-
   const handleContributorClick = useCallback(async (emailOrName: string) => {
     if (!emailOrName) return;
     const res = await resolveContributor(emailOrName);
@@ -136,12 +118,7 @@ export default function App() {
     setFilters((prev) => ({ ...prev, contributors: prev.contributors.includes(resolved) ? prev.contributors : [...prev.contributors, resolved] }));
     setTab("analytics"); setAnalyticsTab("contributors");
   }, []);
-
-  const navigateTo = (newTab: TabKey, newAnalyticsTab?: AnalyticsTab) => {
-    setTab(newTab);
-    if (newAnalyticsTab) setAnalyticsTab(newAnalyticsTab);
-    setSidebarOpen(false);
-  };
+  const navigateTo = (newTab: TabKey, newAnalyticsTab?: AnalyticsTab) => { setTab(newTab); if (newAnalyticsTab) setAnalyticsTab(newAnalyticsTab); };
 
   const themeConfig = darkMode ? darkThemeConfig : lightThemeConfig;
   const contentBg = darkMode ? "#111827" : "#F5F7FA";
@@ -159,84 +136,10 @@ export default function App() {
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
         <Watermark dark={darkMode} />
 
-        {/* Sidebar overlay */}
-        {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 999 }} />}
-
-        {/* Sidebar */}
-        <div style={{
-          position: "fixed", top: 0, left: sidebarOpen ? 0 : -280, width: 280, height: "100vh",
-          background: darkMode ? "#0f172a" : "#1e293b", zIndex: 1000, transition: "left 0.25s ease",
-          display: "flex", flexDirection: "column", boxShadow: sidebarOpen ? "4px 0 20px rgba(0,0,0,0.3)" : "none",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <Logo isDark={darkMode} />
-              <span style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>GitLab Scout</span>
-              <span style={{ color: "#64748b", fontSize: 11 }}>v3.0.1</span>
-            </div>
-            <Button type="text" icon={<CloseOutlined style={{ color: "#94a3b8" }} />} onClick={() => setSidebarOpen(false)} />
-          </div>
-          <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
-            {[
-              { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
-            ].map((item) => (
-              <div key={item.key} onClick={() => navigateTo(item.key as TabKey)}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer",
-                  color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent",
-                  transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>
-                {item.icon} {item.label}
-              </div>
-            ))}
-            <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Аналитика</div>
-            {[
-              { key: "contributors", label: "Контрибьюторы" },
-              { key: "deploy-reliability", label: "Надёжность" },
-              { key: "activity", label: "Активность" },
-              { key: "branches", label: "Ветки" },
-              { key: "pipelines", label: "CI/CD" },
-              { key: "dora", label: "DORA" },
-            ].map((item) => (
-              <div key={item.key} onClick={() => navigateTo("analytics", item.key as AnalyticsTab)}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px 10px 36px", cursor: "pointer",
-                  color: tab === "analytics" && analyticsTab === item.key ? "#3A8DFF" : "#94a3b8",
-                  background: tab === "analytics" && analyticsTab === item.key ? "rgba(58,141,255,0.1)" : "transparent",
-                  transition: "all 0.15s", fontSize: 13, fontWeight: tab === "analytics" && analyticsTab === item.key ? 600 : 400 }}>
-                {item.label}
-              </div>
-            ))}
-            <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Разделы</div>
-            {[
-              { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
-              { key: "dependencies", icon: <ApartmentOutlined />, label: "Зависимости" },
-              ...(user.role === "admin" || user.role === "manager" ? [{ key: "benchmark", icon: <BarChartOutlined />, label: "Бенчмарк" }] : []),
-              ...(user.role === "admin" ? [{ key: "settings", icon: <SettingOutlined />, label: "Настройки" }] : []),
-            ].map((item) => (
-              <div key={item.key} onClick={() => navigateTo(item.key as TabKey)}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer",
-                  color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent",
-                  transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>
-                {item.icon} {item.label}
-              </div>
-            ))}
-          </nav>
-          <div style={{ padding: "12px 20px", borderTop: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 16, background: "#3A8DFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 600 }}>
-                {user.username[0].toUpperCase()}
-              </div>
-              <div>
-                <div style={{ color: "#e2e8f0", fontSize: 13, fontWeight: 500 }}>{user.username}</div>
-                <div style={{ color: "#64748b", fontSize: 11 }}>{user.role}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#111315", position: "relative", zIndex: 10, height: 48 }}>
+        {/* Header - full width */}
+        <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#111315", height: 48, zIndex: 10 }}>
           <Button type="text" icon={<MenuOutlined style={{ color: "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}>
-            <Logo isDark={darkMode} />
-            <span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
             <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.0.1</span>
             {collectionRunning && <Tooltip title="Идёт сбор данных"><SyncOutlined spin style={{ color: "#42D9C8", fontSize: 14 }} /></Tooltip>}
           </div>
@@ -244,43 +147,76 @@ export default function App() {
             {breadcrumbItems.map((item, i) => (
               <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 {i > 0 && <RightOutlined style={{ fontSize: 10, color: "#475569" }} />}
-                <span style={{ cursor: item.onClick ? "pointer" : "default", color: item.onClick ? "#3A8DFF" : "#94a3b8", fontWeight: i === breadcrumbItems.length - 1 ? 600 : 400 }}
-                  onClick={item.onClick}>{item.label}</span>
+                <span style={{ cursor: item.onClick ? "pointer" : "default", color: item.onClick ? "#3A8DFF" : "#94a3b8", fontWeight: i === breadcrumbItems.length - 1 ? 600 : 400 }} onClick={item.onClick}>{item.label}</span>
               </span>
             ))}
           </div>
-          <Button type="text" icon={darkMode ? <BulbFilled style={{ color: "#fbbf24" }} /> : <BulbOutlined style={{ color: "rgba(255,255,255,0.65)" }} />}
-            onClick={() => setDarkMode(!darkMode)} style={{ marginRight: 8 }} />
-          <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 12, fontSize: 13, lineHeight: "1.2" }}>
-            {user.username} ({user.role})
-          </div>
+          <Button type="text" icon={darkMode ? <BulbFilled style={{ color: "#fbbf24" }} /> : <BulbOutlined style={{ color: "rgba(255,255,255,0.65)" }} />} onClick={() => setDarkMode(!darkMode)} style={{ marginRight: 8 }} />
+          <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 12, fontSize: 13, lineHeight: "1.2" }}>{user.username} ({user.role})</div>
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>Выйти</Button>
         </Header>
 
-        <Content style={{ padding: "12px 24px 24px", background: "transparent", border: "none", position: "relative", zIndex: 1 }}>
-          {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} extraParams={tabParams} />}
-          <Suspense fallback={<div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>}>
-            {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
-            {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-            {tab === "analytics" && analyticsTab === "deploy-reliability" && (user.role === "admin" || user.role === "manager") && <DeployReliabilityDashboard key={`deploy-${filterKey}`} filters={filters} onContributorClick={handleContributorClick} />}
-            {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-            {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-            {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
-            {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
-            {tab === "stack" && <StackDashboard userRole={user.role} />}
-            {tab === "dependencies" && <DependencyDashboard />}
-            {tab === "benchmark" && (user.role === "admin" || user.role === "manager") && <BenchmarkDashboard filters={filters} />}
-            {tab === "settings" && user.role === "admin" && <SettingsPanel />}
-          </Suspense>
-        </Content>
+        {/* Body: sidebar + content side by side */}
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+          {/* Sidebar */}
+          <div style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, height: "100%", background: darkMode ? "#0f172a" : "#1e293b", transition: "all 0.25s ease", overflow: "hidden", flexShrink: 0, borderRight: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+            <div style={{ width: 260, height: "100%", display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>GitLab Scout</span></div>
+                <Button type="text" icon={<CloseOutlined style={{ color: "#94a3b8" }} />} onClick={() => setSidebarOpen(false)} />
+              </div>
+              <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
+                {[{ key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" }].map((item) => (
+                  <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
+                ))}
+                <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Аналитика</div>
+                {[{ key: "contributors", label: "Контрибьюторы" }, { key: "deploy-reliability", label: "Надёжность" }, { key: "activity", label: "Активность" }, { key: "branches", label: "Ветки" }, { key: "pipelines", label: "CI/CD" }, { key: "dora", label: "DORA" }].map((item) => (
+                  <div key={item.key} onClick={() => navigateTo("analytics", item.key as AnalyticsTab)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px 10px 36px", cursor: "pointer", color: tab === "analytics" && analyticsTab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === "analytics" && analyticsTab === item.key ? "rgba(58,141,255,0.1)" : "transparent", transition: "all 0.15s", fontSize: 13, fontWeight: tab === "analytics" && analyticsTab === item.key ? 600 : 400 }}>{item.label}</div>
+                ))}
+                <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Разделы</div>
+                {[
+                  { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
+                  { key: "dependencies", icon: <ApartmentOutlined />, label: "Зависимости" },
+                  ...(user.role === "admin" || user.role === "manager" ? [{ key: "benchmark", icon: <BarChartOutlined />, label: "Бенчмарк" }] : []),
+                  ...(user.role === "admin" ? [{ key: "settings", icon: <SettingOutlined />, label: "Настройки" }] : []),
+                ].map((item) => (
+                  <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
+                ))}
+              </nav>
+              <div style={{ padding: "12px 20px", borderTop: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 16, background: "#3A8DFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 600 }}>{user.username[0].toUpperCase()}</div>
+                  <div><div style={{ color: "#e2e8f0", fontSize: 13, fontWeight: 500 }}>{user.username}</div><div style={{ color: "#64748b", fontSize: 11 }}>{user.role}</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <footer style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 16px", borderTop: `1px solid ${darkMode ? "#2A3A4A" : "#e5e7eb"}`, background: darkMode ? "#0f172a" : "#f8fafc" }}>
-          <a href="https://inn-it.pro/" target="_blank" rel="noopener noreferrer">
-            <img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 48, opacity: 0.6, transition: "opacity 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")} onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")} />
-          </a>
-          <span style={{ fontSize: 11, color: "#8A94A6", marginTop: 6 }}>&copy; {new Date().getFullYear()} Инновация ИТ</span>
-        </footer>
+          {/* Content */}
+          <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
+            <Content style={{ padding: "12px 24px 24px", flex: 1 }}>
+              {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} extraParams={tabParams} />}
+              <Suspense fallback={<div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>}>
+                {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
+                {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+                {tab === "analytics" && analyticsTab === "deploy-reliability" && (user.role === "admin" || user.role === "manager") && <DeployReliabilityDashboard key={`deploy-${filterKey}`} filters={filters} onContributorClick={handleContributorClick} />}
+                {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+                {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
+                {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
+                {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
+                {tab === "stack" && <StackDashboard userRole={user.role} />}
+                {tab === "dependencies" && <DependencyDashboard />}
+                {tab === "benchmark" && (user.role === "admin" || user.role === "manager") && <BenchmarkDashboard filters={filters} />}
+                {tab === "settings" && user.role === "admin" && <SettingsPanel />}
+              </Suspense>
+            </Content>
+
+            <footer style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 16px", borderTop: `1px solid ${darkMode ? "#2A3A4A" : "#e5e7eb"}`, background: darkMode ? "#0f172a" : "#f8fafc" }}>
+              <a href="https://inn-it.pro/" target="_blank" rel="noopener noreferrer"><img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 48, opacity: 0.6, transition: "opacity 0.15s" }} onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")} onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")} /></a>
+              <span style={{ fontSize: 11, color: "#8A94A6", marginTop: 6 }}>&copy; {new Date().getFullYear()} Инновация ИТ</span>
+            </footer>
+          </div>
+        </div>
       </Layout>
     </ConfigProvider>
   );
