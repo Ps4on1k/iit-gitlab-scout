@@ -242,6 +242,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
         grouped[displayName].successful_pipelines += Number(r.successful_pipelines);
         grouped[displayName].failed_pipelines += Number(r.failed_pipelines);
         grouped[displayName].completed_pipelines += Number(r.completed_pipelines);
+        grouped[displayName].mrs_with_pipeline += Number(r.mrs_with_pipeline);
       } else {
         grouped[displayName] = {
           email: primaryEmail,
@@ -251,6 +252,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
           successful_pipelines: Number(r.successful_pipelines),
           failed_pipelines: Number(r.failed_pipelines),
           completed_pipelines: Number(r.completed_pipelines),
+          mrs_with_pipeline: Number(r.mrs_with_pipeline),
         };
       }
     }
@@ -263,7 +265,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
           ? Math.min(100, Math.round((g.successful_pipelines / g.completed_pipelines) * 1000) / 10)
           : 0,
         pipeline_coverage_rate: g.total_merged_mrs > 0
-          ? Math.min(100, Math.round((g.completed_pipelines / g.total_merged_mrs) * 1000) / 10)
+          ? Math.min(100, Math.round((g.mrs_with_pipeline / g.total_merged_mrs) * 1000) / 10)
           : 0,
       })),
     };

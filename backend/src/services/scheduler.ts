@@ -5,6 +5,7 @@ import { collectProject } from "./contributor-collector.js";
 import { collectBranches } from "./branch-collector.js";
 import { collectMergeRequests } from "./mr-collector.js";
 import { collectPipelines } from "./pipeline-collector.js";
+import { collectDependenciesAudit } from "./dependency-audit.js";
 import { setSchedulerStartedAt, clearSchedulerStartedAt } from "../api/v1/scheduler.js";
 
 interface SchedulerTask {
@@ -78,6 +79,9 @@ async function runTask(taskName: string): Promise<void> {
           break;
         case "collect_pipelines":
           await collectPipelines(projectId);
+          break;
+        case "collect_dependencies":
+          await collectDependenciesAudit(projectId);
           break;
       }
       logFn(`[scheduler] ${taskName}: project ${projectId} done`);

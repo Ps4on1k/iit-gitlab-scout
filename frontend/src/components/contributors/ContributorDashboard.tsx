@@ -124,7 +124,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
         filteredFreq[date] = count;
       }
 
-      return { ...c, frequency: filteredFreq, deployScore };
+      return { ...c, frequency: filteredFreq, deployScore, deploySuccessRate: deploy?.deploy_success_rate, pipelineCoverage: deploy?.pipeline_coverage_rate };
     });
   }, [filteredContributors, deployData, filters.dateFrom, filters.dateTo, deployWeights]);
 
