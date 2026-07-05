@@ -64,10 +64,10 @@ export function SchedulerPanel() {
 
   useEffect(() => { loadErrors(); }, [errorsPage, errorsTaskFilter]);
 
-  const handleResetStats = async () => {
-    const res = await resetStatistics();
+  const handleResetStats = async (table?: string) => {
+    const res = await resetStatistics(table);
     if (res.ok) {
-      message.success(`Статистика обнулена. Очищены таблицы: ${res.data!.cleared.join(", ")}`);
+      message.success(table ? `Таблица «${res.data!.cleared.join(", ")}» обнулена` : `Статистика обнулена. Очищены: ${res.data!.cleared.join(", ")}`);
       load();
     } else {
       message.error(res.error!);
@@ -246,23 +246,41 @@ export function SchedulerPanel() {
       </Card>
 
       <Card style={{ marginTop: 16 }} title="Сброс статистики">
-        <Space direction="vertical" style={{ width: "100%" }}>
-          <Typography.Text type="secondary">
-            Полностью обнулит всю собранную статистику (коммиты, контрибьюторы, активность, ветки, MR, стек).
-            Настройки проектов, пользователей и справочник контрибьюторов не затрагиваются.
-            После сброса потребуется повторный сбор данных.
-          </Typography.Text>
-          <Popconfirm
-            title="Обнулить всю статистику?"
-            description="Это действие необратимо. Все собранные данные будут удалены."
-            onConfirm={handleResetStats}
-            okText="Да, обнулить"
-            cancelText="Отмена"
-            okButtonProps={{ danger: true, disabled: isRunning }}
-          >
-            <Button danger icon={<DeleteOutlined />} disabled={isRunning}>Обнулить статистику</Button>
-          </Popconfirm>
-        </Space>
+        <Typography.Text type="secondary" style={{ display: "block", marginBottom: 12 }}>
+          Выберите категорию для сброса или обнулите всё. Настройки проектов, пользователей и справочник не затрагиваются.
+        </Typography.Text>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 8, marginBottom: 16 }}>
+          {[
+            { table: "commits", label: "Коммиты", color: "#3A8DFF" },
+            { table: "contributor_profiles", label: "Контрибьюторы", color: "#8BAADB" },
+            { table: "project_branches", label: "Ветки", color: "#8BC8A8" },
+            { table: "project_activity", label: "Активность", color: "#E0C0A0" },
+            { table: "project_languages", label: "Языки/Стек", color: "#98C8D8" },
+            { table: "project_merge_requests", label: "MR", color: "#B8A8D8" },
+            { table: "project_pipelines", label: "Пайплайны", color: "#D0B8E8" },
+            { table: "project_deployments", label: "Деплои", color: "#B0D8D0" },
+            { table: "project_dependencies_audit", label: "Зависимости", color: "#E8B8D0" },
+          ].map((item) => (
+            <Popconfirm key={item.table}
+              title={`Обнулить «${item.label}»?`}
+              description="Данные будут удалены. Потребуется повторный сбор."
+              onConfirm={() => handleResetStats(item.table)}
+              okText="Да" cancelText="Нет" okButtonProps={{ danger: true }} disabled={isRunning}>
+              <Button block disabled={isRunning} style={{ textAlign: "left", borderColor: item.color, color: item.color }}>
+                {item.label}
+              </Button>
+            </Popconfirm>
+          ))}
+        </div>
+        <Popconfirm
+          title="Обнулить ВСЮ статистику?"
+          description="Это действие необратимо. Все собранные данные будут удалены."
+          onConfirm={() => handleResetStats()}
+          okText="Да, обнулить всё" cancelText="Отмена"
+          okButtonProps={{ danger: true, disabled: isRunning }}
+        >
+          <Button danger icon={<DeleteOutlined />} disabled={isRunning}>Обнулить всё</Button>
+        </Popconfirm>
       </Card>
 
       <Collapse style={{ marginTop: 16 }} items={[{

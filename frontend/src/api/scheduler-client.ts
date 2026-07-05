@@ -67,8 +67,11 @@ export async function updateSchedulerTask(id: number, data: { enabled?: boolean;
   return fetchJson<SchedulerTask>(`/v1/scheduler/${id}`, { method: "PUT", body: JSON.stringify(data) });
 }
 
-export async function resetStatistics(): Promise<ApiResponse<{ cleared: string[] }>> {
-  return fetchJson<{ cleared: string[] }>("/v1/scheduler/reset-stats", { method: "POST" });
+export async function resetStatistics(table?: string): Promise<ApiResponse<{ cleared: string[]; count: number }>> {
+  return fetchJson("/v1/scheduler/reset-stats", {
+    method: "POST",
+    body: JSON.stringify({ table }),
+  });
 }
 
 export async function fetchSchedulerErrors(limit?: number, offset?: number, taskName?: string): Promise<ApiResponse<{ entries: any[]; total: number }>> {

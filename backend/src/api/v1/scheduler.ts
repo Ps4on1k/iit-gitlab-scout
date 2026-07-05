@@ -94,27 +94,44 @@ export async function schedulerRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/api/v1/scheduler/reset-stats", { preHandler: [requireAdmin] }, async (_, reply) => {
+  app.post<{
+    Body: { table?: string };
+  }>("/api/v1/scheduler/reset-stats", { preHandler: [requireAdmin] }, async (request, reply) => {
     if (isSchedulerBusy()) {
       return reply.status(409).send({ ok: false, error: "Невозможно сбросить: идёт сбор данных. Дождитесь завершения." });
     }
 
+    const { table } = request.body || {};
     const pool = getPool();
-    const tables = [
-      "commits",
-      "contributor_profiles",
-      "project_branches",
-      "project_activity",
-      "project_languages",
-      "project_merge_requests",
-    ];
+
+    const allTables: Record<string, string> = {
+      commits: "Коммиты",
+      contributor_profiles: "Контрибьюторы",
+      project_branches: "Ветки",
+      project_activity: "Активность",
+      project_languages: "Языки/Стек",
+      project_merge_requests: "MR",
+      project_pipelines: "Пайплайны",
+      project_deployments: "Деплои",
+      project_dependencies_audit: "Зависимости",
+    };
+
+    const tablesToClear = table && allTables[table] ? [table] : Object.keys(allTables);
     const cleared: string[] = [];
-    for (const table of tables) {
+
+    for (const t of tablesToClear) {
       try {
-        await pool.query(`DELETE FROM ${table}`);
-        cleared.push(table);
+        await pool.query(`DELETE FROM ${t}`);
+        cleared.push(allTables[t] || t);
       } catch { /* table may not exist */ }
     }
+
+    if (!table) {
+      await pool.query("UPDATE scheduler_settings SET last_run_at = NULL");
+    }
+
+    return { ok: true, data: { cleared, count: cleared.length } };
+  });
     await pool.query("UPDATE scheduler_settings SET last_run_at = NULL");
     return { ok: true, data: { cleared } };
   });
