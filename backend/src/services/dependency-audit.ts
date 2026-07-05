@@ -15,13 +15,16 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
     tree = await client.requestPaginated<any>(
       `/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=main&per_page=100`
     );
-  } catch {
-    // Try master branch if main doesn't exist
+    console.log(`[deps] ${projectPath}: found ${tree.length} files in main`);
+  } catch (err) {
+    console.log(`[deps] ${projectPath}: main branch failed, trying master: ${err}`);
     try {
       tree = await client.requestPaginated<any>(
         `/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=master&per_page=100`
       );
-    } catch {
+      console.log(`[deps] ${projectPath}: found ${tree.length} files in master`);
+    } catch (err2) {
+      console.log(`[deps] ${projectPath}: both branches failed: ${err2}`);
       return { total: 0, outdated: 0 };
     }
   }

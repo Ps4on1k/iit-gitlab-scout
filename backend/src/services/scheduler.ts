@@ -198,8 +198,12 @@ export async function runAllEnabledTasks(): Promise<void> {
 
     for (const task of result.rows as SchedulerTask[]) {
       logFn(`[scheduler] Manual run: ${task.task_name}`);
-      await runTask(task.task_name);
-      completedTasks++;
+      try {
+        await runTask(task.task_name);
+        completedTasks++;
+      } catch (err) {
+        logFn(`[scheduler] Manual run: ${task.task_name} failed: ${err}`);
+      }
     }
   } finally {
     clearSchedulerStartedAt();
