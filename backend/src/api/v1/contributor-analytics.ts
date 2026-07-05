@@ -196,15 +196,20 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     // Resolve through contributor directory — group by display_name
     const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
     const emailToName: Record<string, string> = {};
+    const nameToPrimaryEmail: Record<string, string> = {};
     for (const row of dirResult.rows) {
       for (const email of row.emails) {
         emailToName[email] = row.display_name;
+      }
+      if (row.emails && row.emails.length > 0) {
+        nameToPrimaryEmail[row.display_name] = row.emails[0];
       }
     }
 
     const grouped: Record<string, any> = {};
     for (const r of result.rows) {
       const displayName = emailToName[r.author_email] || r.author_name || r.author_email;
+      const primaryEmail = nameToPrimaryEmail[displayName] || r.author_email;
       if (grouped[displayName]) {
         grouped[displayName].total_merged_mrs += Number(r.total_merged_mrs);
         grouped[displayName].total_pipelines += Number(r.total_pipelines);
@@ -213,7 +218,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
         grouped[displayName].completed_pipelines += Number(r.completed_pipelines);
       } else {
         grouped[displayName] = {
-          email: r.author_email,
+          email: primaryEmail,
           name: displayName,
           total_merged_mrs: Number(r.total_merged_mrs),
           total_pipelines: Number(r.total_pipelines),
