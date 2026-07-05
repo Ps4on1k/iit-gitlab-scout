@@ -136,9 +136,9 @@ export default function App() {
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
         <Watermark dark={darkMode} />
 
-        {/* Header - full width */}
-        <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#111315", height: 48, zIndex: 10 }}>
-          <Button type="text" icon={<MenuOutlined style={{ color: "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
+        {/* Header - full width, sticky */}
+        <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#1e293b", height: 48, zIndex: 100, position: "sticky", top: 0 }}>
+          <Button type="text" icon={<MenuOutlined style={{ color: darkMode ? "#e2e8f0" : "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
             <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.1.0</span>
             {collectionRunning && <Tooltip title="Идёт сбор данных"><SyncOutlined spin style={{ color: "#42D9C8", fontSize: 14 }} /></Tooltip>}
@@ -159,34 +159,34 @@ export default function App() {
         {/* Body: sidebar + content side by side */}
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {/* Sidebar */}
-          <div style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, height: "100%", background: darkMode ? "#0f172a" : "#1e293b", transition: "all 0.25s ease", overflow: "hidden", flexShrink: 0, borderRight: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+          <div style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, height: "100%", background: darkMode ? "#0f172a" : "#fff", transition: "all 0.25s ease", overflow: "hidden", flexShrink: 0, borderRight: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
             <div style={{ width: 260, height: "100%", display: "flex", flexDirection: "column" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
-                  <span style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>Навигация</span>
-                  <Button type="text" icon={<CloseOutlined style={{ color: "#94a3b8" }} />} onClick={() => setSidebarOpen(false)} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
+                  <span style={{ color: darkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 18 }}>Навигация</span>
+                  <Button type="text" icon={<CloseOutlined style={{ color: darkMode ? "#94a3b8" : "#6b7280" }} />} onClick={() => setSidebarOpen(false)} />
                 </div>
               <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
                 {[{ key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" }].map((item) => (
-                  <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
+                  <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : (darkMode ? "#94a3b8" : "#4b5563"), background: tab === item.key ? (darkMode ? "rgba(58,141,255,0.1)" : "rgba(58,141,255,0.08)") : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
                 ))}
-                <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Аналитика</div>
+                <div style={{ padding: "12px 20px 4px", fontSize: 11, color: darkMode ? "#64748b" : "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Аналитика</div>
                 {[{ key: "contributors", label: "Контрибьюторы" }, { key: "deploy-reliability", label: "Надёжность" }, { key: "activity", label: "Активность" }, { key: "branches", label: "Ветки" }, { key: "pipelines", label: "CI/CD" }, { key: "dora", label: "DORA" }].map((item) => (
-                  <div key={item.key} onClick={() => navigateTo("analytics", item.key as AnalyticsTab)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px 10px 36px", cursor: "pointer", color: tab === "analytics" && analyticsTab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === "analytics" && analyticsTab === item.key ? "rgba(58,141,255,0.1)" : "transparent", transition: "all 0.15s", fontSize: 13, fontWeight: tab === "analytics" && analyticsTab === item.key ? 600 : 400 }}>{item.label}</div>
+                  <div key={item.key} onClick={() => navigateTo("analytics", item.key as AnalyticsTab)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px 10px 36px", cursor: "pointer", color: tab === "analytics" && analyticsTab === item.key ? "#3A8DFF" : (darkMode ? "#94a3b8" : "#4b5563"), background: tab === "analytics" && analyticsTab === item.key ? (darkMode ? "rgba(58,141,255,0.1)" : "rgba(58,141,255,0.08)") : "transparent", transition: "all 0.15s", fontSize: 13, fontWeight: tab === "analytics" && analyticsTab === item.key ? 600 : 400 }}>{item.label}</div>
                 ))}
-                <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Разделы</div>
+                <div style={{ padding: "12px 20px 4px", fontSize: 11, color: darkMode ? "#64748b" : "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Разделы</div>
                 {[
                   { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
                   { key: "dependencies", icon: <ApartmentOutlined />, label: "Зависимости" },
                   ...(user.role === "admin" || user.role === "manager" ? [{ key: "benchmark", icon: <BarChartOutlined />, label: "Бенчмарк" }] : []),
                   ...(user.role === "admin" ? [{ key: "settings", icon: <SettingOutlined />, label: "Настройки" }] : []),
                 ].map((item) => (
-                  <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
+                  <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : (darkMode ? "#94a3b8" : "#4b5563"), background: tab === item.key ? (darkMode ? "rgba(58,141,255,0.1)" : "rgba(58,141,255,0.08)") : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
                 ))}
               </nav>
-              <div style={{ padding: "12px 20px", borderTop: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+              <div style={{ padding: "12px 20px", borderTop: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 16, background: "#3A8DFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 600 }}>{user.username[0].toUpperCase()}</div>
-                  <div><div style={{ color: "#e2e8f0", fontSize: 13, fontWeight: 500 }}>{user.username}</div><div style={{ color: "#64748b", fontSize: 11 }}>{user.role}</div></div>
+                  <div><div style={{ color: darkMode ? "#e2e8f0" : "#1f2937", fontSize: 13, fontWeight: 500 }}>{user.username}</div><div style={{ color: darkMode ? "#64748b" : "#9ca3af", fontSize: 11 }}>{user.role}</div></div>
                 </div>
               </div>
             </div>
