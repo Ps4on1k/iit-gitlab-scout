@@ -132,7 +132,7 @@ async function checkAndRun(): Promise<void> {
 
     for (const task of result.rows as SchedulerTask[]) {
       if (!task.last_run_at) {
-        tasksToRun.push(task);
+        logFn(`[scheduler] ${task.task_name}: skipping first run (no last_run_at)`);
         continue;
       }
       const lastRun = new Date(task.last_run_at).getTime();

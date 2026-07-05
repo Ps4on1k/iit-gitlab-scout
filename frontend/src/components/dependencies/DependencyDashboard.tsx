@@ -46,7 +46,12 @@ export function DependencyDashboard() {
   ];
 
   return (
-    <div>
+    <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
+      <div style={{ background: "linear-gradient(135deg, #E8B8D0 0%, #D0B8E8 100%)", color: "#111315", padding: "14px 24px", borderRadius: "12px", marginBottom: 20 }}>
+        <h1 style={{ fontSize: 20, marginBottom: 4 }}>Зависимости</h1>
+        <div style={{ opacity: 0.9, fontSize: 13 }}>Сбор и анализ зависимостей проектов</div>
+      </div>
+
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <Select mode="multiple" placeholder="Проекты" allowClear showSearch optionFilterProp="label"
           style={{ minWidth: 300 }} value={selectedProjectIds} onChange={setSelectedProjectIds}
