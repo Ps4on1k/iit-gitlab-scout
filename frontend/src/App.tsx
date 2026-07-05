@@ -194,7 +194,7 @@ export default function App() {
             <Logo isDark={darkMode} />
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
             <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.6.0</span>
+            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.7.0</span>
           </div>
           {collectionRunning && (
             <Tooltip title="Идёт сбор данных">
@@ -237,7 +237,7 @@ export default function App() {
           <Suspense fallback={<div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>}>
             {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
-            {tab === "analytics" && analyticsTab === "deploy-reliability" && <DeployReliabilityDashboard key={`deploy-${filterKey}`} filters={filters} onContributorClick={handleContributorClick} />}
+            {tab === "analytics" && analyticsTab === "deploy-reliability" && (user.role === "admin" || user.role === "manager") && <DeployReliabilityDashboard key={`deploy-${filterKey}`} filters={filters} onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "activity" && <ActivityDashboard key={`activity-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
             {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
