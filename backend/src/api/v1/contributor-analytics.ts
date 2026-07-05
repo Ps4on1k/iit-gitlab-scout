@@ -133,13 +133,33 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
       params.push(date_to + "T23:59:59Z");
     }
     if (contributors) {
-      const emails = contributors.split(",").map((e) => e.trim()).filter(Boolean);
-      if (emails.length > 0) {
+      const inputs = contributors.split(",").map((e) => e.trim()).filter(Boolean);
+      if (inputs.length > 0) {
         // Resolve all emails through contributor directory
-        const dirResult = await pool.query("SELECT emails FROM contributor_directory WHERE emails && $1", [emails]);
-        const allEmails = new Set<string>(emails);
-        for (const row of dirResult.rows) {
-          if (row.emails) row.emails.forEach((e: string) => allEmails.add(e));
+        const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+        const allEmails = new Set<string>();
+        for (const input of inputs) {
+          // Check if input is an email in any directory entry
+          let found = false;
+          for (const row of dirResult.rows) {
+            if (row.emails.includes(input)) {
+              row.emails.forEach((e: string) => allEmails.add(e));
+              found = true;
+              break;
+            }
+          }
+          // Check if input matches display_name
+          if (!found) {
+            for (const row of dirResult.rows) {
+              if (row.display_name === input || row.display_name.toLowerCase().includes(input.toLowerCase())) {
+                row.emails.forEach((e: string) => allEmails.add(e));
+                found = true;
+                break;
+              }
+            }
+          }
+          // If still not found, treat as email directly
+          if (!found) allEmails.add(input);
         }
         conditions.push(`mr.author_email = ANY($${idx++})`);
         params.push(Array.from(allEmails));
