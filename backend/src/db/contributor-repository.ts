@@ -194,6 +194,11 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
   for (const row of dirResult.rows) {
     for (const email of row.emails) {
       emailToName[email] = row.display_name;
+      // Also map email without domain (e.g., "maxim.rankov" from "maxim.rankov@am-intech.ru")
+      const localPart = email.split("@")[0];
+      if (localPart && localPart !== email) {
+        emailToName[localPart] = row.display_name;
+      }
       if (!nameToFirstEmail[row.display_name]) {
         nameToFirstEmail[row.display_name] = email;
       }

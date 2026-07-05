@@ -132,9 +132,6 @@ export async function schedulerRoutes(app: FastifyInstance) {
 
     return { ok: true, data: { cleared, count: cleared.length } };
   });
-    await pool.query("UPDATE scheduler_settings SET last_run_at = NULL");
-    return { ok: true, data: { cleared } };
-  });
 
   app.get<{
     Querystring: { limit?: string; offset?: string; task_name?: string };

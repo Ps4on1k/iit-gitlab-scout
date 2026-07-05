@@ -230,6 +230,11 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     for (const row of dirResult.rows) {
       for (const email of row.emails) {
         emailToName[email] = row.display_name;
+        // Also map email without domain (e.g., "maxim.rankov" from "maxim.rankov@am-intech.ru")
+        const localPart = email.split("@")[0];
+        if (localPart && localPart !== email) {
+          emailToName[localPart] = row.display_name;
+        }
       }
       if (row.emails && row.emails.length > 0) {
         nameToPrimaryEmail[row.display_name] = row.emails[0];
