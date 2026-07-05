@@ -24,7 +24,7 @@ export function CollectButton({ collector, projectIds, dateFrom, dateTo, onCompl
 
   const currentJob = activeJobs.find((j) => j.collector === collector && j.status === "running");
   const backendCollecting = !!currentJob;
-  const isDisabled = !ready || localStarting || validating || isRunning;
+  const isDisabled = !ready || localStarting || validating || isRunning || backendCollecting;
   const stuckJobs = activeJobs.filter((j) => j.status === "stuck" || (j.status === "running" && Date.now() - j.started_at > 15 * 60 * 1000));
 
   const doStartCollect = async (validIds: number[]) => {

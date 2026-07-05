@@ -1,17 +1,34 @@
 import { getPool } from "../db/pool.js";
 import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
+import { safeErrorMessage } from "../utils/safe-error.js";
 
 export async function collectDependenciesAudit(projectId: number): Promise<{ total: number; outdated: number }> {
   const pool = getPool();
-  const { token, baseUrl } = await resolveProjectToken(projectId);
+  const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
 
   const client = new GitLabClient({ token, baseUrl });
 
-  // Get tree to find dependency files
-  const tree = await client.getTree(projectId, "", "main", true);
+  // Get tree to find dependency files — use path for CE compatibility
+  let tree;
+  try {
+    tree = await client.requestPaginated<any>(
+      `/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=main&per_page=100`
+    );
+  } catch {
+    // Try master branch if main doesn't exist
+    try {
+      tree = await client.requestPaginated<any>(
+        `/projects/${encodeURIComponent(projectPath)}/repository/tree?path=&ref=master&per_page=100`
+      );
+    } catch {
+      return { total: 0, outdated: 0 };
+    }
+  }
+
+  const depFileNames = ["package.json", "go.mod", "requirements.txt", "Cargo.toml", "pom.xml", "build.gradle", "composer.json", "pubspec.yaml", "Package.swift"];
   const depFiles = tree.filter(
-    (item) => item.type === "blob" && ["package.json", "go.mod", "requirements.txt", "Cargo.toml"].includes(item.name)
+    (item: any) => item.type === "blob" && depFileNames.includes(item.name)
   );
 
   const deps: { name: string; current_version: string; source: string }[] = [];
@@ -31,8 +48,7 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
 
   let outdated = 0;
   for (const dep of deps) {
-    // Simple heuristic: if version contains "latest" or is empty, mark as outdated
-    const isOutdated = !dep.current_version || dep.current_version === "latest";
+    const isOutdated = !dep.current_version || dep.current_version === "latest" || dep.current_version === "*";
     if (isOutdated) outdated++;
 
     await pool.query(
