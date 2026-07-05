@@ -23,6 +23,10 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
 
     try {
       const result = await collectProject(project_id, date_from, date_to);
+      // Clear all related caches after collection
+      const { clearCache } = await import("../../utils/cache.js");
+      clearCache("contributors");
+      clearCache("deploy-reliability");
       return { ok: true, data: result };
     } catch (err) {
       logCollectionError("collect_contributors", project_id, "MANUAL", safeErrorMessage(err), "manual");
@@ -269,7 +273,7 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
           : 0,
       })),
     };
-    setCache(cacheK, response, 60_000);
+    setCache(cacheK, response, 10_000);
     return response;
   });
 }
