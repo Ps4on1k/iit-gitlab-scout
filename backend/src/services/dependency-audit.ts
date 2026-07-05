@@ -34,9 +34,32 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
     return { total: 0, outdated: 0 };
   }
 
-  const depFileNames = ["package.json", "go.mod", "requirements.txt", "Cargo.toml", "pom.xml", "build.gradle", "composer.json", "pubspec.yaml", "Package.swift"];
+  // Load file names from catalog
+  const catalogResult = await pool.query("SELECT file_names FROM dependency_catalog WHERE is_active = true");
+  const allFileNames = new Set<string>();
+  const globPatterns: string[] = [];
+  for (const row of catalogResult.rows) {
+    for (const fn of row.file_names) {
+      if (fn.includes("*")) {
+        globPatterns.push(fn);
+      } else {
+        allFileNames.add(fn);
+      }
+    }
+  }
+
+  // Also include known dependency files as fallback
+  const fallbackFiles = ["package.json", "go.mod", "requirements.txt", "Cargo.toml", "pom.xml", "build.gradle", "build.gradle.kts", "composer.json", "pubspec.yaml", "Package.swift"];
+  for (const fn of fallbackFiles) allFileNames.add(fn);
+
   const depFiles = tree.filter(
-    (item: any) => item.type === "blob" && depFileNames.includes(item.name)
+    (item: any) => item.type === "blob" && (
+      allFileNames.has(item.name) ||
+      globPatterns.some((pattern) => {
+        const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
+        return regex.test(item.name);
+      })
+    )
   );
 
   console.log(`[deps] ${projectPath}: found ${depFiles.length} dependency files out of ${tree.length} total`);
@@ -156,6 +179,11 @@ function parseDepFile(fileName: string, content: string): { name: string; curren
     const matches = content.matchAll(/\.package\s*\(\s*name:\s*["']([^"']+)["'].*?from:\s*["']([^"']+)["']/g);
     for (const m of matches) {
       deps.push({ name: m[1], current_version: m[2], source: "swift-pm" });
+    }
+  } else if (fileName.endsWith(".csproj")) {
+    const matches = content.matchAll(/<PackageReference\s+Include="([^"]+)"\s+Version="([^"]+)"/g);
+    for (const m of matches) {
+      deps.push({ name: m[1], current_version: m[2], source: "nuget" });
     }
   }
 

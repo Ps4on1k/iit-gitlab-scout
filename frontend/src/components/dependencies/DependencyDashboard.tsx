@@ -25,6 +25,8 @@ export function DependencyDashboard() {
   const [sourceFilter, setSourceFilter] = useState<string | undefined>();
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchText, setSearchText] = useState("");
+  const [sourceTableFilter, setSourceTableFilter] = useState<string | undefined>();
+  const [statusTableFilter, setStatusTableFilter] = useState<string | undefined>();
 
   useEffect(() => { fetchProjects().then((r) => { if (r.ok) setProjects(r.data as ProjectConfig[]); }); }, []);
 
@@ -57,10 +59,19 @@ export function DependencyDashboard() {
   }, [deps]);
 
   const filteredDeps = useMemo(() => {
-    if (!searchText) return deps;
-    const q = searchText.toLowerCase();
-    return deps.filter((d) => d.name.toLowerCase().includes(q) || d.project_label?.toLowerCase().includes(q));
-  }, [deps, searchText]);
+    let result = deps;
+    if (searchText) {
+      const q = searchText.toLowerCase();
+      result = result.filter((d) => d.name.toLowerCase().includes(q) || d.project_label?.toLowerCase().includes(q));
+    }
+    if (sourceTableFilter) {
+      result = result.filter((d) => d.source === sourceTableFilter);
+    }
+    if (statusTableFilter) {
+      result = result.filter((d) => statusTableFilter === "outdated" ? d.is_outdated : !d.is_outdated);
+    }
+    return result;
+  }, [deps, searchText, sourceTableFilter, statusTableFilter]);
 
   const pieData = useMemo(() => {
     const bySource: Record<string, number> = {};
