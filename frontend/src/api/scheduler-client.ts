@@ -52,6 +52,7 @@ export interface SchedulerStatus {
   taskTotal: number;
   completedTasks: number;
   totalTasks: number;
+  taskDurations: Record<string, number>;
 }
 
 export async function fetchSchedulerSettings(): Promise<ApiResponse<SchedulerTask[]>> {

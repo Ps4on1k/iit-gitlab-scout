@@ -89,6 +89,7 @@ export async function schedulerRoutes(app: FastifyInstance) {
         taskTotal: progress.taskTotal,
         completedTasks: progress.completedTasks,
         totalTasks: progress.totalTasks,
+        taskDurations: progress.taskDurations,
       },
     };
   });

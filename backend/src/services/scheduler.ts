@@ -23,9 +23,10 @@ let taskCurrent = 0;
 let taskTotal = 0;
 let completedTasks = 0;
 let totalTasks = 0;
+const taskDurations: Record<string, number> = {};
 
 export function getSchedulerProgress() {
-  return { currentTask, taskCurrent, taskTotal, isRunning, completedTasks, totalTasks };
+  return { currentTask, taskCurrent, taskTotal, isRunning, completedTasks, totalTasks, taskDurations: { ...taskDurations } };
 }
 
 export function isSchedulerBusy(): boolean {
@@ -34,6 +35,7 @@ export function isSchedulerBusy(): boolean {
 
 async function runTask(taskName: string): Promise<void> {
   const pool = getPool();
+  const taskStart = Date.now();
 
   const projectsResult = await pool.query("SELECT id FROM projects");
   const projectIds: number[] = projectsResult.rows.map((r: any) => r.id);
@@ -95,10 +97,11 @@ async function runTask(taskName: string): Promise<void> {
     "UPDATE scheduler_settings SET last_run_at = now() WHERE task_name = $1",
     [taskName]
   );
+  taskDurations[taskName] = Date.now() - taskStart;
   currentTask = "";
   taskCurrent = 0;
   taskTotal = 0;
-  logFn(`[scheduler] ${taskName}: last_run_at updated`);
+  logFn(`[scheduler] ${taskName}: last_run_at updated, duration ${taskDurations[taskName]}ms`);
 }
 
 async function checkAndRun(): Promise<void> {

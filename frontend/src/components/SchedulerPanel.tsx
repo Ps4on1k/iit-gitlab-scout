@@ -35,7 +35,7 @@ export function SchedulerPanel() {
   const [errorsPage, setErrorsPage] = useState(1);
   const [errorsTaskFilter, setErrorsTaskFilter] = useState<string | undefined>();
 
-  const { isRunning, currentTask, taskCurrent, taskTotal, completedTasks, totalTasks, poll } = useCollectStatus();
+  const { isRunning, currentTask, taskCurrent, taskTotal, completedTasks, totalTasks, taskDurations, poll } = useCollectStatus();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -141,9 +141,20 @@ export function SchedulerPanel() {
     {
       title: "Последний запуск",
       key: "last_run_at",
-      render: (_: any, record: SchedulerTask) => record.last_run_at
-        ? new Date(record.last_run_at).toLocaleString()
-        : <Text type="secondary">Нет</Text>,
+      render: (_: any, record: SchedulerTask) => {
+        const dur = taskDurations?.[record.task_name];
+        const durText = dur != null
+          ? dur < 60000 ? `${Math.round(dur / 1000)}с`
+          : dur < 3600000 ? `${Math.round(dur / 60000)}м ${Math.round((dur % 60000) / 1000)}с`
+          : `${Math.floor(dur / 3600000)}ч ${Math.round((dur % 3600000) / 60000)}м`
+          : null;
+        return record.last_run_at ? (
+          <div style={{ lineHeight: 1.2 }}>
+            <div>{new Date(record.last_run_at).toLocaleString()}</div>
+            {durText && <div style={{ fontSize: 11, color: "var(--ant-color-textTertiary)" }}>Длительность: {durText}</div>}
+          </div>
+        ) : <Text type="secondary">Нет</Text>;
+      },
     },
     {
       title: "",
