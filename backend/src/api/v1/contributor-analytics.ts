@@ -240,10 +240,10 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
       data: Object.values(grouped).map((g: any) => ({
         ...g,
         deploy_success_rate: g.completed_pipelines > 0
-          ? Math.round((g.successful_pipelines / g.completed_pipelines) * 1000) / 10
+          ? Math.min(100, Math.round((g.successful_pipelines / g.completed_pipelines) * 1000) / 10)
           : 0,
         pipeline_coverage_rate: g.total_merged_mrs > 0
-          ? Math.round((g.completed_pipelines / g.total_merged_mrs) * 1000) / 10
+          ? Math.min(100, Math.round((g.completed_pipelines / g.total_merged_mrs) * 1000) / 10)
           : 0,
       })),
     };
