@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
-import { ConfigProvider, Layout, Menu, Button, Typography, Spin, Tooltip } from "antd";
-import { ApartmentOutlined, ThunderboltOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, BranchesOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined } from "@ant-design/icons";
+import { ConfigProvider, Layout, Button, Typography, Spin, Tooltip } from "antd";
+import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
@@ -27,11 +27,7 @@ const { Header, Content } = Layout;
 function Watermark({ dark }: { dark: boolean }) {
   const color = dark ? "rgba(174,183,200,0.08)" : "rgba(17,19,21,0.04)";
   return (
-    <div style={{
-      position: "fixed", top: -540, left: -720,
-      width: 1440, height: 1440,
-      overflow: "hidden", pointerEvents: "none", zIndex: 0,
-    }}>
+    <div style={{ position: "fixed", top: -540, left: -720, width: 1440, height: 1440, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
       <svg viewBox="0 0 120 120" style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
         <path d="M60 8.18164V111.818" stroke={color} strokeWidth="13.63" />
         <path d="M105 34.0908L15 85.909" stroke={color} strokeWidth="13.63" />
@@ -46,8 +42,7 @@ function Logo({ isDark }: { isDark: boolean }) {
 }
 
 const defaultFilters: GlobalFilters = {
-  projectIds: [],
-  tags: [],
+  projectIds: [], tags: [],
   dateFrom: dayjs().subtract(90, "day").format("YYYY-MM-DD"),
   dateTo: dayjs().format("YYYY-MM-DD"),
   contributors: [],
@@ -57,14 +52,11 @@ type TabKey = "dashboard" | "analytics" | "stack" | "dependencies" | "benchmark"
 type AnalyticsTab = "contributors" | "deploy-reliability" | "activity" | "branches" | "pipelines" | "dora";
 
 function getInitialDarkMode(): boolean {
-  try {
-    const stored = localStorage.getItem("darkMode");
-    if (stored !== null) return stored === "true";
-  } catch {}
+  try { const stored = localStorage.getItem("darkMode"); if (stored !== null) return stored === "true"; } catch {}
   return true;
 }
 
-function readUrlState(): { tab: TabKey; analyticsTab: AnalyticsTab; filters: Partial<GlobalFilters>; tabParams: Record<string, string> } {
+function readUrlState() {
   const params = new URLSearchParams(window.location.search);
   const tab = (params.get("tab") as TabKey) || "dashboard";
   const aTab = (params.get("view") as AnalyticsTab) || "contributors";
@@ -98,13 +90,20 @@ function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalF
     if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
   }
-  for (const [k, v] of Object.entries(tabParams)) {
-    if (v) params.set(k, v);
-  }
+  for (const [k, v] of Object.entries(tabParams)) { if (v) params.set(k, v); }
   const qs = params.toString();
-  const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
-  window.history.replaceState(null, "", newUrl);
+  window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
 }
+
+const TAB_LABELS: Record<TabKey, string> = {
+  dashboard: "Обзор", analytics: "Аналитика", stack: "Языки",
+  dependencies: "Зависимости", benchmark: "Бенчмарк", settings: "Настройки",
+};
+
+const ANALYTICS_LABELS: Record<AnalyticsTab, string> = {
+  contributors: "Контрибьюторы", "deploy-reliability": "Надёжность",
+  activity: "Активность", branches: "Ветки", pipelines: "CI/CD", dora: "DORA",
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -112,40 +111,21 @@ export default function App() {
   const urlState = useRef(readUrlState());
   const [tab, setTab] = useState<TabKey>(urlState.current.tab);
   const [analyticsTab, setAnalyticsTab] = useState<AnalyticsTab>(urlState.current.analyticsTab);
-  const [filters, setFilters] = useState<GlobalFilters>(() => ({
-    ...defaultFilters,
-    ...urlState.current.filters,
-  }));
+  const [filters, setFilters] = useState<GlobalFilters>(() => ({ ...defaultFilters, ...urlState.current.filters }));
   const [tabParams, setTabParams] = useState<Record<string, string>>(urlState.current.tabParams);
   const [darkMode, setDarkMode] = useState<boolean>(getInitialDarkMode);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const isInitialLoad = useRef(true);
   const { isRunning: collectionRunning } = useCollectStatus();
 
   const setTabParam = useCallback((key: string, value: string | undefined) => {
-    setTabParams((prev) => {
-      const next = { ...prev };
-      if (value === undefined || value === "") delete next[key];
-      else next[key] = value;
-      return next;
-    });
+    setTabParams((prev) => { const next = { ...prev }; if (value === undefined || value === "") delete next[key]; else next[key] = value; return next; });
   }, []);
 
-  useEffect(() => {
-    getMe().then((res) => { if (res.ok) setUser(res.data!); setLoading(false); });
-  }, []);
-
-  useEffect(() => {
-    try { localStorage.setItem("darkMode", String(darkMode)); } catch {}
-  }, [darkMode]);
-
-  useEffect(() => {
-    clearCache();
-  }, [filters, analyticsTab]);
-
-  useEffect(() => {
-    if (isInitialLoad.current) { isInitialLoad.current = false; return; }
-    writeUrlState(tab, analyticsTab, filters, tabParams);
-  }, [tab, analyticsTab, filters, tabParams]);
+  useEffect(() => { getMe().then((res) => { if (res.ok) setUser(res.data!); setLoading(false); }); }, []);
+  useEffect(() => { try { localStorage.setItem("darkMode", String(darkMode)); } catch {} }, [darkMode]);
+  useEffect(() => { clearCache(); }, [filters, analyticsTab]);
+  useEffect(() => { if (isInitialLoad.current) { isInitialLoad.current = false; return; } writeUrlState(tab, analyticsTab, filters, tabParams); }, [tab, analyticsTab, filters, tabParams]);
 
   const handleLogout = () => { clearToken(); setUser(null); };
 
@@ -153,87 +133,130 @@ export default function App() {
     if (!emailOrName) return;
     const res = await resolveContributor(emailOrName);
     const resolved = res.ok ? res.data!.email : emailOrName;
-    setFilters((prev) => ({
-      ...prev,
-      contributors: prev.contributors.includes(resolved) ? prev.contributors : [...prev.contributors, resolved],
-    }));
-    setTab("analytics");
-    setAnalyticsTab("contributors");
+    setFilters((prev) => ({ ...prev, contributors: prev.contributors.includes(resolved) ? prev.contributors : [...prev.contributors, resolved] }));
+    setTab("analytics"); setAnalyticsTab("contributors");
   }, []);
+
+  const navigateTo = (newTab: TabKey, newAnalyticsTab?: AnalyticsTab) => {
+    setTab(newTab);
+    if (newAnalyticsTab) setAnalyticsTab(newAnalyticsTab);
+    setSidebarOpen(false);
+  };
 
   const themeConfig = darkMode ? darkThemeConfig : lightThemeConfig;
   const contentBg = darkMode ? "#111827" : "#F5F7FA";
-  const subMenuBg = darkMode ? "#111827" : "#111315";
   const filterKey = JSON.stringify(filters);
 
   if (loading) return <ConfigProvider theme={themeConfig}><div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: contentBg }}><Typography.Text>Загрузка...</Typography.Text></div></ConfigProvider>;
   if (!user) return <ConfigProvider theme={themeConfig}><LoginPage onLogin={setUser} /></ConfigProvider>;
 
-  const menuItems = [
-    { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
-    { key: "analytics", icon: <TeamOutlined />, label: "Аналитика" },
-    { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
-    { key: "dependencies", icon: <ApartmentOutlined />, label: "Зависимости" },
-    ...(user.role === "admin" || user.role === "manager" ? [{ key: "benchmark", icon: <BarChartOutlined />, label: "Бенчмарк" }] : []),
-    ...(user.role === "admin" ? [{ key: "settings", icon: <SettingOutlined />, label: "Настройки" }] : []),
-  ];
-
-  const analyticsSubTabs = [
-    { key: "contributors", label: "Контрибьюторы" },
-    { key: "deploy-reliability", label: "Надёжность" },
-    { key: "activity", label: "Активность" },
-    { key: "branches", label: "Ветки" },
-    { key: "pipelines", label: "CI/CD" },
-    { key: "dora", label: <span>DORA</span> },
-  ];
+  const breadcrumbItems = tab === "analytics"
+    ? [{ label: "Аналитика", onClick: () => navigateTo("analytics") }, { label: ANALYTICS_LABELS[analyticsTab] }]
+    : [{ label: TAB_LABELS[tab] }];
 
   return (
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
         <Watermark dark={darkMode} />
-        <Header style={{ display: "flex", alignItems: "center", padding: "0 24px", background: darkMode ? "#141B2D" : "#111315", position: "relative", zIndex: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
+
+        {/* Sidebar overlay */}
+        {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 999 }} />}
+
+        {/* Sidebar */}
+        <div style={{
+          position: "fixed", top: 0, left: sidebarOpen ? 0 : -280, width: 280, height: "100vh",
+          background: darkMode ? "#0f172a" : "#1e293b", zIndex: 1000, transition: "left 0.25s ease",
+          display: "flex", flexDirection: "column", boxShadow: sidebarOpen ? "4px 0 20px rgba(0,0,0,0.3)" : "none",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Logo isDark={darkMode} />
+              <span style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>GitLab Scout</span>
+              <span style={{ color: "#64748b", fontSize: 11 }}>v3.0.1</span>
+            </div>
+            <Button type="text" icon={<CloseOutlined style={{ color: "#94a3b8" }} />} onClick={() => setSidebarOpen(false)} />
+          </div>
+          <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
+            {[
+              { key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" },
+            ].map((item) => (
+              <div key={item.key} onClick={() => navigateTo(item.key as TabKey)}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer",
+                  color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent",
+                  transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>
+                {item.icon} {item.label}
+              </div>
+            ))}
+            <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Аналитика</div>
+            {[
+              { key: "contributors", label: "Контрибьюторы" },
+              { key: "deploy-reliability", label: "Надёжность" },
+              { key: "activity", label: "Активность" },
+              { key: "branches", label: "Ветки" },
+              { key: "pipelines", label: "CI/CD" },
+              { key: "dora", label: "DORA" },
+            ].map((item) => (
+              <div key={item.key} onClick={() => navigateTo("analytics", item.key as AnalyticsTab)}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px 10px 36px", cursor: "pointer",
+                  color: tab === "analytics" && analyticsTab === item.key ? "#3A8DFF" : "#94a3b8",
+                  background: tab === "analytics" && analyticsTab === item.key ? "rgba(58,141,255,0.1)" : "transparent",
+                  transition: "all 0.15s", fontSize: 13, fontWeight: tab === "analytics" && analyticsTab === item.key ? 600 : 400 }}>
+                {item.label}
+              </div>
+            ))}
+            <div style={{ padding: "12px 20px 4px", fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Разделы</div>
+            {[
+              { key: "stack", icon: <ApartmentOutlined />, label: "Языки" },
+              { key: "dependencies", icon: <ApartmentOutlined />, label: "Зависимости" },
+              ...(user.role === "admin" || user.role === "manager" ? [{ key: "benchmark", icon: <BarChartOutlined />, label: "Бенчмарк" }] : []),
+              ...(user.role === "admin" ? [{ key: "settings", icon: <SettingOutlined />, label: "Настройки" }] : []),
+            ].map((item) => (
+              <div key={item.key} onClick={() => navigateTo(item.key as TabKey)}
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer",
+                  color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent",
+                  transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>
+                {item.icon} {item.label}
+              </div>
+            ))}
+          </nav>
+          <div style={{ padding: "12px 20px", borderTop: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 16, background: "#3A8DFF", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 13, fontWeight: 600 }}>
+                {user.username[0].toUpperCase()}
+              </div>
+              <div>
+                <div style={{ color: "#e2e8f0", fontSize: 13, fontWeight: 500 }}>{user.username}</div>
+                <div style={{ color: "#64748b", fontSize: 11 }}>{user.role}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#111315", position: "relative", zIndex: 10, height: 48 }}>
+          <Button type="text" icon={<MenuOutlined style={{ color: "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}>
             <Logo isDark={darkMode} />
-          <div style={{ display: "flex", flexDirection: "column", lineHeight: 1 }}>
-            <span style={{ color: "#fff", fontWeight: "bold", fontSize: 22, letterSpacing: 0.5 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>v2.7.0</span>
+            <span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
+            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.0.1</span>
+            {collectionRunning && <Tooltip title="Идёт сбор данных"><SyncOutlined spin style={{ color: "#42D9C8", fontSize: 14 }} /></Tooltip>}
           </div>
-          {collectionRunning && (
-            <Tooltip title="Идёт сбор данных">
-              <SyncOutlined spin style={{ color: "#42D9C8", fontSize: 16, marginLeft: 6 }} />
-            </Tooltip>
-          )}
-          </div>
-          <Menu theme="dark" mode="horizontal" selectedKeys={[tab]}
-            onClick={({ key }) => setTab(key as TabKey)}
-            items={menuItems} style={{ flex: 1, background: "transparent" }} />
-          <Button
-            type="text"
-            icon={darkMode ? <BulbFilled style={{ color: "#fbbf24" }} /> : <BulbOutlined style={{ color: "rgba(255,255,255,0.65)" }} />}
-            onClick={() => setDarkMode(!darkMode)}
-            style={{ marginRight: 12 }}
-          />
-          <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 16, fontSize: 14, lineHeight: "1.2" }}>
-            {user.username} ({user.role})
-          </div>
-          <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)" }}>Выйти</Button>
-        </Header>
-        {tab === "analytics" && (
-          <div style={{ background: subMenuBg, padding: "0 24px", display: "flex", gap: 0, borderBottom: darkMode ? "1px solid #2A3A4A" : "none", position: "relative", zIndex: 10 }}>
-            {analyticsSubTabs.map((t) => (
-              <div key={t.key}
-                onClick={() => setAnalyticsTab(t.key as AnalyticsTab)}
-                style={{
-                  padding: "10px 24px", cursor: "pointer", fontSize: 14, fontWeight: 500,
-                  color: analyticsTab === t.key ? "#fff" : (darkMode ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.6)"),
-                  borderBottom: analyticsTab === t.key ? "2px solid #3A8DFF" : "2px solid transparent",
-                  background: analyticsTab === t.key ? "rgba(58,141,255,0.12)" : "transparent",
-                  transition: "all 0.15s ease",
-                }}
-              >{t.label}</div>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#94a3b8" }}>
+            {breadcrumbItems.map((item, i) => (
+              <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                {i > 0 && <RightOutlined style={{ fontSize: 10, color: "#475569" }} />}
+                <span style={{ cursor: item.onClick ? "pointer" : "default", color: item.onClick ? "#3A8DFF" : "#94a3b8", fontWeight: i === breadcrumbItems.length - 1 ? 600 : 400 }}
+                  onClick={item.onClick}>{item.label}</span>
+              </span>
             ))}
           </div>
-        )}
+          <Button type="text" icon={darkMode ? <BulbFilled style={{ color: "#fbbf24" }} /> : <BulbOutlined style={{ color: "rgba(255,255,255,0.65)" }} />}
+            onClick={() => setDarkMode(!darkMode)} style={{ marginRight: 8 }} />
+          <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 12, fontSize: 13, lineHeight: "1.2" }}>
+            {user.username} ({user.role})
+          </div>
+          <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>Выйти</Button>
+        </Header>
+
         <Content style={{ padding: "12px 24px 24px", background: "transparent", border: "none", position: "relative", zIndex: 1 }}>
           {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} extraParams={tabParams} />}
           <Suspense fallback={<div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>}>
@@ -250,20 +273,13 @@ export default function App() {
             {tab === "settings" && user.role === "admin" && <SettingsPanel />}
           </Suspense>
         </Content>
-        <footer style={{
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          padding: "24px 16px", borderTop: "1px solid #2A3A4A",
-          background: "#111315",
-          position: "relative", zIndex: 1,
-        }}>
+
+        <footer style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 16px", borderTop: `1px solid ${darkMode ? "#2A3A4A" : "#e5e7eb"}`, background: darkMode ? "#0f172a" : "#f8fafc" }}>
           <a href="https://inn-it.pro/" target="_blank" rel="noopener noreferrer">
-            <img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 56, opacity: 0.7, transition: "opacity 0.15s" }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.7")} />
+            <img src="/asterics_color.svg" alt="Инновация ИТ" style={{ height: 48, opacity: 0.6, transition: "opacity 0.15s" }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")} onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")} />
           </a>
-          <span style={{ fontSize: 11, color: "#8A94A6", marginTop: 8, letterSpacing: 0.3 }}>
-            &copy; {new Date().getFullYear()} Инновация ИТ
-          </span>
+          <span style={{ fontSize: 11, color: "#8A94A6", marginTop: 6 }}>&copy; {new Date().getFullYear()} Инновация ИТ</span>
         </footer>
       </Layout>
     </ConfigProvider>
