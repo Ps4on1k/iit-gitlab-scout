@@ -135,8 +135,14 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
     if (contributors) {
       const emails = contributors.split(",").map((e) => e.trim()).filter(Boolean);
       if (emails.length > 0) {
+        // Resolve all emails through contributor directory
+        const dirResult = await pool.query("SELECT emails FROM contributor_directory WHERE emails && $1", [emails]);
+        const allEmails = new Set<string>(emails);
+        for (const row of dirResult.rows) {
+          if (row.emails) row.emails.forEach((e: string) => allEmails.add(e));
+        }
         conditions.push(`mr.author_email = ANY($${idx++})`);
-        params.push(emails);
+        params.push(Array.from(allEmails));
       }
     }
 
