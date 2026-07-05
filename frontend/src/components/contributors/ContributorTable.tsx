@@ -230,12 +230,15 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
       const avgDeletions = c.total_commits > 0 ? c.total_deletions / c.total_commits : 0;
       const avgChangesPerCommit = c.total_commits > 0 ? c.total_changes / c.total_commits : 0;
 
-      // Per-contributor activity span: business days from first to last commit
+      // Per-contributor activity span: business days from first commit to dateTo (filter end)
       const freqDates = Object.keys(freq).sort();
       let activitySpan = 0;
-      if (freqDates.length >= 2) {
-        const first = new Date(freqDates[0]);
-        const last = new Date(freqDates[freqDates.length - 1]);
+      const firstCommitDate = freqDates.length > 0 ? freqDates[0] : null;
+      const endRange = dateTo || freqDates[freqDates.length - 1] || null;
+
+      if (firstCommitDate && endRange) {
+        const first = new Date(firstCommitDate);
+        const last = new Date(endRange);
         let count = 0;
         const d = new Date(first);
         while (d <= last) {
@@ -244,8 +247,6 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
           d.setDate(d.getDate() + 1);
         }
         activitySpan = count;
-      } else if (freqDates.length === 1) {
-        activitySpan = 1;
       } else if (dateFrom && dateTo) {
         const first = new Date(dateFrom);
         const last = new Date(dateTo);
@@ -467,7 +468,7 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
           Композитная метрика от 0 до 100, рассчитывается как взвешенная сумма пяти компонентов:
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)", marginTop: 4 }}>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Последовательность ({weights.consistency ?? 25}%)</b> — отношение активных дней к рабочим дням от первого до последнего коммита контрибутора</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Последовательность ({weights.consistency ?? 25}%)</b> — отношение активных дней к рабочим дням от первого коммита до конца периода фильтра</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Активность ({weights.activity ?? 20}%)</b> — коммитов в неделю (нормализовано до 15 коммитов/нед = максимум)</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Влияние ({weights.impact ?? 20}%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Качество коммитов ({weights.sizeQuality ?? 15}%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
