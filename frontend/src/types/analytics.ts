@@ -76,6 +76,7 @@ export interface DependencyAudit {
   is_outdated: boolean;
   license: string;
   source: string;
+  collected_at: string;
 }
 
 export interface DependencySummary {

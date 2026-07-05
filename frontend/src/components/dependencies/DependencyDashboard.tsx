@@ -90,6 +90,8 @@ export function DependencyDashboard() {
     { title: "Версия", dataIndex: "current_version", key: "version", width: 120 },
     { title: "Источник", dataIndex: "source", key: "source", width: 100,
       render: (v: string) => <Tag color={SOURCE_COLORS[v] || "default"} style={{ fontSize: 10 }}>{v}</Tag> },
+    { title: "Собрано", dataIndex: "collected_at", key: "collected_at", width: 120,
+      render: (v: string) => v ? new Date(v).toLocaleDateString() : "—" },
     { title: "Статус", key: "status", width: 100,
       render: (_: any, r: DependencyAudit) => r.is_outdated ? <Tag color="red">устаревшая</Tag> : <Tag color="green">актуальная</Tag> },
   ];
@@ -129,7 +131,7 @@ export function DependencyDashboard() {
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={8}>
-          <Card title="Распределение по экосистемам" size="small" style={{ height: 320 }}>
+          <Card title="Распределение по экосистемам" size="small" style={{ height: 420 }}>
             {loading ? <Spin /> : pieData.length > 0 ? (
               <Pie
                 data={pieData}
@@ -144,7 +146,7 @@ export function DependencyDashboard() {
           </Card>
         </Col>
         <Col span={16}>
-          <Card title="Зависимости по проектам" size="small" style={{ height: 320 }}>
+          <Card title="Зависимости по проектам" size="small" style={{ height: 420 }}>
             {loading ? <Spin /> : (() => {
               const byProject: Record<string, { total: number; outdated: number }> = {};
               for (const d of filteredDeps) {
@@ -156,7 +158,7 @@ export function DependencyDashboard() {
               if (sorted.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
               const maxTotal = sorted[0]?.[1].total || 1;
               return (
-                <div style={{ maxHeight: 280, overflowY: "auto" }}>
+                <div style={{ maxHeight: 380, overflowY: "auto" }}>
                   {sorted.map(([proj, stats]) => (
                     <div key={proj} style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
