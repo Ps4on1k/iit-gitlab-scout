@@ -193,18 +193,47 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
       params
     );
 
+    // Resolve through contributor directory — group by display_name
+    const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+    const emailToName: Record<string, string> = {};
+    for (const row of dirResult.rows) {
+      for (const email of row.emails) {
+        emailToName[email] = row.display_name;
+      }
+    }
+
+    const grouped: Record<string, any> = {};
+    for (const r of result.rows) {
+      const displayName = emailToName[r.author_email] || r.author_name || r.author_email;
+      if (grouped[displayName]) {
+        grouped[displayName].total_merged_mrs += Number(r.total_merged_mrs);
+        grouped[displayName].total_pipelines += Number(r.total_pipelines);
+        grouped[displayName].successful_pipelines += Number(r.successful_pipelines);
+        grouped[displayName].failed_pipelines += Number(r.failed_pipelines);
+        grouped[displayName].completed_pipelines += Number(r.completed_pipelines);
+      } else {
+        grouped[displayName] = {
+          email: r.author_email,
+          name: displayName,
+          total_merged_mrs: Number(r.total_merged_mrs),
+          total_pipelines: Number(r.total_pipelines),
+          successful_pipelines: Number(r.successful_pipelines),
+          failed_pipelines: Number(r.failed_pipelines),
+          completed_pipelines: Number(r.completed_pipelines),
+        };
+      }
+    }
+
     const response = {
       ok: true,
-      data: result.rows.map((r: any) => ({
-        email: r.author_email,
-        name: r.author_name || r.author_email,
-        total_merged_mrs: Number(r.total_merged_mrs),
-        total_pipelines: Number(r.total_pipelines),
-        successful_pipelines: Number(r.successful_pipelines),
-        failed_pipelines: Number(r.failed_pipelines),
-        completed_pipelines: Number(r.completed_pipelines),
-        deploy_success_rate: Number(r.deploy_success_rate),
-        pipeline_coverage_rate: Number(r.pipeline_coverage_rate),
+      data: Object.values(grouped).map((g: any) => ({
+        ...g,
+        deploy_success_rate: g.completed_pipelines > 0
+          ? Math.round((g.successful_pipelines / g.completed_pipelines) * 1000) / 10
+          : 0,
+        pipeline_coverage_rate: g.total_merged_mrs > 0
+          ? Math.round((g.completed_pipelines / g.total_merged_mrs) * 1000) / 10
+          : 0,
       })),
     };
     setCache(cacheK, response, 60_000);

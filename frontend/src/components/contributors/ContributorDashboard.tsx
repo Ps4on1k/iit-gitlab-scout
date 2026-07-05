@@ -102,9 +102,10 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
     const deployMap = new Map<string, DeployReliabilityEntry>();
     for (const d of deployData) {
       deployMap.set(d.email, d);
+      if (d.name && d.name !== d.email) deployMap.set(d.name, d);
     }
     return filteredContributors.map((c) => {
-      const deploy = deployMap.get(c.author_email);
+      const deploy = deployMap.get(c.author_email) || (c.author_name ? deployMap.get(c.author_name) : undefined);
       const dw = {
         successRate: deployWeights.successRate ?? 50,
         coverage: deployWeights.coverage ?? 30,
