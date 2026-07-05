@@ -221,15 +221,6 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
   }, []);
 
   const withMetrics = useMemo(() => {
-    // Find earliest date across ALL contributors for fallback activitySpan
-    let globalMinDate = "";
-    for (const c of data) {
-      const dates = Object.keys(c.frequency || {}).sort();
-      if (dates.length > 0 && (!globalMinDate || dates[0] < globalMinDate)) {
-        globalMinDate = dates[0];
-      }
-    }
-
     return data.map((c) => {
       const freq = c.frequency || {};
       const activeDays = Object.keys(freq).filter((d) => freq[d] > 0).length;
@@ -239,10 +230,12 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
       const avgDeletions = c.total_commits > 0 ? c.total_deletions / c.total_commits : 0;
       const avgChangesPerCommit = c.total_commits > 0 ? c.total_changes / c.total_commits : 0;
 
+      // Per-contributor activity span: business days from first to last commit
+      const freqDates = Object.keys(freq).sort();
       let activitySpan = 0;
-      if (dateFrom && dateTo) {
-        const first = new Date(dateFrom);
-        const last = new Date(dateTo);
+      if (freqDates.length >= 2) {
+        const first = new Date(freqDates[0]);
+        const last = new Date(freqDates[freqDates.length - 1]);
         let count = 0;
         const d = new Date(first);
         while (d <= last) {
@@ -251,9 +244,11 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
           d.setDate(d.getDate() + 1);
         }
         activitySpan = count;
-      } else if (globalMinDate) {
-        const first = new Date(globalMinDate);
-        const last = new Date();
+      } else if (freqDates.length === 1) {
+        activitySpan = 1;
+      } else if (dateFrom && dateTo) {
+        const first = new Date(dateFrom);
+        const last = new Date(dateTo);
         let count = 0;
         const d = new Date(first);
         while (d <= last) {
@@ -472,7 +467,7 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
           Композитная метрика от 0 до 100, рассчитывается как взвешенная сумма пяти компонентов:
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 24px", fontSize: 12, color: "var(--ant-color-text-secondary)", marginTop: 4 }}>
-          <div><b style={{ color: "var(--ant-color-text)" }}>Последовательность ({weights.consistency ?? 25}%)</b> — отношение активных дней к рабочим дням в периоде. Регулярный коммитер получает максимум</div>
+          <div><b style={{ color: "var(--ant-color-text)" }}>Последовательность ({weights.consistency ?? 25}%)</b> — отношение активных дней к рабочим дням от первого до последнего коммита контрибутора</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Активность ({weights.activity ?? 20}%)</b> — коммитов в неделю (нормализовано до 15 коммитов/нед = максимум)</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Влияние ({weights.impact ?? 20}%)</b> — суммарные изменения за активный день (нормализовано до 200 строк/день = максимум)</div>
           <div><b style={{ color: "var(--ant-color-text)" }}>Качество коммитов ({weights.sizeQuality ?? 15}%)</b> — средний размер коммита: идеал 10–50 строк, приемлемо до 200, плохо &gt;500</div>
