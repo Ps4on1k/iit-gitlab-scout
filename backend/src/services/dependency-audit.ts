@@ -49,7 +49,19 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
       continue;
     }
     try {
-      const content = await client.getFile(projectId, file.path, "main");
+      const res = await fetch(
+        `${baseUrl}/projects/${encodeURIComponent(projectPath)}/repository/files/${encodeURIComponent(file.path)}?ref=main`,
+        {
+          headers: { "PRIVATE-TOKEN": token, Accept: "application/json" },
+          signal: AbortSignal.timeout(30000),
+        }
+      );
+      if (!res.ok) {
+        console.log(`[deps] ${projectPath}: ${file.name} returned ${res.status}`);
+        continue;
+      }
+      const body = await res.json();
+      const content = atob(body.content);
       const parsed = parseDepFile(file.name, content);
       console.log(`[deps] ${projectPath}: ${file.name} → ${parsed.length} deps`);
       deps.push(...parsed);
