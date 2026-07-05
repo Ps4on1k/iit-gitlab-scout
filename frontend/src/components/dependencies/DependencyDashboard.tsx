@@ -129,24 +129,26 @@ export function DependencyDashboard() {
         </Row>
       )}
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
+      <Row gutter={16} style={{ marginBottom: 16 }} align="top">
         <Col span={8}>
-          <Card title="Распределение по экосистемам" size="small" style={{ height: 420 }}>
+          <Card title="Распределение по экосистемам" size="small">
             {loading ? <Spin /> : pieData.length > 0 ? (
-              <Pie
-                data={pieData}
-                angleField="value" colorField="type" radius={0.9} innerRadius={0.55}
-                scale={{ color: { range: pieData.map((d) => SOURCE_COLORS[d.type] || "#999") } }}
-                label={false}
-                legend={{ color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
-                statistic={false}
-                autoFit
-              />
+              <div style={{ minHeight: 300 }}>
+                <Pie
+                  data={pieData}
+                  angleField="value" colorField="type" radius={0.9} innerRadius={0.55}
+                  scale={{ color: { range: pieData.map((d) => SOURCE_COLORS[d.type] || "#999") } }}
+                  label={false}
+                  legend={{ color: { position: "bottom", layout: { justifyContent: "center" }, itemLabelFontSize: 11, itemLabelFill: cc.secondaryText } }}
+                  statistic={false}
+                  autoFit
+                />
+              </div>
             ) : <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />}
           </Card>
         </Col>
         <Col span={16}>
-          <Card title="Зависимости по проектам" size="small" style={{ height: 420 }}>
+          <Card title="Зависимости по проектам" size="small" style={{ minHeight: 300 }}>
             {loading ? <Spin /> : (() => {
               const byProject: Record<string, { total: number; outdated: number }> = {};
               for (const d of filteredDeps) {
