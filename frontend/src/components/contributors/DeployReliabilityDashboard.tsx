@@ -116,7 +116,7 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
                   dataIndex: "name",
                   sorter: (a: any, b: any) => a.name.localeCompare(b.name),
                   render: (name: string, record: any) => (
-                    <span style={{ cursor: "pointer", color: "#3A8DFF", fontWeight: 600 }} onClick={() => onContributorClick?.(name)}>
+                    <span style={{ cursor: "pointer", color: "#3A8DFF", fontWeight: 600 }} onClick={() => onContributorClick?.(record.email || name)}>
                       {name}
                     </span>
                   ),

@@ -102,7 +102,7 @@ function computeScore(c: {
       raw: deployScore ?? 50,
       normalized: deploy,
       weight: w.deploy,
-      description: deployScore !== undefined ? `Score надёжности деплоя: ${deployScore}/100` : "Нет данных о деплоях (нейтральное значение)",
+      description: deployScore !== undefined ? `Score надёжности деплоя: ${deployScore}/100` : "Нет MR с pipeline для расчёта надёжности",
     },
   };
 
