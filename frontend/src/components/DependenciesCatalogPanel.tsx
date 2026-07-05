@@ -129,7 +129,7 @@ export function DependenciesCatalogPanel() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-        <Typography.Title level={4} style={{ margin: 0 }}>Каталог зависимостей</Typography.Title>
+        <Typography.Title level={4} style={{ margin: 0 }}>Зависимости</Typography.Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>Добавить</Button>
       </div>
       <Typography.Paragraph type="secondary">

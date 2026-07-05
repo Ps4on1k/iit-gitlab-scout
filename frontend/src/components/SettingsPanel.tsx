@@ -37,7 +37,7 @@ export function SettingsPanel() {
           },
           {
             key: "catalog",
-            label: <span><ApartmentOutlined /> Каталог зависимостей</span>,
+            label: <span><ApartmentOutlined /> Зависимости</span>,
             children: <DependenciesCatalogPanel />,
           },
           {
