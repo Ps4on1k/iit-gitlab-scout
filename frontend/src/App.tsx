@@ -161,10 +161,10 @@ export default function App() {
           {/* Sidebar */}
           <div style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, height: "100%", background: darkMode ? "#0f172a" : "#1e293b", transition: "all 0.25s ease", overflow: "hidden", flexShrink: 0, borderRight: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
             <div style={{ width: 260, height: "100%", display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>GitLab Scout</span></div>
-                <Button type="text" icon={<CloseOutlined style={{ color: "#94a3b8" }} />} onClick={() => setSidebarOpen(false)} />
-              </div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#334155"}` }}>
+                  <span style={{ color: "#fff", fontWeight: "bold", fontSize: 18 }}>Навигация</span>
+                  <Button type="text" icon={<CloseOutlined style={{ color: "#94a3b8" }} />} onClick={() => setSidebarOpen(false)} />
+                </div>
               <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
                 {[{ key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" }].map((item) => (
                   <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : "#94a3b8", background: tab === item.key ? "rgba(58,141,255,0.1)" : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
