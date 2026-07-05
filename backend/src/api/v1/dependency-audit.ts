@@ -21,9 +21,9 @@ export async function dependencyAuditRoutes(app: FastifyInstance) {
   });
 
   app.get<{
-    Querystring: { project_id?: string; project_ids?: string; tag?: string; source?: string };
+    Querystring: { project_id?: string; project_ids?: string; tag?: string; tags?: string; source?: string };
   }>("/api/v1/dependencies", { preHandler: [requireAuth] }, async (request) => {
-    const { project_id, project_ids, tag, source } = request.query;
+    const { project_id, project_ids, tag, tags, source } = request.query;
     const pool = getPool();
     const conditions: string[] = [];
     const params: any[] = [];
@@ -36,8 +36,11 @@ export async function dependencyAuditRoutes(app: FastifyInstance) {
       conditions.push(`pda.project_id = $${idx++}`);
       params.push(Number(project_id));
     }
-    if (tag) {
-      conditions.push(`p.tags = $${idx++}`);
+    if (tags) {
+      const tagList = tags.split(",").map((t) => t.trim()).filter(Boolean);
+      if (tagList.length > 0) { conditions.push(`p.tags && $${idx++}`); params.push(tagList); }
+    } else if (tag) {
+      conditions.push(`p.tags @> ARRAY[$${idx++}]::text[]`);
       params.push(tag);
     }
     if (source) {

@@ -96,11 +96,39 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
 
   console.log(`[deps] ${projectPath}: total ${deps.length} dependencies found`);
 
+  // Deduplicate dependencies within the project
+  const deduped = new Map<string, { name: string; current_version: string; source: string }>();
+  for (const dep of deps) {
+    const key = `${dep.name}@${dep.source}`;
+    if (!deduped.has(key)) {
+      deduped.set(key, dep);
+    }
+  }
+  const uniqueDeps = Array.from(deduped.values());
+  console.log(`[deps] ${projectPath}: ${uniqueDeps.length} unique dependencies after dedup`);
+
   await pool.query("DELETE FROM project_dependencies_audit WHERE project_id = $1", [projectId]);
 
+  // Check for outdated dependencies via public APIs
+  const outdatedList = new Set<string>();
+  for (const dep of uniqueDeps) {
+    if (!dep.current_version || dep.current_version === "latest" || dep.current_version === "*") {
+      outdatedList.add(`${dep.name}@${dep.source}`);
+      continue;
+    }
+    try {
+      const latest = await checkLatestVersion(dep.name, dep.source);
+      if (latest && dep.current_version !== latest) {
+        outdatedList.add(`${dep.name}@${dep.source}`);
+      }
+    } catch {
+      // Skip check failures
+    }
+  }
+
   let outdated = 0;
-  for (const dep of deps) {
-    const isOutdated = !dep.current_version || dep.current_version === "latest" || dep.current_version === "*";
+  for (const dep of uniqueDeps) {
+    const isOutdated = outdatedList.has(`${dep.name}@${dep.source}`);
     if (isOutdated) outdated++;
 
     await pool.query(
@@ -110,7 +138,7 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
     );
   }
 
-  return { total: deps.length, outdated };
+  return { total: uniqueDeps.length, outdated };
 }
 
 function parseDepFile(fileName: string, content: string): { name: string; current_version: string; source: string }[] {
@@ -188,4 +216,29 @@ function parseDepFile(fileName: string, content: string): { name: string; curren
   }
 
   return deps;
+}
+
+async function checkLatestVersion(name: string, source: string): Promise<string | null> {
+  try {
+    if (source === "npm") {
+      const res = await fetch(`https://registry.npmjs.org/${name}/latest`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) { const data = await res.json(); return data.version || null; }
+    } else if (source === "pip") {
+      const res = await fetch(`https://pypi.org/pypi/${name}/json`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) { const data = await res.json(); return data.info?.version || null; }
+    } else if (source === "nuget") {
+      const res = await fetch(`https://api.nuget.org/v3-flatcontainer/${name.toLowerCase()}/index.json`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) { const data = await res.json(); const versions = data.versions || []; return versions[versions.length - 1] || null; }
+    } else if (source === "go") {
+      const res = await fetch(`https://proxy.golang.org/${name}/@latest`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) { const data = await res.json(); return data.Version || null; }
+    } else if (source === "maven" || source === "gradle") {
+      const [groupId, artifactId] = name.split(":");
+      if (groupId && artifactId) {
+        const res = await fetch(`https://search.maven.org/solrsearch/select?q=g:${groupId}+AND+a:${artifactId}&rows=1&wt=json`, { signal: AbortSignal.timeout(5000) });
+        if (res.ok) { const data = await res.json(); return data.response?.docs?.[0]?.latestVersion || null; }
+      }
+    }
+  } catch {}
+  return null;
 }

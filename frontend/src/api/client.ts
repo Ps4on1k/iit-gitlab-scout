@@ -200,10 +200,10 @@ export async function collectDependencies(projectId: number): Promise<ApiRespons
   return fetchJson("/v1/dependencies/collect", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
 }
 
-export async function fetchDependencies(projectIds?: number[], tag?: string, source?: string): Promise<ApiResponse<{ dependencies: DependencyAudit[]; summary: DependencySummary }>> {
+export async function fetchDependencies(projectIds?: number[], tags?: string, source?: string): Promise<ApiResponse<{ dependencies: DependencyAudit[]; summary: DependencySummary }>> {
   const parts: string[] = [];
   if (projectIds && projectIds.length > 0) parts.push(`project_ids=${projectIds.join(",")}`);
-  if (tag) parts.push(`tag=${tag}`);
+  if (tags) parts.push(`tags=${tags}`);
   if (source) parts.push(`source=${source}`);
   const qs = parts.length > 0 ? `?${parts.join("&")}` : "";
   return fetchJson(`/v1/dependencies${qs}`);

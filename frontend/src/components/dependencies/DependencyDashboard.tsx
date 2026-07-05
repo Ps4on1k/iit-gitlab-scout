@@ -35,7 +35,7 @@ export function DependencyDashboard() {
     try {
       const res = await fetchDependencies(
         selectedProjectIds.length > 0 ? selectedProjectIds : undefined,
-        selectedTags.length > 0 ? selectedTags[0] : undefined,
+        selectedTags.length > 0 ? selectedTags.join(",") : undefined,
         sourceFilter
       );
       if (res.ok) { setDeps(res.data!.dependencies); setSummary(res.data!.summary); }
@@ -129,7 +129,7 @@ export function DependencyDashboard() {
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={8}>
-          <Card title="Распределение по экосистемам" size="small">
+          <Card title="Распределение по экосистемам" size="small" style={{ height: 320 }}>
             {loading ? <Spin /> : pieData.length > 0 ? (
               <Pie
                 data={pieData}
@@ -144,7 +144,7 @@ export function DependencyDashboard() {
           </Card>
         </Col>
         <Col span={16}>
-          <Card title="Зависимости по проектам" size="small">
+          <Card title="Зависимости по проектам" size="small" style={{ height: 320 }}>
             {loading ? <Spin /> : (() => {
               const byProject: Record<string, { total: number; outdated: number }> = {};
               for (const d of filteredDeps) {
@@ -152,11 +152,11 @@ export function DependencyDashboard() {
                 byProject[d.project_label].total++;
                 if (d.is_outdated) byProject[d.project_label].outdated++;
               }
-              const sorted = Object.entries(byProject).sort((a, b) => b[1].total - a[1].total).slice(0, 15);
+              const sorted = Object.entries(byProject).sort((a, b) => b[1].total - a[1].total);
               if (sorted.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
               const maxTotal = sorted[0]?.[1].total || 1;
               return (
-                <div>
+                <div style={{ maxHeight: 280, overflowY: "auto" }}>
                   {sorted.map(([proj, stats]) => (
                     <div key={proj} style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
