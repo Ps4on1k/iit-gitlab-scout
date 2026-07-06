@@ -21,6 +21,7 @@ interface CatalogEntry {
   framework: string | null;
   file_names: string[];
   dependency_field: string | null;
+  version_check_url: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -66,6 +67,7 @@ export function DependenciesCatalogPanel() {
       framework: entry.framework || "",
       file_names: entry.file_names.join(", "),
       dependency_field: entry.dependency_field || "",
+      version_check_url: entry.version_check_url || "",
     });
     setModalOpen(true);
   };
@@ -78,14 +80,14 @@ export function DependenciesCatalogPanel() {
       if (editingId) {
         const res = await fetchJson(`/v1/dependency-catalog/${editingId}`, {
           method: "PUT",
-          body: JSON.stringify({ ...values, file_names: fileNames, framework: values.framework || null, dependency_field: values.dependency_field || null }),
+          body: JSON.stringify({ ...values, file_names: fileNames, framework: values.framework || null, dependency_field: values.dependency_field || null, version_check_url: values.version_check_url || null }),
         });
         if (!res.ok) { message.error(res.error!); return; }
         message.success("Запись обновлена");
       } else {
         const res = await fetchJson("/v1/dependency-catalog", {
           method: "POST",
-          body: JSON.stringify({ ...values, file_names: fileNames, framework: values.framework || null, dependency_field: values.dependency_field || null }),
+          body: JSON.stringify({ ...values, file_names: fileNames, framework: values.framework || null, dependency_field: values.dependency_field || null, version_check_url: values.version_check_url || null }),
         });
         if (!res.ok) { message.error(res.error!); return; }
         message.success("Запись создана");
@@ -113,6 +115,7 @@ export function DependenciesCatalogPanel() {
     { title: "Фреймворк", dataIndex: "framework", key: "framework", render: (v: string | null) => v || <Text type="secondary">—</Text> },
     { title: "Файлы зависимостей", dataIndex: "file_names", key: "file_names", render: (v: string[]) => v.join(", ") },
     { title: "Поле", dataIndex: "dependency_field", key: "dependency_field", render: (v: string | null) => v || <Text type="secondary">—</Text> },
+    { title: "URL проверки", dataIndex: "version_check_url", key: "version_check_url", render: (v: string | null) => v ? <Text style={{ fontSize: 11 }} copyable>{v}</Text> : <Text type="secondary">—</Text> },
     {
       title: "Действия", key: "actions", width: 100,
       render: (_: any, record: CatalogEntry) => (
@@ -155,6 +158,9 @@ export function DependenciesCatalogPanel() {
           </Form.Item>
           <Form.Item name="dependency_field" label="Поле зависимостей">
             <Input placeholder="dependencies (необязательно)" />
+          </Form.Item>
+          <Form.Item name="version_check_url" label="URL проверки версий" help="Шаблон: {name} заменяется на имя пакета">
+            <Input placeholder="https://registry.npmjs.org/{name}/latest" />
           </Form.Item>
         </Form>
       </Modal>

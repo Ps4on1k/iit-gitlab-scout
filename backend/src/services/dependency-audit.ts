@@ -109,6 +109,13 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
 
   await pool.query("DELETE FROM project_dependencies_audit WHERE project_id = $1", [projectId]);
 
+  // Load version check URLs from catalog
+  const urlResult = await pool.query("SELECT ecosystem, version_check_url FROM dependency_catalog WHERE version_check_url IS NOT NULL AND is_active = true");
+  const urlTemplates: Record<string, string> = {};
+  for (const row of urlResult.rows) {
+    urlTemplates[row.ecosystem] = row.version_check_url;
+  }
+
   // Check for outdated dependencies via public APIs
   const outdatedList = new Set<string>();
   for (const dep of uniqueDeps) {
@@ -116,13 +123,15 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
       outdatedList.add(`${dep.name}@${dep.source}`);
       continue;
     }
+    const urlTemplate = urlTemplates[dep.source];
+    if (!urlTemplate) continue;
     try {
-      const latest = await checkLatestVersion(dep.name, dep.source);
-      if (latest && dep.current_version !== latest) {
+      const latest = await checkLatestVersion(dep.name, dep.source, urlTemplate);
+      if (latest && normalizeVersion(dep.current_version) !== normalizeVersion(latest)) {
         outdatedList.add(`${dep.name}@${dep.source}`);
       }
-    } catch {
-      // Skip check failures
+    } catch (err) {
+      console.log(`[deps] version check failed for ${dep.name}: ${err}`);
     }
   }
 
@@ -147,7 +156,7 @@ function parseDepFile(fileName: string, content: string): { name: string; curren
   if (fileName === "package.json") {
     try {
       const pkg = JSON.parse(content);
-      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
+      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies };
       for (const [name, version] of Object.entries(allDeps || {})) {
         deps.push({ name, current_version: String(version), source: "npm" });
       }
@@ -181,10 +190,41 @@ function parseDepFile(fileName: string, content: string): { name: string; curren
     for (const m of matches) {
       deps.push({ name: `${m[1]}:${m[2]}`, current_version: m[3], source: "maven" });
     }
+  } else if (fileName === "Podfile.lock") {
+    const inSpecs = content.includes("PODS:");
+    if (inSpecs) {
+      const specsSection = content.split("PODS:")[1]?.split("DEPENDENCIES:")[0] || "";
+      const matches = specsSection.matchAll(/^\s+-\s+([^\s(]+)\s+\(([^)]+)\)/gm);
+      for (const m of matches) {
+        if (m[1] && m[2]) deps.push({ name: m[1], current_version: m[2], source: "cocoapods" });
+      }
+    }
+  } else if (fileName === "Podfile") {
+    const matches = content.matchAll(/pod\s+['"]([^'"]+)['"]\s*,\s*['"]([^'"]+)['"]/g);
+    for (const m of matches) {
+      deps.push({ name: m[1], current_version: m[2], source: "cocoapods" });
+    }
   } else if (fileName === "build.gradle" || fileName === "build.gradle.kts") {
-    const matches = content.matchAll(/(?:implementation|api|compile)\s+['"]([^'"]+):([^'"]+):([^'"]+)['"]/g);
+    const matches = content.matchAll(/(?:implementation|api|compile|testImplementation)\s+['"]([^'"]+):([^'"]+):([^'"]+)['"]/g);
     for (const m of matches) {
       deps.push({ name: `${m[1]}:${m[2]}`, current_version: m[3], source: "gradle" });
+    }
+    // Also handle version catalog references like libs.xxx
+    const catalogMatches = content.matchAll(/(?:implementation|api|compile)\s+(libs\.[a-zA-Z0-9.]+)/g);
+    for (const m of catalogMatches) {
+      deps.push({ name: m[1], current_version: "catalog", source: "gradle" });
+    }
+  } else if (fileName === "libs.versions.toml") {
+    const versions: Record<string, string> = {};
+    const versionMatches = content.matchAll(/^([a-zA-Z0-9._-]+)\s*=\s*["']([^"']+)["']/gm);
+    for (const m of versionMatches) {
+      versions[m[1]] = m[2];
+    }
+    const depMatches = content.matchAll(/^([a-zA-Z0-9._-]+)\s*=\s*\{[^}]*module\s*=\s*["']([^"']+)["']\s*,\s*version\s*=\s*["']([^"']+)["']/gm);
+    for (const m of depMatches) {
+      const versionRef = m[3];
+      const version = versionRef.startsWith("$") ? versions[versionRef.slice(1)] || versionRef : versionRef;
+      deps.push({ name: m[2], current_version: version, source: "gradle" });
     }
   } else if (fileName === "composer.json") {
     try {
@@ -218,27 +258,27 @@ function parseDepFile(fileName: string, content: string): { name: string; curren
   return deps;
 }
 
-async function checkLatestVersion(name: string, source: string): Promise<string | null> {
+function normalizeVersion(v: string): string {
+  return v.replace(/^v/i, "").replace(/^[=<>~^!]+\s*/, "");
+}
+
+async function checkLatestVersion(name: string, source: string, urlTemplate: string): Promise<string | null> {
   try {
-    if (source === "npm") {
-      const res = await fetch(`https://registry.npmjs.org/${name}/latest`, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) { const data = await res.json(); return data.version || null; }
-    } else if (source === "pip") {
-      const res = await fetch(`https://pypi.org/pypi/${name}/json`, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) { const data = await res.json(); return data.info?.version || null; }
-    } else if (source === "nuget") {
-      const res = await fetch(`https://api.nuget.org/v3-flatcontainer/${name.toLowerCase()}/index.json`, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) { const data = await res.json(); const versions = data.versions || []; return versions[versions.length - 1] || null; }
-    } else if (source === "go") {
-      const res = await fetch(`https://proxy.golang.org/${name}/@latest`, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) { const data = await res.json(); return data.Version || null; }
-    } else if (source === "maven" || source === "gradle") {
+    let url = urlTemplate.replace(/{name}/g, name);
+    // Handle maven/gradle groupId:artifactId format
+    if ((source === "maven" || source === "gradle") && name.includes(":")) {
       const [groupId, artifactId] = name.split(":");
-      if (groupId && artifactId) {
-        const res = await fetch(`https://search.maven.org/solrsearch/select?q=g:${groupId}+AND+a:${artifactId}&rows=1&wt=json`, { signal: AbortSignal.timeout(5000) });
-        if (res.ok) { const data = await res.json(); return data.response?.docs?.[0]?.latestVersion || null; }
-      }
+      url = url.replace(/{group}/g, groupId).replace(/{artifact}/g, artifactId);
     }
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+
+    if (source === "npm") return data.version || null;
+    if (source === "pip") return data.info?.version || null;
+    if (source === "nuget") { const versions = data.versions || []; return versions[versions.length - 1] || null; }
+    if (source === "go") return data.Version || null;
+    if (source === "maven" || source === "gradle") return data.response?.docs?.[0]?.latestVersion || null;
   } catch {}
   return null;
 }
