@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typography, Spin, Empty } from "antd";
-import { ReloadOutlined } from "@ant-design/icons";
+import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typography, Spin, Empty, Input } from "antd";
+import { ReloadOutlined, SearchOutlined } from "@ant-design/icons";
 import { Pie } from "@ant-design/charts";
 import { fetchDependencies, fetchProjects } from "../../api/client";
 import { CollectButton } from "../common/CollectButton";
@@ -160,7 +160,7 @@ export function DependencyDashboard() {
               if (sorted.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
               const maxTotal = sorted[0]?.[1].total || 1;
               return (
-                <div style={{ maxHeight: 380, overflowY: "auto" }}>
+                <div style={{ maxHeight: 380, overflowY: "auto", paddingRight: 4, scrollbarWidth: "thin", scrollbarColor: "#64748b transparent" }}>
                   {sorted.map(([proj, stats]) => (
                     <div key={proj} style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
@@ -186,8 +186,7 @@ export function DependencyDashboard() {
 
       <Card size="small">
         <div style={{ marginBottom: 12 }}>
-          <input placeholder="Поиск по имени зависимости..." value={searchText} onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: "100%", padding: "6px 12px", border: "1px solid var(--ant-color-border-secondary)", borderRadius: 6, fontSize: 13 }} />
+          <Input placeholder="Поиск по имени зависимости..." prefix={<SearchOutlined />} allowClear value={searchText} onChange={(e) => setSearchText(e.target.value)} />
         </div>
         <Table columns={columns} dataSource={filteredDeps} rowKey="id" loading={loading} size="small"
           pagination={{ pageSize: 20, showSizeChanger: true, showTotal: (t) => `Всего: ${t}` }} scroll={{ x: 700 }} />
