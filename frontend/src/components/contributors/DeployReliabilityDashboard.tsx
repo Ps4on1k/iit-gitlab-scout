@@ -43,11 +43,11 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const contribs = filters.contributors.length > 0 ? filters.contributors.join(",") : undefined;
-      const r = await fetchDeployReliability(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, filters.dateFrom, filters.dateTo, contribs);
+      // Don't pass contributor filter - show all data, filter on frontend
+      const r = await fetchDeployReliability(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, filters.dateFrom, filters.dateTo);
       if (r.ok) setDeployData(r.data!);
     } finally { setLoading(false); }
-  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, filters.contributors]);
+  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

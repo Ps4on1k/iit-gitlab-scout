@@ -114,7 +114,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       const totalWeight = dw.successRate + dw.coverage + dw.volume;
       const deployScore = deploy
         ? Math.round(((deploy.deploy_success_rate * dw.successRate + deploy.pipeline_coverage_rate * dw.coverage + Math.min(deploy.successful_pipelines, 100) * dw.volume) / totalWeight) * 10) / 10
-        : undefined;
+        : 0;
 
       const freq = c.frequency || {};
       const filteredFreq: Record<string, number> = {};
