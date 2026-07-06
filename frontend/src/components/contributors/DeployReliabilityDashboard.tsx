@@ -52,10 +52,21 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
   useEffect(() => { loadData(); }, [loadData]);
 
   const sortedData = useMemo(() => {
-    return [...deployData]
+    let data = [...deployData];
+    // Filter by contributors on frontend
+    if (filters.contributors.length > 0) {
+      data = data.filter((d) =>
+        filters.contributors.some((f) =>
+          d.email === f || d.name === f ||
+          d.email.toLowerCase().includes(f.toLowerCase()) ||
+          d.name.toLowerCase().includes(f.toLowerCase())
+        )
+      );
+    }
+    return data
       .map((d) => ({ ...d, _score: computeScore(d, deployWeights) }))
       .sort((a, b) => b._score - a._score);
-  }, [deployData, deployWeights]);
+  }, [deployData, deployWeights, filters.contributors]);
 
   return (
     <div style={{ width: "90%", margin: "0 auto", position: "relative", zIndex: 2 }}>
