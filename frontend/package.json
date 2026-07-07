@@ -16,7 +16,10 @@
     "@types/js-yaml": "^4.0.9",
     "antd": "^6.4.4",
     "chart.js": "^4.5.1",
+    "html2canvas": "^1.4.1",
     "js-yaml": "^4.2.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

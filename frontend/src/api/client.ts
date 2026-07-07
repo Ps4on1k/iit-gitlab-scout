@@ -445,3 +445,10 @@ export async function updateMetricWeights(metric: string, weights: Record<string
     body: JSON.stringify(weights),
   });
 }
+
+export type ExecutiveReportData = any;
+
+export async function fetchExecutiveReport(queryString?: string): Promise<ApiResponse<ExecutiveReportData>> {
+  const qs = queryString ? `?${queryString}` : "";
+  return fetchJson<ExecutiveReportData>(`/v1/executive-report${qs}`);
+}

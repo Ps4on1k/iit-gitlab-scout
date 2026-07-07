@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { ConfigProvider, Layout, Button, Typography, Spin, Tooltip } from "antd";
-import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined, UpOutlined } from "@ant-design/icons";
+import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined, UpOutlined, FilePdfOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
@@ -8,6 +8,7 @@ import { getMe, clearToken, resolveContributor } from "./api/client";
 import { clearCache } from "./utils/cache";
 import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
 import { useCollectStatus } from "./hooks/useCollectStatus";
+import { ReportPreview } from "./components/reports/ReportPreview";
 import type { User } from "./types";
 
 const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -99,6 +100,7 @@ export default function App() {
   const [darkMode, setDarkMode] = useState<boolean>(getInitialDarkMode);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const isInitialLoad = useRef(true);
   const { isRunning: collectionRunning } = useCollectStatus();
 
@@ -158,6 +160,11 @@ export default function App() {
             ))}
           </div>
           <Button type="text" icon={darkMode ? <BulbFilled style={{ color: "#fbbf24" }} /> : <BulbOutlined style={{ color: "rgba(255,255,255,0.65)" }} />} onClick={() => setDarkMode(!darkMode)} style={{ marginRight: 8 }} />
+          {(user.role === "admin" || user.role === "manager") && (
+            <Tooltip title="Executive Report">
+              <Button type="text" icon={<FilePdfOutlined style={{ color: "rgba(255,255,255,0.65)" }} />} onClick={() => setReportOpen(true)} style={{ marginRight: 8 }} />
+            </Tooltip>
+          )}
           <div style={{ color: "rgba(255,255,255,0.65)", marginRight: 12, fontSize: 13, lineHeight: "1.2" }}>{user.username} ({user.role})</div>
           <Button type="text" icon={<LogoutOutlined />} onClick={handleLogout} style={{ color: "rgba(255,255,255,0.65)", fontSize: 13 }}>Выйти</Button>
         </Header>
@@ -235,6 +242,8 @@ export default function App() {
           style={{ position: "fixed", bottom: 15, right: 15, width: 40, height: 40, zIndex: 1000, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}
         />
       )}
+
+      <ReportPreview open={reportOpen} onClose={() => setReportOpen(false)} filters={filters} />
     </ConfigProvider>
   );
 }
