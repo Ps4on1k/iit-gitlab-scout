@@ -120,21 +120,16 @@ export function DependencyDashboard() {
 
       {summary && (
         <Row gutter={16} style={{ marginBottom: 16 }}>
-          <Col span={5}><Card><Statistic title="Всего зависимостей" value={summary.total} /></Card></Col>
-          <Col span={5}><Card><Statistic title="Устаревших" value={summary.outdated} valueStyle={{ color: "#E5484D" }} /></Card></Col>
-          {Object.entries(summary.by_source).map(([src, cnt]) => (
-            <Col span={Math.min(4, Math.floor(14 / Math.max(Object.keys(summary.by_source).length, 1)))} key={src}>
-              <Card><Statistic title={src} value={cnt} valueStyle={{ color: SOURCE_COLORS[src] || undefined }} /></Card>
-            </Col>
-          ))}
+          <Col flex="1"><Card><Statistic title="Всего зависимостей" value={summary.total} /></Card></Col>
+          <Col flex="1"><Card><Statistic title="Устаревших" value={summary.outdated} valueStyle={{ color: "#E5484D" }} /></Card></Col>
         </Row>
       )}
 
-      <Row gutter={16} style={{ marginBottom: 16 }} align="top">
+      <Row gutter={16} style={{ marginBottom: 16 }} align="stretch">
         <Col span={8}>
-          <Card title="Распределение по экосистемам" size="small">
+          <Card title="Распределение по экосистемам" size="small" style={{ height: "100%" }}>
             {loading ? <Spin /> : pieData.length > 0 ? (
-              <div style={{ minHeight: 300 }}>
+              <div style={{ height: "100%", minHeight: 300 }}>
                 <Pie
                   data={pieData}
                   angleField="value" colorField="type" radius={0.9} innerRadius={0.55}
@@ -149,7 +144,7 @@ export function DependencyDashboard() {
           </Card>
         </Col>
         <Col span={16}>
-          <Card title="Зависимости по проектам" size="small" style={{ minHeight: 300 }}>
+          <Card title="Зависимости по проектам" size="small" style={{ height: "100%" }}>
             {loading ? <Spin /> : (() => {
               const byProject: Record<string, { total: number; outdated: number }> = {};
               for (const d of filteredDeps) {
@@ -161,7 +156,7 @@ export function DependencyDashboard() {
               if (sorted.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
               const maxTotal = sorted[0]?.[1].total || 1;
               return (
-                <div style={{ maxHeight: 380, overflowY: "auto", paddingRight: 4, scrollbarWidth: "thin", scrollbarColor: "#64748b transparent" }}>
+                <div style={{ overflowY: "auto", paddingRight: 4, scrollbarWidth: "thin", scrollbarColor: "#64748b transparent" }}>
                   {sorted.map(([proj, stats]) => (
                     <div key={proj} style={{ marginBottom: 8 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
