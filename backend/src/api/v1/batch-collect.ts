@@ -116,8 +116,11 @@ export async function batchCollectRoutes(app: FastifyInstance) {
     Body: { project_ids: number[] };
   }>("/api/v1/collect/validate-tokens", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { project_ids } = request.body;
-    if (!project_ids?.length) {
-      return reply.status(400).send({ ok: false, error: "project_ids are required" });
+    if (!Array.isArray(project_ids) || project_ids.length === 0) {
+      return reply.status(400).send({ ok: false, error: "project_ids must be a non-empty array of positive integers" });
+    }
+    if (!project_ids.every((id) => typeof id === "number" && Number.isInteger(id) && id > 0)) {
+      return reply.status(400).send({ ok: false, error: "project_ids must contain only positive integers" });
     }
 
     const pool = getPool();
@@ -154,8 +157,11 @@ export async function batchCollectRoutes(app: FastifyInstance) {
     Body: { collector: string; project_ids: number[]; date_from?: string; date_to?: string };
   }>("/api/v1/collect/batch", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { collector, project_ids, date_from, date_to } = request.body;
-    if (!collector || !project_ids?.length) {
-      return reply.status(400).send({ ok: false, error: "collector and project_ids are required" });
+    if (!collector || !Array.isArray(project_ids) || project_ids.length === 0) {
+      return reply.status(400).send({ ok: false, error: "collector and project_ids (non-empty array) are required" });
+    }
+    if (!project_ids.every((id) => typeof id === "number" && Number.isInteger(id) && id > 0)) {
+      return reply.status(400).send({ ok: false, error: "project_ids must contain only positive integers" });
     }
     if (!COLLECTORS[collector]) {
       return reply.status(400).send({ ok: false, error: `Unknown collector: ${collector}. Valid: ${Object.keys(COLLECTORS).join(", ")}` });

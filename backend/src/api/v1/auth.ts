@@ -77,7 +77,7 @@ export async function authRoutes(app: FastifyInstance) {
     const user = result.rows[0];
     if (!user) {
       logAuditAction(0, "login_failed", `Failed login attempt (unknown user): ${username} from ${ip}`);
-      return reply.status(401).send({ ok: false, error: "Invalid credentials" });
+      return reply.status(401).send({ ok: false, error: "Invalid credentials." });
     }
 
     if (!user.is_active) {
@@ -121,7 +121,7 @@ export async function authRoutes(app: FastifyInstance) {
 
       return reply.status(401).send({
         ok: false,
-        error: `Invalid credentials. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
+        error: "Invalid credentials.",
       });
     }
 

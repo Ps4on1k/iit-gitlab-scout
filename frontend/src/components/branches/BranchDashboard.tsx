@@ -75,19 +75,12 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
   const loadData = async () => {
     setLoading(true);
     try {
-      const qs = new URLSearchParams();
-      if (filters.projectIds.length > 0) qs.set("project_ids", filters.projectIds.join(","));
-      if (filters.tags.length > 0) qs.set("tag", filters.tags.join(","));
-      if (statusFilter) qs.set("status", statusFilter);
-      if (searchText) qs.set("search", searchText);
-      if (filters.dateFrom) qs.set("date_from", filters.dateFrom);
-      if (filters.dateTo) qs.set("date_to", filters.dateTo);
-      if (filters.contributors.length > 0) qs.set("contributor", filters.contributors[0]);
-      const url = `/v1/branches${qs.toString() ? "?" + qs.toString() : ""}`;
-      const token = localStorage.getItem("token");
-      const res = await fetch(`/api${url}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-      const data = await res.json();
-      if (data.ok) { setBranches(data.data.branches); setSummary(data.data.summary); }
+      const effectiveProjectIds = filters.tags.length > 0
+        ? [...new Set([...filters.projectIds, ...projects.filter((p) => p.tags?.some((t) => filters.tags.includes(t))).map((p) => p.id)])]
+        : filters.projectIds;
+      const statusParam = statusFilter === "all" ? undefined : statusFilter;
+      const res = await fetchBranches(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, undefined, statusParam);
+      if (res.ok) { setBranches(res.data!.branches); setSummary(res.data!.summary); }
     } finally { setLoading(false); }
   };
 

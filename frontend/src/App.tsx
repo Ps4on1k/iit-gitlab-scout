@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from "react";
 import { ConfigProvider, Layout, Button, Typography, Spin, Tooltip } from "antd";
 import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined, UpOutlined, FilePdfOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
@@ -132,7 +132,7 @@ export default function App() {
 
   const themeConfig = darkMode ? darkThemeConfig : lightThemeConfig;
   const contentBg = darkMode ? "#111827" : "#F5F7FA";
-  const filterKey = JSON.stringify(filters);
+  const filterKey = useMemo(() => JSON.stringify(filters), [filters]);
 
   if (loading) return <ConfigProvider theme={themeConfig}><div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: contentBg }}><Typography.Text>Загрузка...</Typography.Text></div></ConfigProvider>;
   if (!user) return <ConfigProvider theme={themeConfig}><LoginPage onLogin={setUser} /></ConfigProvider>;
