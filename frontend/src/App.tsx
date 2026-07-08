@@ -7,7 +7,7 @@ import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBa
 import { getMe, clearToken, resolveContributor, setOnUnauthorized } from "./api/client";
 import { clearCache } from "./utils/cache";
 import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
-import { useCollectStatus } from "./hooks/useCollectStatus";
+import { useCollectStatus, CollectStatusProvider } from "./hooks/useCollectStatus";
 import { ReportPreview } from "./components/reports/ReportPreview";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import type { User } from "./types";
@@ -142,6 +142,7 @@ export default function App() {
     : [{ label: TAB_LABELS[tab] }];
 
   return (
+    <CollectStatusProvider>
     <ConfigProvider theme={themeConfig}>
       <Layout style={{ minHeight: "100vh", background: contentBg }}>
         <Watermark dark={darkMode} />
@@ -249,5 +250,6 @@ export default function App() {
 
       <ReportPreview open={reportOpen} onClose={() => setReportOpen(false)} filters={filters} />
     </ConfigProvider>
+    </CollectStatusProvider>
   );
 }
