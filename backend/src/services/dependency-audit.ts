@@ -136,15 +136,17 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
   }
 
   let outdated = 0;
+  const depRows: any[][] = [];
   for (const dep of uniqueDeps) {
     const isOutdated = outdatedList.has(`${dep.name}@${dep.source}`);
     if (isOutdated) outdated++;
+    depRows.push([projectId, dep.name, dep.current_version, isOutdated, dep.source]);
+  }
 
-    await pool.query(
-      `INSERT INTO project_dependencies_audit (project_id, name, current_version, is_outdated, source)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [projectId, dep.name, dep.current_version, isOutdated, dep.source]
-    );
+  if (depRows.length > 0) {
+    const { batchInsert } = await import("../utils/batch.js");
+    const columns = ["project_id", "name", "current_version", "is_outdated", "source"];
+    await batchInsert("project_dependencies_audit", columns, depRows);
   }
 
   return { total: uniqueDeps.length, outdated };

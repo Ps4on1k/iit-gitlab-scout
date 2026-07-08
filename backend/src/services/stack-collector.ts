@@ -34,11 +34,11 @@ export async function collectStack(projectId: number): Promise<CollectStackResul
   }
 
   await pool.query("DELETE FROM project_languages WHERE project_id = $1", [projectId]);
-  for (const lang of languages) {
-    await pool.query(
-      "INSERT INTO project_languages (project_id, language, bytes, percentage) VALUES ($1, $2, $3, $4)",
-      [projectId, lang.language, 0, lang.percentage]
-    );
+  if (languages.length > 0) {
+    const { batchInsert } = await import("../utils/batch.js");
+    const columns = ["project_id", "language", "bytes", "percentage"];
+    const rows = languages.map((lang) => [projectId, lang.language, 0, lang.percentage]);
+    await batchInsert("project_languages", columns, rows);
   }
 
   return { project_id: projectId, path: projectPath, languages };
