@@ -97,6 +97,7 @@ export class GitLabClient {
     let retry429 = 0;
 
     for (let page = 0; page < maxPages && url; page++) {
+      await this.waitForToken();
       const isAbsolute = url.startsWith("http");
       const fetchUrl = isAbsolute ? url : `${this.baseUrl}${url}`;
       const res = await fetch(fetchUrl, {
@@ -192,6 +193,7 @@ export class GitLabClient {
     filePath: string,
     ref = "main"
   ): Promise<string> {
+    await this.waitForToken();
     const params = new URLSearchParams({ ref });
     const res = await fetch(
       `${this.baseUrl}/projects/${projectId}/repository/files/${encodeURIComponent(filePath)}?${params}`,
