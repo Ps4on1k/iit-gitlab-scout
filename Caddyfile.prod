@@ -1,0 +1,26 @@
+# Production Caddyfile — use with real domain + Let's Encrypt
+# Copy this to Caddyfile and set DOMAIN + TLS_EMAIL in .env
+#
+# Example .env:
+#   DOMAIN=gitlab-scout.example.com
+#   TLS_EMAIL=admin@example.com
+
+{$DOMAIN} {
+	tls {$TLS_EMAIL}
+
+	# API → backend
+	handle_path /api/* {
+		reverse_proxy backend:3000
+	}
+
+	# Everything else → frontend
+	reverse_proxy frontend:80
+
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}

@@ -1,0 +1,21 @@
+{$DOMAIN:localhost} {
+	# Auto-HTTPS: internal certs for localhost, Let's Encrypt for real domains
+	# To enable Let's Encrypt, set DOMAIN and TLS_EMAIL in .env
+	tls internal
+
+	# API → backend
+	handle_path /api/* {
+		reverse_proxy backend:3000
+	}
+
+	# Everything else → frontend
+	reverse_proxy frontend:80
+
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+}

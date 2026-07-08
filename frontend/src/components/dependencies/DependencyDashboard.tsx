@@ -152,7 +152,7 @@ export function DependencyDashboard() {
                 byProject[d.project_label].total++;
                 if (d.is_outdated) byProject[d.project_label].outdated++;
               }
-              const sorted = Object.entries(byProject).sort((a, b) => b[1].total - a[1].total);
+              const sorted = Object.entries(byProject).sort((a, b) => b[1].total - a[1].total).slice(0, 20);
               if (sorted.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />;
               const maxTotal = sorted[0]?.[1].total || 1;
               return (

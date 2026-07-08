@@ -15,8 +15,8 @@ services:
   backend:
     image: ${BACKEND_IMAGE:-gitlab-scout-backend}
     build: ./backend
-    ports:
-      - "3030:3000"
+    expose:
+      - "3000"
     env_file:
       - .env
     depends_on:
@@ -32,11 +32,30 @@ services:
   frontend:
     image: ${FRONTEND_IMAGE:-gitlab-scout-frontend}
     build: ./frontend
-    ports:
-      - "8080:80"
+    expose:
+      - "80"
     depends_on:
       backend:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    depends_on:
+      - frontend
+      - backend
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:
+  caddy_logs:
