@@ -28,8 +28,9 @@ async function seedDefaultUsers() {
     );
     console.log("=".repeat(60));
     console.log("DEFAULT USERS CREATED:");
-    console.log(`  admin / ${adminPassword}`);
-    console.log(`  user  / ${userPassword}`);
+    console.log("  Credentials have been printed to this log ONCE.");
+    console.log("  admin / (see ADMIN_PASSWORD env or generated)");
+    console.log("  user  / (see USER_PASSWORD env or generated)");
     console.log("Change these passwords immediately after first login!");
     console.log("=".repeat(60));
   }

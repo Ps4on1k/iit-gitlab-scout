@@ -97,15 +97,11 @@ export async function collectActivity(projectId: number, since?: string, until?:
 
   // Save to DB
   await pool.query("DELETE FROM project_activity WHERE project_id = $1 AND date >= $2 AND date <= $3", [projectId, sinceDate, untilDate]);
-  for (const row of results) {
-    await pool.query(
-      `INSERT INTO project_activity (project_id, date, commits, merge_requests, pipelines)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (project_id, date) DO UPDATE SET
-         commits = EXCLUDED.commits, merge_requests = EXCLUDED.merge_requests,
-         pipelines = EXCLUDED.pipelines, collected_at = now()`,
-      [projectId, row.date, row.commits, row.merge_requests, row.pipelines]
-    );
+  if (results.length > 0) {
+    const { batchInsert } = await import("../utils/batch.js");
+    const columns = ["project_id", "date", "commits", "merge_requests", "pipelines"];
+    const rows = results.map((row) => [projectId, row.date, row.commits, row.merge_requests, row.pipelines]);
+    await batchInsert("project_activity", columns, rows);
   }
 
   return results;

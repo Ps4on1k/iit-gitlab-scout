@@ -33,17 +33,18 @@ export async function collectIssues(projectId: number): Promise<{ total: number;
   for (const issue of issues) {
     if (issue.state === "opened") opened++;
     else closed++;
+  }
 
-    await pool.query(
-      `INSERT INTO project_issues (project_id, gitlab_iid, title, state, author_email, assignee_email, labels, created_at, closed_at, due_date, weight)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-      [
-        projectId, issue.iid, issue.title, issue.state,
-        issue.author?.email || "", issue.assignees?.[0]?.email || "",
-        (issue.labels || []).join(","),
-        issue.created_at, issue.closed_at, issue.due_date, issue.weight,
-      ]
-    );
+  if (issues.length > 0) {
+    const { batchInsert } = await import("../utils/batch.js");
+    const columns = ["project_id", "gitlab_iid", "title", "state", "author_email", "assignee_email", "labels", "created_at", "closed_at", "due_date", "weight"];
+    const rows = issues.map((issue) => [
+      projectId, issue.iid, issue.title, issue.state,
+      issue.author?.email || "", issue.assignees?.[0]?.email || "",
+      (issue.labels || []).join(","),
+      issue.created_at, issue.closed_at, issue.due_date, issue.weight,
+    ]);
+    await batchInsert("project_issues", columns, rows);
   }
 
   return { total: issues.length, opened, closed };

@@ -37,6 +37,7 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
   );
 
   let success = 0, failed = 0, running = 0;
+  const pipelineRows: any[][] = [];
 
   for (const p of pipelines) {
     if (p.status === "success") success++;
@@ -50,19 +51,20 @@ export async function collectPipelines(projectId: number): Promise<{ total: numb
       }
     }
 
-    await pool.query(
-      `INSERT INTO project_pipelines (project_id, gitlab_id, status, ref, source, duration, created_at, updated_at, finished_at, user_name)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-       ON CONFLICT (project_id, gitlab_id) DO UPDATE SET
-         status = EXCLUDED.status, ref = EXCLUDED.ref, source = EXCLUDED.source,
-         duration = EXCLUDED.duration, updated_at = EXCLUDED.updated_at,
-         finished_at = EXCLUDED.finished_at, user_name = EXCLUDED.user_name`,
-      [
-        projectId, p.id, p.status, p.ref || "", p.source || "",
-        duration, p.created_at, p.updated_at, p.finished_at,
-        p.user?.name || "",
-      ]
-    );
+    pipelineRows.push([
+      projectId, p.id, p.status, p.ref || "", p.source || "",
+      duration, p.created_at, p.updated_at, p.finished_at,
+      p.user?.name || "",
+    ]);
+  }
+
+  if (pipelineRows.length > 0) {
+    const { batchInsert } = await import("../utils/batch.js");
+    const columns = ["project_id", "gitlab_id", "status", "ref", "source", "duration", "created_at", "updated_at", "finished_at", "user_name"];
+    await batchInsert("project_pipelines", columns, pipelineRows, `(project_id, gitlab_id) DO UPDATE SET
+      status = EXCLUDED.status, ref = EXCLUDED.ref, source = EXCLUDED.source,
+      duration = EXCLUDED.duration, updated_at = EXCLUDED.updated_at,
+      finished_at = EXCLUDED.finished_at, user_name = EXCLUDED.user_name`);
   }
 
   await pool.query(`

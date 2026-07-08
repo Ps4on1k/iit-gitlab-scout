@@ -35,6 +35,7 @@ export async function collectMergeRequests(projectId: number): Promise<{ total: 
   await pool.query("DELETE FROM project_merge_requests WHERE project_id = $1", [projectId]);
 
   let merged = 0, opened = 0, closed = 0;
+  const mrRows: any[][] = [];
 
   for (const mr of mrs) {
     if (mr.state === "merged") merged++;
@@ -55,21 +56,25 @@ export async function collectMergeRequests(projectId: number): Promise<{ total: 
 
     const changesCount = mr.changes_count ? parseInt(mr.changes_count, 10) || 0 : 0;
 
-    await pool.query(
-      `INSERT INTO project_merge_requests (project_id, gitlab_iid, title, state, author_name, author_email, source_branch, target_branch, created_at, updated_at, merged_at, closed_at, merged_by, reviewers, approvals, changes_count, comments_count)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-       ON CONFLICT (project_id, gitlab_iid) DO UPDATE SET
-         title=$3, state=$4, author_name=$5, author_email=$6, source_branch=$7, target_branch=$8,
-         updated_at=$10, merged_at=$11, closed_at=$12, merged_by=$13, reviewers=$14, approvals=$15, changes_count=$16, comments_count=$17`,
-      [
-        projectId, mr.iid, mr.title, mr.state,
-        mr.author?.name || mr.author?.username || "", mr.author?.email || mr.author?.username || "",
-        mr.source_branch, mr.target_branch,
-        mr.created_at, mr.updated_at, mr.merged_at, mr.closed_at,
-        mr.merged_by?.username || "", reviewerNames,
-        approvals, changesCount, mr.user_notes_count || 0,
-      ]
-    );
+    mrRows.push([
+      projectId, mr.iid, mr.title, mr.state,
+      mr.author?.name || mr.author?.username || "", mr.author?.email || mr.author?.username || "",
+      mr.source_branch, mr.target_branch,
+      mr.created_at, mr.updated_at, mr.merged_at, mr.closed_at,
+      mr.merged_by?.username || "", reviewerNames,
+      approvals, changesCount, mr.user_notes_count || 0,
+    ]);
+  }
+
+  if (mrRows.length > 0) {
+    const { batchInsert } = await import("../utils/batch.js");
+    const columns = ["project_id", "gitlab_iid", "title", "state", "author_name", "author_email", "source_branch", "target_branch", "created_at", "updated_at", "merged_at", "closed_at", "merged_by", "reviewers", "approvals", "changes_count", "comments_count"];
+    await batchInsert("project_merge_requests", columns, mrRows, `(project_id, gitlab_iid) DO UPDATE SET
+      title=EXCLUDED.title, state=EXCLUDED.state, author_name=EXCLUDED.author_name, author_email=EXCLUDED.author_email,
+      source_branch=EXCLUDED.source_branch, target_branch=EXCLUDED.target_branch,
+      updated_at=EXCLUDED.updated_at, merged_at=EXCLUDED.merged_at, closed_at=EXCLUDED.closed_at,
+      merged_by=EXCLUDED.merged_by, reviewers=EXCLUDED.reviewers, approvals=EXCLUDED.approvals,
+      changes_count=EXCLUDED.changes_count, comments_count=EXCLUDED.comments_count`);
   }
 
   return { total: mrs.length, merged, opened, closed };

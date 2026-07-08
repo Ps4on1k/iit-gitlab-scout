@@ -10,15 +10,24 @@ import {
   getRunProjects,
   getProjectHistory,
 } from "../../db/repository.js";
-import { requireAuth } from "../../utils/auth.js";
+import { requireAuth, type JwtPayload } from "../../utils/auth.js";
+import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import type {
   ProjectStats,
   BatchStatsResponse,
 } from "../../models/responses.js";
 import { safeErrorMessage } from "../../utils/safe-error.js";
 
-async function getProjectsFromDb() {
+async function getProjectsFromDb(allowedIds?: number[] | null) {
   const pool = getPool();
+  if (allowedIds !== null && allowedIds !== undefined) {
+    if (allowedIds.length === 0) return [];
+    const result = await pool.query(
+      "SELECT id, path, label, token_encrypted, base_url FROM projects WHERE id = ANY($1) ORDER BY created_at",
+      [allowedIds]
+    );
+    return result.rows;
+  }
   const result = await pool.query(
     "SELECT id, path, label, token_encrypted, base_url FROM projects ORDER BY created_at"
   );
@@ -30,7 +39,9 @@ export async function batchStatsRoutes(app: FastifyInstance) {
     Querystring: { month?: string; author?: string };
   }>("/api/v1/stats", { preHandler: [requireAuth] }, async (request) => {
     const { month, author } = request.query;
-    const projects = await getProjectsFromDb();
+    const user = (request as any).user as JwtPayload;
+    const allowedIds = await getFilteredProjectIds(user.userId);
+    const projects = await getProjectsFromDb(allowedIds);
 
     const results: ProjectStats[] = [];
 

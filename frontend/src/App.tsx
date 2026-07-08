@@ -9,6 +9,7 @@ import { clearCache } from "./utils/cache";
 import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
 import { useCollectStatus } from "./hooks/useCollectStatus";
 import { ReportPreview } from "./components/reports/ReportPreview";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import type { User } from "./types";
 
 const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -209,6 +210,7 @@ export default function App() {
           <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
             <Content style={{ padding: "12px 24px 24px", flex: 1 }}>
               {tab === "analytics" && <GlobalFilterBar filters={filters} onChange={setFilters} userRole={user.role} userAllowedTags={user.allowed_tags} extraParams={tabParams} />}
+              <ErrorBoundary>
               <Suspense fallback={<div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>}>
                 {tab === "dashboard" && <Dashboard onContributorClick={handleContributorClick} />}
                 {tab === "analytics" && analyticsTab === "contributors" && <ContributorDashboard key={`contrib-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
@@ -222,6 +224,7 @@ export default function App() {
                 {tab === "benchmark" && (user.role === "admin" || user.role === "manager") && <BenchmarkDashboard filters={filters} />}
                 {tab === "settings" && user.role === "admin" && <SettingsPanel />}
               </Suspense>
+              </ErrorBoundary>
             </Content>
 
             <footer style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "20px 16px", borderTop: `1px solid ${darkMode ? "#2A3A4A" : "#e5e7eb"}`, background: darkMode ? "#0f172a" : "#f8fafc" }}>

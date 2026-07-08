@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth, requireAdmin } from "../../utils/auth.js";
+import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
+import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import { collectIssues } from "../../services/issue-collector.js";
 import { safeErrorMessage } from "../../utils/safe-error.js";
 
@@ -24,17 +25,28 @@ export async function issueRoutes(app: FastifyInstance) {
     Querystring: { project_id?: string; project_ids?: string; tag?: string; state?: string };
   }>("/api/v1/issues", { preHandler: [requireAuth] }, async (request) => {
     const { project_id, project_ids, tag, state } = request.query;
+    const user = (request as any).user as JwtPayload;
     const pool = getPool();
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const conditions: string[] = [];
     const params: any[] = [];
     let idx = 1;
 
-    if (project_ids) {
-      const ids = project_ids.split(",").map(Number).filter(Boolean);
-      if (ids.length > 0) { conditions.push(`pi.project_id = ANY($${idx++})`); params.push(ids); }
-    } else if (project_id) {
-      conditions.push(`pi.project_id = $${idx++}`);
-      params.push(Number(project_id));
+    if (allowedIds !== null) {
+      if (allowedIds.length === 0) {
+        return { ok: true, data: { issues: [], summary: { total: 0, opened: 0, closed: 0, avg_days_to_close: 0 } } };
+      }
+      const requestedIds = project_ids ? project_ids.split(",").map(Number).filter(Boolean) : undefined;
+      const finalIds = requestedIds ? requestedIds.filter((id) => allowedIds.includes(id)) : allowedIds;
+      if (finalIds.length > 0) { conditions.push(`pi.project_id = ANY($${idx++})`); params.push(finalIds); }
+    } else {
+      if (project_ids) {
+        const ids = project_ids.split(",").map(Number).filter(Boolean);
+        if (ids.length > 0) { conditions.push(`pi.project_id = ANY($${idx++})`); params.push(ids); }
+      } else if (project_id) {
+        conditions.push(`pi.project_id = $${idx++}`);
+        params.push(Number(project_id));
+      }
     }
     if (tag) {
       conditions.push(`p.tags = $${idx++}`);

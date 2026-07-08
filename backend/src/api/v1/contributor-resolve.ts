@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth } from "../../utils/auth.js";
+import { requireAuth, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
+import { getFilteredProjectIds } from "../../utils/project-filter.js";
 
 export async function contributorResolveRoutes(app: FastifyInstance) {
   app.get<{
@@ -9,7 +10,9 @@ export async function contributorResolveRoutes(app: FastifyInstance) {
     const { email } = request.query;
     if (!email) return { ok: true, data: { email: "", name: "" } };
 
+    const user = (request as any).user as JwtPayload;
     const pool = getPool();
+    const allowedIds = await getFilteredProjectIds(user.userId);
     const input = email.trim();
 
     // 1. Exact email in contributor_directory
@@ -56,19 +59,21 @@ export async function contributorResolveRoutes(app: FastifyInstance) {
       return { ok: true, data: { email: cpEmail.rows[0].author_email, name: cpEmail.rows[0].author_name || input } };
     }
 
-    // 6. Search commits table for this author
+    // 6. Search commits table for this author (RBAC filtered)
+    const projectCond = allowedIds !== null ? (allowedIds.length > 0 ? `AND project_id = ANY($2)` : `AND 1=0`) : "";
+    const commitParams = allowedIds !== null ? (allowedIds.length > 0 ? [input, allowedIds] : [input]) : [input];
     const commitResult = await pool.query(
-      "SELECT DISTINCT author_email, author_name FROM commits WHERE author_name = $1 OR author_email = $1 LIMIT 1",
-      [input]
+      `SELECT DISTINCT author_email, author_name FROM commits WHERE (author_name = $1 OR author_email = $1) ${projectCond} LIMIT 1`,
+      commitParams
     );
     if (commitResult.rows.length > 0) {
       return { ok: true, data: { email: commitResult.rows[0].author_email, name: commitResult.rows[0].author_name || input } };
     }
 
-    // 7. Search commits by ILIKE
+    // 7. Search commits by ILIKE (RBAC filtered)
     const commitFuzzy = await pool.query(
-      "SELECT DISTINCT author_email, author_name FROM commits WHERE author_name ILIKE $1 OR author_email ILIKE $1 LIMIT 1",
-      [`%${input}%`]
+      `SELECT DISTINCT author_email, author_name FROM commits WHERE (author_name ILIKE $1 OR author_email ILIKE $1) ${projectCond} LIMIT 1`,
+      commitParams
     );
     if (commitFuzzy.rows.length > 0) {
       return { ok: true, data: { email: commitFuzzy.rows[0].author_email, name: commitFuzzy.rows[0].author_name || input } };
