@@ -96,7 +96,7 @@ export function AdminPanel() {
     } finally { setYamlImporting(false); }
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: "Проект",
       key: "project",
@@ -133,7 +133,7 @@ export function AdminPanel() {
         </Space>
       ),
     },
-  ];
+  ], [openEdit, handleDelete]);
 
   const handleExport = async () => {
     const res = await exportProjects();

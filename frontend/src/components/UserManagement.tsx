@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Table, Button, Modal, Form, Input, Select, Space, Typography, Popconfirm, message, Tag, Collapse, Switch, Tooltip } from "antd";
 import { PlusOutlined, EditOutlined, DeleteOutlined, KeyOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import { fetchUsers, createUser, updateUser, changeUserPassword, deleteUser, fetchProjects } from "../api/client";
@@ -146,7 +146,7 @@ export function UserManagement() {
     load();
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: "Пользователь",
       key: "username",
@@ -235,7 +235,7 @@ export function UserManagement() {
         </Space>
       ),
     },
-  ];
+  ], [handleDelete]);
 
   return (
     <Collapse

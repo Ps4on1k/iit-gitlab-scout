@@ -160,17 +160,17 @@ export function HeatmapChart({ byProject, byContributor, loading, projectTags, p
   const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!tooltipRef.current) {
-      const el = document.createElement("div");
+    let el = document.getElementById("heatmap-tooltip") as HTMLDivElement;
+    if (!el) {
+      el = document.createElement("div");
       el.id = "heatmap-tooltip";
       document.body.appendChild(el);
-      tooltipRef.current = el;
     }
+    tooltipRef.current = el;
 
     const handleMouseMove = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const tooltipText = target.getAttribute("data-tooltip");
-      const el = tooltipRef.current;
       if (!el) return;
 
       if (tooltipText) {
@@ -184,7 +184,7 @@ export function HeatmapChart({ byProject, byContributor, loading, projectTags, p
     };
 
     const handleMouseLeave = () => {
-      if (tooltipRef.current) tooltipRef.current.style.display = "none";
+      if (el) el.style.display = "none";
     };
 
     document.addEventListener("mousemove", handleMouseMove);
@@ -193,10 +193,6 @@ export function HeatmapChart({ byProject, byContributor, loading, projectTags, p
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseleave", handleMouseLeave);
-      if (tooltipRef.current) {
-        tooltipRef.current.remove();
-        tooltipRef.current = null;
-      }
     };
   }, []);
 

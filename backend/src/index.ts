@@ -81,14 +81,13 @@ app.addHook("onRequest", async (request, reply) => {
   }
 });
 
-// Sanitize errors
+// Sanitize errors — never leak internal details to client
 app.setErrorHandler((error, request, reply) => {
-  const isDev = process.env.NODE_ENV !== "production";
   const err = error as any;
   app.log.error(error);
   reply.status(err.statusCode || 500).send({
     ok: false,
-    error: isDev ? err.message : "Internal server error",
+    error: "Internal server error",
   });
 });
 

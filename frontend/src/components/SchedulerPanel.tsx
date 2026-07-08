@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Table, Switch, InputNumber, Button, message, Space, Typography, Card, Popconfirm, Collapse, Tag, Select, Progress } from "antd";
 import { ReloadOutlined, SaveOutlined, DeleteOutlined, DatabaseOutlined } from "@ant-design/icons";
 import { fetchSchedulerSettings, updateSchedulerTask, resetStatistics, fetchSchedulerErrors, clearSchedulerErrors, runAllSchedulerTasks, type SchedulerTask } from "../api/scheduler-client";
@@ -101,7 +101,7 @@ export function SchedulerPanel() {
     }
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: "Задача",
       key: "task_name",
@@ -172,7 +172,7 @@ export function SchedulerPanel() {
         </Button>
       ),
     },
-  ];
+  ], [taskDurations, saving, handleSave]);
 
   return (
     <div>
