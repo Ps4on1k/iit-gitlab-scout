@@ -273,7 +273,7 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
 
       return { ...c, activeDays, commitsPerDay, commitsPerWeek, avgAdditions, avgDeletions, activitySpan, score };
     });
-  }, [data]);
+  }, [data, weights, dateFrom, dateTo]);
 
   const sorted = useMemo(() => {
     return [...withMetrics].sort((a, b) => {

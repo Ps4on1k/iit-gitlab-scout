@@ -1,9 +1,16 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { requireAdmin } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { encrypt, decrypt } from "../../utils/crypto.js";
 import { GitLabClient } from "../../services/gitlab-client.js";
 import { safeErrorMessage } from "../../utils/safe-error.js";
+
+const createTokenSchema = z.object({
+  base_url: z.string().url("Must be a valid URL").min(1, "base_url is required"),
+  token: z.string().min(1, "token is required").max(500, "token is too long"),
+  label: z.string().max(200).optional(),
+});
 
 function normalizeBaseUrl(url: string): string {
   let u = url.trim().replace(/\/+$/, "");
@@ -27,10 +34,11 @@ export async function personalTokenRoutes(app: FastifyInstance) {
   app.post<{
     Body: { base_url: string; token: string; label?: string };
   }>("/api/v1/personal-tokens", { preHandler: [requireAdmin] }, async (request, reply) => {
-    const { base_url, token, label } = request.body;
-    if (!base_url || !token) {
-      return reply.status(400).send({ ok: false, error: "base_url and token are required" });
+    const parsed = createTokenSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.status(400).send({ ok: false, error: parsed.error.errors[0].message });
     }
+    const { base_url, token, label } = parsed.data;
     const normalizedUrl = normalizeBaseUrl(base_url);
     const encrypted = encrypt(token);
     const pool = getPool();

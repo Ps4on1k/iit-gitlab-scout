@@ -57,7 +57,14 @@ export function resolveBaseUrl(rawUrl: string): string {
   return normalizeBaseUrl(rawUrl);
 }
 
+const tokenCache = new Map<number, { token: string; baseUrl: string; path: string; expiresAt: number }>();
+const TOKEN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function resolveProjectToken(projectId: number): Promise<{ token: string; baseUrl: string; path: string }> {
+  const now = Date.now();
+  const cached = tokenCache.get(projectId);
+  if (cached && now < cached.expiresAt) return { token: cached.token, baseUrl: cached.baseUrl, path: cached.path };
+
   const pool = getPool();
   const projResult = await pool.query(
     "SELECT id, path, token_encrypted, base_url FROM projects WHERE id = $1",
@@ -79,7 +86,17 @@ export async function resolveProjectToken(projectId: number): Promise<{ token: s
     }
   }
 
-  return { token, baseUrl, path: proj.path };
+  const result = { token, baseUrl, path: proj.path };
+  tokenCache.set(projectId, { ...result, expiresAt: now + TOKEN_CACHE_TTL });
+  return result;
+}
+
+export function invalidateTokenCache(projectId?: number): void {
+  if (projectId !== undefined) {
+    tokenCache.delete(projectId);
+  } else {
+    tokenCache.clear();
+  }
 }
 
 export async function validateProjectToken(projectId: number): Promise<{ valid: boolean; error?: string }> {

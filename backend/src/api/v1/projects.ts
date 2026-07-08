@@ -147,21 +147,31 @@ export async function projectsRoutes(app: FastifyInstance) {
     if (count === 0) {
       return { ok: true, data: { deleted: 0 } };
     }
-    await pool.query("DELETE FROM commits");
-    await pool.query("DELETE FROM contributor_profiles");
-    await pool.query("DELETE FROM project_activity");
-    await pool.query("DELETE FROM project_branches");
-    await pool.query("DELETE FROM project_results");
-    await pool.query("DELETE FROM project_pipelines");
-    await pool.query("DELETE FROM project_merge_requests");
-    await pool.query("DELETE FROM project_issues");
-    await pool.query("DELETE FROM project_packages");
-    await pool.query("DELETE FROM project_dependencies_audit");
-    await pool.query("DELETE FROM project_languages");
-    await pool.query("DELETE FROM project_deployments");
-    await pool.query("DELETE FROM analysis_runs");
-    await pool.query("DELETE FROM scheduler_errors");
-    await pool.query("DELETE FROM projects");
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM commits");
+      await client.query("DELETE FROM contributor_profiles");
+      await client.query("DELETE FROM project_activity");
+      await client.query("DELETE FROM project_branches");
+      await client.query("DELETE FROM project_results");
+      await client.query("DELETE FROM project_pipelines");
+      await client.query("DELETE FROM project_merge_requests");
+      await client.query("DELETE FROM project_issues");
+      await client.query("DELETE FROM project_packages");
+      await client.query("DELETE FROM project_dependencies_audit");
+      await client.query("DELETE FROM project_languages");
+      await client.query("DELETE FROM project_deployments");
+      await client.query("DELETE FROM analysis_runs");
+      await client.query("DELETE FROM scheduler_errors");
+      await client.query("DELETE FROM projects");
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
     const user = (request as any).user as JwtPayload;
     logAuditAction(user.userId, "project_delete", `Deleted ALL projects (${count} total)`);
     clearCache("projects");
