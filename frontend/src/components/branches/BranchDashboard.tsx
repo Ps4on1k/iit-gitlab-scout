@@ -5,6 +5,7 @@ import { fetchBranches, collectBranches, fetchProjects } from "../../api/client"
 import { ProjectLabel } from "../common/ProjectLabel";
 import { CollectButton } from "../common/CollectButton";
 import { delay } from "../../utils/collect";
+import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";
 import type { Branch, BranchSummary } from "../../types/analytics";
 import type { Role } from "../../types";
@@ -251,7 +252,7 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
                                 return (
                                   <tr key={p.project_id} style={{ borderBottom: "1px solid var(--ant-color-border-secondary)" }}>
                                     <td style={{ ...tdStyle, fontWeight: 500 }}>
-                                      <ProjectLabel label={p.label} tag={p.tags?.join(", ")} description={projectMap.get(p.label)?.description} />
+                                      <ProjectLabel label={p.label} tag={p.tags?.join(", ")} description={projectMap.get(p.label)?.description} url={projectMap.get(p.label) ? getProjectUrl(projectMap.get(p.label)!.base_url, projectMap.get(p.label)!.path) : undefined} />
                                     </td>
                                     <td style={{ ...tdStyle, textAlign: "center" }}>{p.total}</td>
                                     <td style={{ ...tdStyle, textAlign: "center", color: "#21B573", fontWeight: 600 }}>{p.active}</td>
@@ -315,7 +316,7 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
               const rowBg = r.type === "stale" ? "rgba(207,19,34,0.08)" : r.type === "active" ? "rgba(63,134,0,0.08)" : "";
               return (
                 <tr key={r.id} style={{ background: rowBg }} onMouseEnter={(e) => { if (!rowBg) e.currentTarget.style.background = "var(--ant-color-fill-secondary)"; }} onMouseLeave={(e) => { if (!rowBg) e.currentTarget.style.background = rowBg; }}>
-                    <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tags?.join(", ")} description={projectMap.get(r.project_label)?.description} /></td>
+                    <td style={tdStyle}><ProjectLabel label={r.project_label} tag={r.project_tags?.join(", ")} description={projectMap.get(r.project_label)?.description} url={projectMap.get(r.project_label) ? getProjectUrl(projectMap.get(r.project_label)!.base_url, projectMap.get(r.project_label)!.path) : undefined} /></td>
                   <td style={tdStyle}><code style={{ fontSize: 12 }}>{r.name}</code></td>
                   <td style={tdStyle}>
                     {r.merged ? <Tag color="green">замержена</Tag> : r.default ? <Tag color="blue">основная</Tag> : r.protected ? <Tag color="orange">защищена</Tag> : r.daysAgo > 90 ? <Tag color="red">заброшена</Tag> : <Tag color="green">активная</Tag>}

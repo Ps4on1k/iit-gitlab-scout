@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Select, Spin, Empty, Tooltip } from "antd";
-import { RocketOutlined, ClockCircleOutlined, WarningOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { RocketOutlined, ClockCircleOutlined, WarningOutlined, ThunderboltOutlined, LinkOutlined } from "@ant-design/icons";
 import { Line, Column } from "@ant-design/charts";
 import { fetchProjects, fetchDoraMetrics } from "../../api/client";
+import { getProjectUrl } from "../../utils/projectUrl";
 import { chartColors } from "../../utils/chartTheme";
 import type { ProjectConfig } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
@@ -77,6 +78,12 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
   };
 
   useEffect(() => { if (projectIds.length > 0 || projects.length > 0) loadData(); }, [projectIds, selectedEnv, filters.dateFrom, filters.dateTo]);
+
+  const projectMap = useMemo(() => {
+    const m = new Map<string, { base_url: string; path: string }>();
+    for (const p of projects) m.set(p.label, { base_url: p.base_url, path: p.path });
+    return m;
+  }, [projects]);
 
   if (loading && !data) return <div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>;
 
@@ -189,7 +196,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
                       return (
                         <div key={p.label} style={{ marginBottom: 6 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{p.label}</span>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{p.label}{projectMap.has(p.label) && <a href={getProjectUrl(projectMap.get(p.label)!.base_url, projectMap.get(p.label)!.path)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: "var(--ant-color-textTertiary)", fontSize: 11 }}><LinkOutlined /></a>}</span>
                             <span style={{ color: "var(--ant-color-textSecondary)" }}>{p.total} ({pct}%)</span>
                           </div>
                           <div style={{ display: "flex", height: 6, borderRadius: 3, overflow: "hidden" }}>

@@ -7,6 +7,7 @@ import { collectStack, fetchLanguageSummary, fetchLanguages } from "../../api/st
 import { getTagColor } from "../../utils/tagColors";
 import { delay } from "../../utils/collect";
 import { CollectButton } from "../common/CollectButton";
+import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";
 import type { LanguageSummary, StackFilters } from "../../types/stack";
 import type { Role } from "../../types";
@@ -234,7 +235,7 @@ function ProjectLanguageDetails({ filters, selectedTags, setSelectedTags, select
                     }}
                   >{proj.tag}</Tag>
                 )}
-                <span style={{ fontWeight: 600, fontSize: 18 }}><ProjectLabel label={proj.label} description={projectMap.get(proj.label)?.description} /></span>
+                <span style={{ fontWeight: 600, fontSize: 18 }}><ProjectLabel label={proj.label} description={projectMap.get(proj.label)?.description} url={projectMap.get(proj.label) ? getProjectUrl(projectMap.get(proj.label)!.base_url, projectMap.get(proj.label)!.path) : undefined} /></span>
                 <span style={{ fontSize: 11, color: "var(--ant-color-textTertiary)", marginLeft: 8 }}>{proj.path}</span>
               </div>
               <div style={{ display: "flex", height: 20, borderRadius: 4, overflow: "hidden", border: "1px solid var(--ant-color-border-secondary)" }}>

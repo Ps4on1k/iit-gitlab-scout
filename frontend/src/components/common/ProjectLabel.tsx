@@ -1,21 +1,27 @@
 import { Popover, Tag } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, LinkOutlined } from "@ant-design/icons";
 import { getTagColor } from "../../utils/tagColors";
 
 interface ProjectLabelProps {
   label: string;
   tag?: string;
   description?: string;
+  url?: string;
   style?: React.CSSProperties;
 }
 
-export function ProjectLabel({ label, tag, description, style }: ProjectLabelProps) {
+export function ProjectLabel({ label, tag, description, url, style }: ProjectLabelProps) {
   const tags = tag ? tag.split(", ").filter(Boolean) : [];
 
   return (
     <div style={style}>
       <div style={{ fontWeight: 600, lineHeight: 1.2 }}>
         {label}
+        {url && (
+          <a href={url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, color: "var(--ant-color-textTertiary)", fontSize: 13 }}>
+            <LinkOutlined />
+          </a>
+        )}
         <Popover content={<div style={{ maxWidth: 300, whiteSpace: "pre-wrap" }}>{description || "Нет описания"}</div>} trigger="click">
           <InfoCircleOutlined style={{ color: "var(--ant-color-textTertiary)", marginLeft: 6, cursor: "pointer", fontSize: 13 }} />
         </Popover>

@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typography } from "antd";
-import { DatabaseOutlined, ReloadOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, ReloadOutlined, LinkOutlined } from "@ant-design/icons";
 import { fetchIssues, collectIssues, fetchProjects } from "../../api/client";
 import { CollectButton } from "../common/CollectButton";
+import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";
 import type { Issue, IssueSummary } from "../../types/analytics";
 
@@ -36,7 +37,7 @@ export function IssueDashboard() {
 
   const columns = [
     { title: "Проект", dataIndex: "project_label", key: "project",
-      render: (_: string, r: Issue) => <div><span>{r.project_label}</span>{r.project_tags?.length > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tags.join(", ")}</Tag>}</div> },
+      render: (_: string, r: Issue) => { const proj = projects.find((p) => p.label === r.project_label); return <div><span>{r.project_label}</span>{proj && <a href={getProjectUrl(proj.base_url, proj.path)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: "var(--ant-color-textTertiary)", fontSize: 11 }}><LinkOutlined /></a>}{r.project_tags?.length > 0 && <Tag color="blue" style={{ marginLeft: 6 }}>{r.project_tags.join(", ")}</Tag>}</div>; } },
     { title: "#", dataIndex: "gitlab_iid", key: "iid" },
     { title: "Заголовок", dataIndex: "title", key: "title", ellipsis: true },
     { title: "Статус", dataIndex: "state", key: "state",

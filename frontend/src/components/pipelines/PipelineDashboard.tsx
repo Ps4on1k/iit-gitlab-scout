@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Select, Button, Tag, message, Spin, Empty, Switch, Tooltip } from "antd";
-import { DatabaseOutlined, ReloadOutlined, DownloadOutlined, SwapOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, ReloadOutlined, DownloadOutlined, SwapOutlined, LinkOutlined } from "@ant-design/icons";
 import { Line, Pie } from "@ant-design/charts";
 import { fetchProjects } from "../../api/client";
+import { getProjectUrl } from "../../utils/projectUrl";
 import { collectPipelines } from "../../api/pipeline-client";
 import { chartColors } from "../../utils/chartTheme";
 import { delay } from "../../utils/collect";
@@ -41,6 +42,12 @@ export function PipelineDashboard({ userRole, filters }: Props) {
     const tagIds = projects.filter((p) => p.tags?.some((t) => filters.tags.includes(t))).map((p) => p.id);
     return [...new Set([...filters.projectIds, ...tagIds])];
   }, [filters.projectIds, filters.tags, projects]);
+
+  const projectMap = useMemo(() => {
+    const m = new Map<string, { base_url: string; path: string }>();
+    for (const p of projects) m.set(p.label, { base_url: p.base_url, path: p.path });
+    return m;
+  }, [projects]);
 
   const loadData = async () => {
     setLoading(true);
@@ -193,7 +200,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
                       return (
                         <div key={p.label} style={{ marginBottom: 10 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{p.label}{p.tag?.length > 0 && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tag.join(", ")}</Tag>}</span>
+                            <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 180 }}>{p.label}{projectMap.has(p.label) && <a href={getProjectUrl(projectMap.get(p.label)!.base_url, projectMap.get(p.label)!.path)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: "var(--ant-color-textTertiary)", fontSize: 11 }}><LinkOutlined /></a>}{p.tag?.length > 0 && <Tag style={{ marginLeft: 6, fontSize: 10 }}>{p.tag.join(", ")}</Tag>}</span>
                             <span style={{ color: "var(--ant-color-textSecondary)" }}>
                               <span style={{ color: "#21B573" }}>{p.success}</span>/<span>{p.total}</span>
                               <span style={{ marginLeft: 6, color: pct >= 80 ? "#21B573" : pct >= 50 ? "#FFB020" : "#E5484D", fontWeight: 600 }}>{pct}%</span>

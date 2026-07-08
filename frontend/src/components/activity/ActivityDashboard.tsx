@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Select, Button, Space, message, Card, Row, Col, Statistic, Spin, Typography, Empty, Input, Switch, Tooltip } from "antd";
-import { DatabaseOutlined, ReloadOutlined, SwapOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, ReloadOutlined, SwapOutlined, LinkOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
 import { collectActivity, fetchActivity } from "../../api/activity-client";
+import { getProjectUrl } from "../../utils/projectUrl";
 import { delay } from "../../utils/collect";
 import { CollectButton } from "../common/CollectButton";
 import { Line } from "@ant-design/charts";
@@ -47,6 +48,12 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
   }, [activityFilters]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const projectMap = useMemo(() => {
+    const m = new Map<string, { base_url: string; path: string }>();
+    for (const p of projects) m.set(p.label, { base_url: p.base_url, path: p.path });
+    return m;
+  }, [projects]);
 
   const loadMRData = useCallback(async () => {
     setMrLoading(true);
@@ -185,7 +192,7 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
                     {mrData.avgMergeTime.map((p: any) => (
                       <div key={p.label} style={{ marginBottom: 8 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
-                          <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}</span>
+                          <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 250 }}>{p.label}{projectMap.has(p.label) && <a href={getProjectUrl(projectMap.get(p.label)!.base_url, projectMap.get(p.label)!.path)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: "var(--ant-color-textTertiary)", fontSize: 11 }}><LinkOutlined /></a>}</span>
                           <span style={{ color: Number(p.avgDays) <= 2 ? "#21B573" : Number(p.avgDays) <= 7 ? "#FFB020" : "#E5484D", fontWeight: 600 }}>{p.avgDays} дн.</span>
                         </div>
                         <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "var(--ant-color-fill-secondary)" }}>

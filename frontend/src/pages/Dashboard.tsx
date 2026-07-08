@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, memo } from "react";
 import { Card, Row, Col, Statistic, Spin, Empty, Table, Tag, Segmented, Button } from "antd";
-import { ProjectOutlined, TeamOutlined, FireOutlined, CheckCircleOutlined, MergeOutlined, RocketOutlined, WarningOutlined, ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, UpOutlined, DownOutlined } from "@ant-design/icons";
+import { ProjectOutlined, TeamOutlined, FireOutlined, CheckCircleOutlined, MergeOutlined, RocketOutlined, WarningOutlined, ClockCircleOutlined, ArrowUpOutlined, ArrowDownOutlined, MinusOutlined, UpOutlined, DownOutlined, LinkOutlined } from "@ant-design/icons";
 import { Line } from "@ant-design/charts";
-import { fetchDashboard } from "../api/client";
+import { fetchDashboard, fetchProjects } from "../api/client";
 import { chartColors } from "../utils/chartTheme";
 import { getTagColor } from "../utils/tagColors";
+import { getProjectUrl } from "../utils/projectUrl";
 
 function formatDuration(seconds: number): string {
   if (seconds === 0) return "—";
@@ -25,6 +26,7 @@ const statSmall = { fontSize: 14 };
 export const Dashboard = memo(function Dashboard({ onContributorClick }: { onContributorClick?: (name: string) => void }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
+  const [projects, setProjects] = useState<any[]>([]);
   const [period, setPeriod] = useState<number>(30);
   const [showAllActive, setShowAllActive] = useState(false);
   const [showAllInactive, setShowAllInactive] = useState(false);
@@ -36,7 +38,14 @@ export const Dashboard = memo(function Dashboard({ onContributorClick }: { onCon
   useEffect(() => {
     setLoading(true);
     fetchDashboard(period).then((r) => { if (r.ok) setData(r.data); setLoading(false); });
+    fetchProjects().then((r) => { if (r.ok) setProjects(r.data!); });
   }, [period]);
+
+  const projectMap = useMemo(() => {
+    const m = new Map<string, { base_url: string; path: string }>();
+    for (const p of projects) m.set(p.label, { base_url: p.base_url, path: p.path });
+    return m;
+  }, [projects]);
 
   if (loading) return <div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>;
   if (!data) return <Empty description="Ошибка загрузки" />;
@@ -53,7 +62,7 @@ export const Dashboard = memo(function Dashboard({ onContributorClick }: { onCon
     { title: "Проект", dataIndex: "label", key: "label",
       render: (v: string, r: any) => (
         <div>
-          <span style={{ fontWeight: 500 }}>{v}</span>
+          <span style={{ fontWeight: 500 }}>{v}{projectMap.has(v) && <a href={getProjectUrl(projectMap.get(v)!.base_url, projectMap.get(v)!.path)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: "var(--ant-color-textTertiary)", fontSize: 11 }}><LinkOutlined /></a>}</span>
           {r.tags?.length > 0 && (
             <div style={{ marginTop: 2, display: "flex", flexWrap: "wrap", gap: 3 }}>
               {r.tags.slice(0, 2).map((t: string) => {
@@ -255,7 +264,7 @@ export const Dashboard = memo(function Dashboard({ onContributorClick }: { onCon
                   return (
                     <div key={p.label}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}>
-                        <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{p.label}</span>
+                        <span style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 280 }}>{p.label}{projectMap.has(p.label) && <a href={getProjectUrl(projectMap.get(p.label)!.base_url, projectMap.get(p.label)!.path)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 4, color: "var(--ant-color-textTertiary)", fontSize: 11 }}><LinkOutlined /></a>}</span>
                         <span style={{ color: "var(--ant-color-text-secondary)", fontSize: 10 }}>
                           <span style={{ color: "#3A8DFF" }}>{p.opened}</span> / <span style={{ color: "#21B573" }}>{p.merged}</span> / <span style={{ color: "#E5484D" }}>{p.closed}</span>
                         </span>
