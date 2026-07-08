@@ -4,7 +4,7 @@ import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutO
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
-import { getMe, clearToken, resolveContributor } from "./api/client";
+import { getMe, clearToken, resolveContributor, setOnUnauthorized } from "./api/client";
 import { clearCache } from "./utils/cache";
 import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
 import { useCollectStatus } from "./hooks/useCollectStatus";
@@ -110,13 +110,14 @@ export default function App() {
   }, []);
 
   useEffect(() => { getMe().then((res) => { if (res.ok) setUser(res.data!); setLoading(false); }); }, []);
+  useEffect(() => { setOnUnauthorized(() => setUser(null)); }, []);
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
   useEffect(() => { try { localStorage.setItem("darkMode", String(darkMode)); } catch {} }, [darkMode]);
-  useEffect(() => { clearCache(); }, [filters, analyticsTab]);
+  useEffect(() => { clearCache("contributors:"); clearCache("metrics:"); clearCache("heatmap:"); clearCache("deploy-reliability:"); }, [filters]);
   useEffect(() => { if (isInitialLoad.current) { isInitialLoad.current = false; return; } writeUrlState(tab, analyticsTab, filters, tabParams); }, [tab, analyticsTab, filters, tabParams]);
 
   const handleLogout = () => { clearToken(); setUser(null); };

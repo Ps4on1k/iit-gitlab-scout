@@ -3,6 +3,7 @@ import { requireAuth, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import { getCached, setCache, cacheKey } from "../../utils/cache.js";
+import { getContributorDirectory, buildEmailToNameMap } from "../../utils/directory-cache.js";
 
 export async function executiveReportRoutes(app: FastifyInstance) {
   app.get<{
@@ -181,13 +182,8 @@ export async function executiveReportRoutes(app: FastifyInstance) {
       ),
     ]);
 
-    const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
-    const emailToName: Record<string, string> = {};
-    for (const row of dirResult.rows) {
-      for (const email of row.emails) {
-        emailToName[email] = row.display_name;
-      }
-    }
+    const dir = await getContributorDirectory();
+    const emailToName = buildEmailToNameMap(dir);
 
     let totalBranches = 0, activeBranches = 0, staleBranches = 0, mergedBranches = 0;
     const staleMs = 90 * 86400000;

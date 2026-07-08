@@ -4,12 +4,14 @@ import { getPool } from "../../db/pool.js";
 
 export async function commitDetailRoutes(app: FastifyInstance) {
   app.get<{
-    Querystring: { email?: string; project_ids?: string; date_from?: string; date_to?: string };
+    Querystring: { email?: string; project_ids?: string; date_from?: string; date_to?: string; limit?: string; offset?: string };
   }>("/api/v1/contributor-commits", { preHandler: [requireAuth] }, async (request, reply) => {
-    const { email, project_ids, date_from, date_to } = request.query;
+    const { email, project_ids, date_from, date_to, limit: rawLimit, offset: rawOffset } = request.query;
     if (!email) return reply.status(400).send({ ok: false, error: "email is required" });
 
     const pool = getPool();
+    const limit = Math.min(Math.max(parseInt(rawLimit || "100") || 100, 1), 500);
+    const offset = Math.max(parseInt(rawOffset || "0") || 0, 0);
 
     // Resolve all emails for this contributor from directory + profiles
     const dirResult = await pool.query("SELECT emails FROM contributor_directory WHERE emails @> ARRAY[$1]::text[]", [email]);
@@ -17,7 +19,6 @@ export async function commitDetailRoutes(app: FastifyInstance) {
     if (dirResult.rows.length > 0 && dirResult.rows[0].emails) {
       allEmails = dirResult.rows[0].emails;
     } else {
-      // Fallback: find all emails that share the same display_name
       const profileResult = await pool.query(
         "SELECT DISTINCT author_email FROM contributor_profiles WHERE author_email = $1",
         [email]
@@ -44,21 +45,26 @@ export async function commitDetailRoutes(app: FastifyInstance) {
     if (date_from) { conditions.push(`committed_date >= $${idx++}`); params.push(date_from); }
     if (date_to) { conditions.push(`committed_date <= $${idx++}`); params.push(date_to + "T23:59:59Z"); }
 
+    const where = conditions.join(" AND ");
+
     const countResult = await pool.query(
-      `SELECT COUNT(*)::int as total FROM commits c WHERE ${conditions.join(" AND ")}`,
+      `SELECT COUNT(*)::int as total FROM commits c WHERE ${where}`,
       params
     );
+
+    params.push(limit);
+    params.push(offset);
 
     const result = await pool.query(
       `SELECT c.*, p.label as project_label, p.tags as project_tags
        FROM commits c
        JOIN projects p ON p.id = c.project_id
-       WHERE ${conditions.join(" AND ")}
+       WHERE ${where}
        ORDER BY c.committed_date DESC
-       LIMIT 99999`,
+       LIMIT $${idx++} OFFSET $${idx++}`,
       params
     );
 
-    return { ok: true, data: { commits: result.rows, total: countResult.rows[0]?.total || 0 } };
+    return { ok: true, data: { commits: result.rows, total: countResult.rows[0]?.total || 0, limit, offset } };
   });
 }

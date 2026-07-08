@@ -3,6 +3,7 @@ import { requireAuth, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import { getCached, setCache, cacheKey } from "../../utils/cache.js";
+import { getContributorDirectory, buildEmailToNameMap, buildNameToEmailMap } from "../../utils/directory-cache.js";
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.get<{
@@ -62,15 +63,9 @@ export async function dashboardRoutes(app: FastifyInstance) {
       else staleBranches++;
     }
 
-    const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
-    const emailToName: Record<string, string> = {};
-    const nameToFirstEmail: Record<string, string> = {};
-    for (const row of dirResult.rows) {
-      for (const email of row.emails) {
-        emailToName[email] = row.display_name;
-        if (!nameToFirstEmail[row.display_name]) nameToFirstEmail[row.display_name] = email;
-      }
-    }
+    const dir = await getContributorDirectory();
+    const emailToName = buildEmailToNameMap(dir);
+    const nameToFirstEmail = buildNameToEmailMap(dir);
 
     const activeProjectResult = await pool.query(
       `SELECT p.id, p.label, p.tags,

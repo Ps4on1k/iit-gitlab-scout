@@ -17,6 +17,12 @@ export function clearToken() {
   clearCache();
 }
 
+let onUnauthorized: (() => void) | null = null;
+
+export function setOnUnauthorized(handler: () => void) {
+  onUnauthorized = handler;
+}
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
   const token = getToken();
   const isDelete = options?.method === "DELETE";
@@ -26,6 +32,11 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResp
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
   const res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
+  if (res.status === 401 && token) {
+    clearToken();
+    onUnauthorized?.();
+    return { ok: false, error: "Сессия истекла. Войдите снова." };
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     return { ok: false, error: (body as any).error || `HTTP ${res.status}` };
