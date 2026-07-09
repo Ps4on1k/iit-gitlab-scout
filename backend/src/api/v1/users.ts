@@ -129,12 +129,15 @@ export async function userManagementRoutes(app: FastifyInstance) {
     Params: { id: string };
   }>("/api/v1/users/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params;
+    const admin = (request as any).user as JwtPayload;
+    if (Number(id) === admin.userId) {
+      return reply.status(400).send({ ok: false, error: "Cannot delete your own account" });
+    }
     const pool = getPool();
     const result = await pool.query("DELETE FROM app_users WHERE id = $1 RETURNING id", [id]);
     if (result.rows.length === 0) {
       return reply.status(404).send({ ok: false, error: "User not found" });
     }
-    const admin = (request as any).user as JwtPayload;
     logAuditAction(admin.userId, "user_delete", `Deleted user ${id}`);
     return { ok: true, data: { deleted: true } };
   });
