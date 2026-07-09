@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Form, Input, Button, Typography, Alert } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { login as apiLogin, setToken } from "../api/client";
@@ -21,12 +21,7 @@ interface Props {
 export function LoginPage({ onLogin }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [isDark, setIsDark] = useState(getIsDark);
-
-  useEffect(() => {
-    const interval = setInterval(() => setIsDark(getIsDark()), 500);
-    return () => clearInterval(interval);
-  }, []);
+  const [isDark] = useState(getIsDark);
 
   const handleSubmit = async (values: { username: string; password: string }) => {
     setLoading(true);

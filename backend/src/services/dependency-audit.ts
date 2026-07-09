@@ -56,7 +56,8 @@ export async function collectDependenciesAudit(projectId: number): Promise<{ tot
     (item: any) => item.type === "blob" && (
       allFileNames.has(item.name) ||
       globPatterns.some((pattern) => {
-        const regex = new RegExp("^" + pattern.replace(/\*/g, ".*") + "$");
+        const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\\\*/g, ".*");
+        const regex = new RegExp("^" + escaped + "$");
         return regex.test(item.name);
       })
     )

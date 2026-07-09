@@ -1,10 +1,25 @@
 interface CacheEntry<T> {
   data: T;
   expiresAt: number;
+  lastAccess: number;
 }
 
+const MAX_CACHE_SIZE = 1000;
 const cache = new Map<string, CacheEntry<any>>();
 let cleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+function evictOldest(): void {
+  if (cache.size <= MAX_CACHE_SIZE) return;
+  let oldestKey: string | null = null;
+  let oldestTime = Infinity;
+  for (const [key, entry] of cache) {
+    if (entry.lastAccess < oldestTime) {
+      oldestTime = entry.lastAccess;
+      oldestKey = key;
+    }
+  }
+  if (oldestKey) cache.delete(oldestKey);
+}
 
 function startCleanup(): void {
   if (cleanupInterval) return;
@@ -23,12 +38,14 @@ export function getCached<T>(key: string): T | undefined {
     cache.delete(key);
     return undefined;
   }
+  entry.lastAccess = Date.now();
   return entry.data as T;
 }
 
 export function setCache<T>(key: string, data: T, ttlMs = 60_000): void {
   startCleanup();
-  cache.set(key, { data, expiresAt: Date.now() + ttlMs });
+  evictOldest();
+  cache.set(key, { data, expiresAt: Date.now() + ttlMs, lastAccess: Date.now() });
 }
 
 export function clearCache(pattern?: string): void {

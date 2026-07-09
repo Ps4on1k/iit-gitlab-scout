@@ -72,7 +72,7 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
     return Array.from(tags).sort().map((t) => ({ value: t, label: t }));
   }, [projects]);
 
-  const loadData = async () => {
+  const loadData = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       const effectiveProjectIds = filters.tags.length > 0
@@ -80,11 +80,16 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
         : filters.projectIds;
       const statusParam = statusFilter === "all" ? undefined : statusFilter;
       const res = await fetchBranches(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, undefined, statusParam);
+      if (signal?.aborted) return;
       if (res.ok) { setBranches(res.data!.branches); setSummary(res.data!.summary); }
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [filters.projectIds, filters.tags, filters.dateFrom, filters.dateTo, statusFilter, filters.contributors]);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => controller.abort();
+  }, [filters.projectIds, filters.tags, filters.dateFrom, filters.dateTo, statusFilter, filters.contributors]);
 
   const filtered = useMemo(() => {
     let result = branches;
@@ -184,7 +189,7 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
           ]} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
         {userRole === "admin" && <CollectButton collector="branches" projectIds={branchProjectIds} onComplete={loadData} color="#8BC8A8" />}
-        <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => loadData()} loading={loading}>Обновить</Button>
       </div>
 
       {summary && (

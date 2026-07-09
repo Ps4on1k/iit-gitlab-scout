@@ -32,7 +32,8 @@ export function CollectButton({ collector, projectIds, dateFrom, dateTo, onCompl
     try {
       await startBatchCollect(collector, validIds, dateFrom, dateTo);
       poll();
-    } catch {
+    } catch (err) {
+      console.warn("[CollectButton] start collect failed:", err);
     } finally {
       setLocalStarting(false);
     }
@@ -103,7 +104,8 @@ export function CollectButton({ collector, projectIds, dateFrom, dateTo, onCompl
           await doStartCollect(validIds);
         },
       });
-    } catch {
+    } catch (err) {
+      console.warn("[CollectButton] validation failed:", err);
       await doStartCollect(projectIds);
     } finally {
       setValidating(false);

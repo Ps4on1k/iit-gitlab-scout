@@ -65,7 +65,7 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
     return projects.map((p) => p.id);
   }, [filters.projectIds, filters.tags, projects]);
 
-  const loadData = async () => {
+  const loadData = async (signal?: AbortSignal) => {
     setLoading(true);
     const res = await fetchDoraMetrics(
       projectIds.length > 0 ? projectIds : undefined,
@@ -73,11 +73,17 @@ export function DoraDashboard({ filters, onParamChange, tabParams }: Props) {
       filters.dateFrom,
       filters.dateTo
     );
+    if (signal?.aborted) return;
     if (res.ok) setData(res.data);
     setLoading(false);
   };
 
-  useEffect(() => { if (projectIds.length > 0 || projects.length > 0) loadData(); }, [projectIds, selectedEnv, filters.dateFrom, filters.dateTo]);
+  useEffect(() => {
+    if (projectIds.length === 0 && projects.length === 0) return;
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => controller.abort();
+  }, [projectIds, selectedEnv, filters.dateFrom, filters.dateTo, projects.length]);
 
   const projectMap = useMemo(() => {
     const m = new Map<string, { base_url: string; path: string }>();

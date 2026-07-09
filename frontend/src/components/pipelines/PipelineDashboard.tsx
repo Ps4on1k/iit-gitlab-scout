@@ -49,7 +49,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
     return m;
   }, [projects]);
 
-  const loadData = async () => {
+  const loadData = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
       const qs = new URLSearchParams();
@@ -58,13 +58,18 @@ export function PipelineDashboard({ userRole, filters }: Props) {
       if (filters.dateTo) qs.set("date_to", filters.dateTo);
       if (useMedian) qs.set("use_median", "1");
       const token = localStorage.getItem("token");
-      const res = await fetch(`/api/v1/pipelines${qs.toString() ? "?" + qs.toString() : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+      const res = await fetch(`/api/v1/pipelines${qs.toString() ? "?" + qs.toString() : ""}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal });
+      if (signal?.aborted) return;
       const r = await res.json();
       if (r.ok) setData(r.data);
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { loadData(); }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, useMedian]);
+  useEffect(() => {
+    const controller = new AbortController();
+    loadData(controller.signal);
+    return () => controller.abort();
+  }, [effectiveProjectIds, filters.dateFrom, filters.dateTo, useMedian]);
 
   const pipelineProjectIds = useMemo(() => effectiveProjectIds.length > 0 ? effectiveProjectIds : projects.map((p) => p.id), [effectiveProjectIds, projects]);
 
@@ -87,7 +92,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
             <span>{useMedian ? "Median" : "Mean"}</span>
           </span>
         </Tooltip>
-        <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => loadData()} loading={loading}>Обновить</Button>
         {data && <Button size="small" icon={<DownloadOutlined />} onClick={() => {
           const headers = ["Статус", "Кол-во", "%"];
           const s = data.summary;

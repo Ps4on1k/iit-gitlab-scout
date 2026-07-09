@@ -66,7 +66,7 @@ export function CollectStatusProvider({ children }: { children: ReactNode }) {
         });
         wasRunningRef.current = isRunning;
       }
-    } catch {}
+    } catch (err) { console.warn("[CollectStatus] poll failed:", err); }
   }, []);
 
   useEffect(() => {
