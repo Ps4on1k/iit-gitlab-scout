@@ -36,7 +36,7 @@ import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { requireAuth } from "./utils/auth.js";
 
 const env = getEnv();
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: true, bodyLimit: 10 * 1024 * 1024 });
 
 const corsOrigins = env.CORS_ORIGINS
   ? env.CORS_ORIGINS.split(",").map((s) => s.trim())
@@ -89,6 +89,22 @@ app.addHook("onRequest", async (request, reply) => {
       else requestTimestamps.set(k, filtered);
     }
   }
+});
+
+// Request timeout (30s for regular requests, 120s for collect/stats)
+const REQUEST_TIMEOUT_MS = 30_000;
+const LONG_REQUEST_TIMEOUT_MS = 120_000;
+const LONG_PATHS = ["/api/v1/stats", "/api/v1/collect/", "/api/v1/batch-collect"];
+
+app.addHook("onRequest", async (request, reply) => {
+  const isLongRequest = LONG_PATHS.some((p) => request.url.startsWith(p));
+  const timeout = isLongRequest ? LONG_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+  const timer = setTimeout(() => {
+    if (!reply.sent) {
+      reply.status(408).send({ ok: false, error: "Request timeout" });
+    }
+  }, timeout);
+  reply.raw.on("finish", () => clearTimeout(timer));
 });
 
 // Sanitize errors — never leak internal details to client

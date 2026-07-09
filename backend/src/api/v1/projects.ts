@@ -210,7 +210,7 @@ export async function projectsRoutes(app: FastifyInstance) {
 
   app.post<{
     Body: { yaml: string };
-  }>("/api/v1/projects/import-yaml", { preHandler: [requireAdmin] }, async (request, reply) => {
+  }>("/api/v1/projects/import-yaml", { preHandler: [requireAdmin], bodyLimit: 1024 * 1024 }, async (request, reply) => {
     const { yaml } = request.body;
     if (!yaml) {
       return reply.status(400).send({ ok: false, error: "yaml is required" });
