@@ -64,20 +64,30 @@ app.addHook("onRequest", async (request, reply) => {
   reply.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 });
 
-// Rate limiting
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+// Rate limiting — sliding window (last 60s)
+const RATE_LIMIT_MAX = 100;
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const requestTimestamps = new Map<string, number[]>();
+
 app.addHook("onRequest", async (request, reply) => {
   const ip = request.ip || "unknown";
   const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (entry && now < entry.resetAt) {
-    if (entry.count >= 100) return reply.status(429).send({ ok: false, error: "Too many requests" });
-    entry.count++;
-  } else {
-    rateLimitMap.set(ip, { count: 1, resetAt: now + 60000 });
+  const timestamps = requestTimestamps.get(ip) || [];
+
+  const validTimestamps = timestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
+  if (validTimestamps.length >= RATE_LIMIT_MAX) {
+    return reply.status(429).send({ ok: false, error: "Too many requests" });
   }
-  if (rateLimitMap.size > 1000) {
-    for (const [k, v] of rateLimitMap) { if (now > v.resetAt) rateLimitMap.delete(k); }
+  validTimestamps.push(now);
+  requestTimestamps.set(ip, validTimestamps);
+
+  if (requestTimestamps.size > 2000) {
+    const cutoff = now - RATE_LIMIT_WINDOW_MS;
+    for (const [k, v] of requestTimestamps) {
+      const filtered = v.filter((t) => t > cutoff);
+      if (filtered.length === 0) requestTimestamps.delete(k);
+      else requestTimestamps.set(k, filtered);
+    }
   }
 });
 

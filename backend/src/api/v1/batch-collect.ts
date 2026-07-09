@@ -16,7 +16,7 @@ import { collectDependenciesAudit } from "../../services/dependency-audit.js";
 import { logCollectionError } from "../../utils/collection-error.js";
 import { safeErrorMessage } from "../../utils/safe-error.js";
 
-const COLLECT_DELAY_MS = 2000;
+const COLLECT_DELAY_MS = 200;
 
 type CollectorFn = (projectId: number) => Promise<any>;
 
