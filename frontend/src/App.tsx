@@ -10,6 +10,7 @@ import { darkThemeConfig, lightThemeConfig } from "./utils/theme";
 import { useCollectStatus, CollectStatusProvider } from "./hooks/useCollectStatus";
 import { ReportPreview } from "./components/reports/ReportPreview";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { SyncIndicator } from "./components/common/SyncIndicator";
 import type { User } from "./types";
 
 const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -103,7 +104,6 @@ export default function App() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const isInitialLoad = useRef(true);
-  const { isRunning: collectionRunning } = useCollectStatus();
 
   const setTabParam = useCallback((key: string, value: string | undefined) => {
     setTabParams((prev) => { const next = { ...prev }; if (value === undefined || value === "") delete next[key]; else next[key] = value; return next; });
@@ -152,7 +152,7 @@ export default function App() {
           <Button type="text" icon={<MenuOutlined style={{ color: darkMode ? "#e2e8f0" : "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
             <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.3.0</span>
-            {collectionRunning && <Tooltip title="Идёт сбор данных"><SyncOutlined spin style={{ color: "#42D9C8", fontSize: 14 }} /></Tooltip>}
+            <SyncIndicator />
           </div>
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#94a3b8" }}>
             {breadcrumbItems.map((item, i) => (
