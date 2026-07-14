@@ -8,15 +8,11 @@
 {$DOMAIN} {
 	tls {$TLS_EMAIL}
 
-	# API → backend (keep full path including /api)
 	handle /api/* {
 		reverse_proxy backend:3000
 	}
-
-	# Everything else → frontend
 	reverse_proxy frontend:80
 
-	# Security headers
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
