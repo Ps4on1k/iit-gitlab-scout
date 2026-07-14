@@ -8,8 +8,8 @@
 {$DOMAIN} {
 	tls {$TLS_EMAIL}
 
-	# API → backend
-	handle_path /api/* {
+	# API → backend (keep full path including /api)
+	handle /api/* {
 		reverse_proxy backend:3000
 	}
 

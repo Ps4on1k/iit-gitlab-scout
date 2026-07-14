@@ -3,8 +3,8 @@
 	# To enable Let's Encrypt, set DOMAIN and TLS_EMAIL in .env
 	tls internal
 
-	# API → backend
-	handle_path /api/* {
+	# API → backend (keep full path including /api)
+	handle /api/* {
 		reverse_proxy backend:3000
 	}
 
