@@ -1,136 +1,152 @@
-import { useState, useEffect } from "react";
-import { Card, Spin, Empty, Typography, Tag, Row, Col, Statistic, Collapse, Table, Tooltip, Badge } from "antd";
-import { DatabaseOutlined, CloudOutlined, ApiOutlined, ArrowRightOutlined, ArrowDownOutlined, InfoCircleOutlined, ExpandOutlined, SyncOutlined } from "@ant-design/icons";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Card, Spin, Empty, Typography, Tag, Row, Col, Statistic, Table, Badge, Button } from "antd";
+import { DatabaseOutlined, CloudOutlined, ApiOutlined, SyncOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchLineageFlow, fetchLineageTableStats, fetchLineageMetadata } from "../../api/client";
+import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge, type NodeTypes, type OnNodesChange, type OnEdgesChange, applyNodeChanges, applyEdgeChanges, MarkerType } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 
 const { Text, Title } = Typography;
 
-interface FieldInfo {
-  name: string;
-  type: string;
-  description: string;
-}
-
-interface TableInfo {
-  written_by: string[];
-  read_by: string[];
-  description: string;
-  fields?: FieldInfo[];
-  stats?: { rowCount: number; size: string; lastUpdated: string | null };
-}
-
 interface LineageData {
   collectors: Record<string, { writes_to: string[]; description: string }>;
-  tables: Record<string, TableInfo>;
+  tables: Record<string, { written_by: string[]; read_by: string[]; description: string; fields?: any[] }>;
   api_endpoints: Record<string, { reads_from: string[]; description: string }>;
 }
 
-function CollectorNode({ name, info }: { name: string; info: any }) {
+const nodeColors: Record<string, string> = {
+  collector: "#3A8DFF",
+  table: "#21B573",
+  endpoint: "#42D9C8",
+  metadata: "#FFB020",
+};
+
+function CollectorNode({ data }: { data: any }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 8, background: "linear-gradient(135deg, rgba(58,141,255,0.08) 0%, rgba(66,217,200,0.08) 100%)", border: "1px solid rgba(58,141,255,0.2)" }}>
-      <CloudOutlined style={{ color: "#3A8DFF", fontSize: 16 }} />
-      <div style={{ flex: 1 }}>
-        <Text strong style={{ fontSize: 13 }}>{name}</Text>
-        <div style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>{info.description}</div>
+    <div style={{ padding: "8px 12px", borderRadius: 8, background: "linear-gradient(135deg, rgba(58,141,255,0.12) 0%, rgba(66,217,200,0.12) 100%)", border: "1px solid rgba(58,141,255,0.3)", minWidth: 180 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <CloudOutlined style={{ color: "#3A8DFF", fontSize: 14 }} />
+        <Text strong style={{ fontSize: 12 }}>{data.label}</Text>
       </div>
-      <ArrowRightOutlined style={{ color: "#3A8DFF", fontSize: 14 }} />
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-        {info.writes_to.map((t: string) => (
-          <Tag key={t} color="green" style={{ margin: 0, fontSize: 10 }}>{t}</Tag>
-        ))}
-      </div>
+      <div style={{ fontSize: 10, color: "#8c8c8c" }}>{data.description}</div>
     </div>
   );
 }
 
-function TableCard({ name, info, stats }: { name: string; info: TableInfo; stats: any }) {
-  const [expanded, setExpanded] = useState(false);
-  const tableStats = stats?.tables?.find((t: any) => t.name === name);
-  const rowCount = tableStats?.stats?.rowCount || 0;
-  const size = tableStats?.stats?.size || "0 bytes";
-
+function TableNode({ data }: { data: any }) {
   return (
-    <Card
-      size="small"
-      style={{ marginBottom: 8 }}
-      title={
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <DatabaseOutlined style={{ color: "#3A8DFF" }} />
-          <Text strong style={{ fontSize: 13 }}>{name}</Text>
-          <Badge count={rowCount.toLocaleString()} style={{ backgroundColor: "#3A8DFF" }} overflowCount={999999} />
-          <Text type="secondary" style={{ fontSize: 11 }}>{size}</Text>
-        </div>
-      }
-      extra={
-        info.fields && info.fields.length > 0 && (
-          <Tooltip title="Показать поля таблицы">
-            <ExpandOutlined
-              style={{ color: expanded ? "#3A8DFF" : "var(--ant-color-textTertiary)", cursor: "pointer", fontSize: 14 }}
-              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            />
-          </Tooltip>
-        )
-      }
-    >
-      <div style={{ marginBottom: 8 }}>
-        <Text type="secondary" style={{ fontSize: 12 }}>{info.description}</Text>
+    <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(33,181,115,0.08)", border: "1px solid rgba(33,181,115,0.3)", minWidth: 180 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <DatabaseOutlined style={{ color: "#21B573", fontSize: 14 }} />
+        <Text strong style={{ fontSize: 12 }}>{data.label}</Text>
+        {data.rowCount !== undefined && <Badge count={data.rowCount.toLocaleString()} style={{ backgroundColor: "#21B573", fontSize: 9 }} overflowCount={999999} />}
       </div>
-
-      <div style={{ marginBottom: 4 }}>
-        <Text style={{ fontSize: 11, color: "#21B573", fontWeight: 600 }}>Записывают:</Text>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
-          {info.written_by.map((w) => (
-            <Tag key={w} color="green" style={{ fontSize: 10, margin: 0 }}>{w}</Tag>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Text style={{ fontSize: 11, color: "#3A8DFF", fontWeight: 600 }}>Читают:</Text>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4 }}>
-          {info.read_by.map((r) => (
-            <Tag key={r} color="blue" style={{ fontSize: 10, margin: 0 }}>{r}</Tag>
-          ))}
-        </div>
-      </div>
-
-      {expanded && info.fields && (
-        <div style={{ marginTop: 12, borderTop: "1px solid var(--ant-color-border-secondary)", paddingTop: 12 }}>
-          <Text strong style={{ fontSize: 11, marginBottom: 8, display: "block" }}>Поля таблицы:</Text>
-          <Table
-            dataSource={info.fields}
-            columns={[
-              { title: "Поле", dataIndex: "name", key: "name", width: 150, render: (v: string) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
-              { title: "Тип", dataIndex: "type", key: "type", width: 80, render: (v: string) => <Tag style={{ fontSize: 10, margin: 0 }}>{v}</Tag> },
-              { title: "Описание", dataIndex: "description", key: "description" },
-            ]}
-            size="small"
-            pagination={false}
-            rowKey="name"
-          />
-        </div>
-      )}
-    </Card>
+      <div style={{ fontSize: 10, color: "#8c8c8c" }}>{data.description}</div>
+    </div>
   );
 }
 
-function EndpointNode({ endpoint, info }: { endpoint: string; info: any }) {
+function EndpointNode({ data }: { data: any }) {
   return (
-    <div style={{ padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(66,217,200,0.3)", background: "rgba(66,217,200,0.04)" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+    <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(66,217,200,0.08)", border: "1px solid rgba(66,217,200,0.3)", minWidth: 180 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
         <ApiOutlined style={{ color: "#42D9C8", fontSize: 14 }} />
-        <Text code style={{ fontSize: 12 }}>{endpoint}</Text>
+        <Text code style={{ fontSize: 11 }}>{data.label}</Text>
       </div>
-      <div style={{ fontSize: 12, color: "var(--ant-color-textSecondary)", marginBottom: 4 }}>
-        {info.description}
-      </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-        {info.reads_from.map((r: string) => (
-          <Tag key={r} color="blue" style={{ fontSize: 10, margin: 0 }}>{r}</Tag>
-        ))}
-      </div>
+      <div style={{ fontSize: 10, color: "#8c8c8c" }}>{data.description}</div>
     </div>
   );
+}
+
+const nodeTypes: NodeTypes = {
+  collector: CollectorNode,
+  table: TableNode,
+  endpoint: EndpointNode,
+};
+
+function buildFlowGraph(data: LineageData, stats: any, metadata: any[]) {
+  const nodes: Node[] = [];
+  const edges: Edge[] = [];
+  let xCollector = 0;
+  let xTable = 300;
+  let xEndpoint = 600;
+
+  // Collector nodes
+  const collectorNames = Object.keys(data.collectors);
+  collectorNames.forEach((name, i) => {
+    const info = data.collectors[name];
+    nodes.push({
+      id: `collector-${name}`,
+      type: "collector",
+      position: { x: xCollector, y: i * 90 },
+      data: { label: name, description: info.description },
+    });
+
+    // Edges from collector to tables
+    info.writes_to.forEach((table) => {
+      edges.push({
+        id: `e-${name}-${table}`,
+        source: `collector-${name}`,
+        target: `table-${table}`,
+        animated: true,
+        style: { stroke: "#3A8DFF", strokeWidth: 2 },
+        markerEnd: { type: MarkerType.ArrowClosed, color: "#3A8DFF" },
+      });
+    });
+  });
+
+  // Table nodes
+  const tableNames = Object.keys(data.tables);
+  tableNames.forEach((name, i) => {
+    const info = data.tables[name];
+    const tableStats = stats?.tables?.find((t: any) => t.name === name);
+    nodes.push({
+      id: `table-${name}`,
+      type: "table",
+      position: { x: xTable, y: i * 90 },
+      data: { label: name, description: info.description, rowCount: tableStats?.stats?.rowCount },
+    });
+  });
+
+  // Endpoint nodes
+  const endpointNames = Object.keys(data.api_endpoints);
+  endpointNames.forEach((name, i) => {
+    const info = data.api_endpoints[name];
+    nodes.push({
+      id: `endpoint-${name}`,
+      type: "endpoint",
+      position: { x: xEndpoint, y: i * 90 },
+      data: { label: name, description: info.description },
+    });
+
+    // Edges from tables to endpoint
+    info.reads_from.forEach((table) => {
+      if (data.tables[table]) {
+        edges.push({
+          id: `e-${table}-${name}`,
+          source: `table-${table}`,
+          target: `endpoint-${name}`,
+          style: { stroke: "#42D9C8", strokeWidth: 1.5 },
+          markerEnd: { type: MarkerType.ArrowClosed, color: "#42D9C8" },
+        });
+      }
+    });
+  });
+
+  // Dynamic metadata nodes
+  metadata.forEach((m, i) => {
+    nodes.push({
+      id: `meta-${m.entity_type}-${m.entity_name}`,
+      type: "collector",
+      position: { x: xCollector, y: (collectorNames.length + i) * 90 + 40 },
+      data: { label: `${m.entity_type}: ${m.entity_name}`, description: `Динамические метаданные (обновлено ${dayjs(m.updated_at).format("DD.MM HH:mm")})` },
+    });
+  });
+
+  return { nodes, edges };
+}
+
+function dayjs(date: string) {
+  return { format: (fmt: string) => new Date(date).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) };
 }
 
 export function DataLineage() {
@@ -138,97 +154,95 @@ export function DataLineage() {
   const [data, setData] = useState<LineageData | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [metadata, setMetadata] = useState<any[]>([]);
+  const [nodes, setNodes] = useState<Node[]>([]);
+  const [edges, setEdges] = useState<Edge[]>([]);
 
-  useEffect(() => {
+  const loadData = useCallback(() => {
+    setLoading(true);
     Promise.all([fetchLineageFlow(), fetchLineageTableStats(), fetchLineageMetadata()]).then(([flowRes, statsRes, metaRes]) => {
-      if (flowRes.ok) setData(flowRes.data);
+      if (flowRes.ok) {
+        setData(flowRes.data);
+        const { nodes: n, edges: e } = buildFlowGraph(flowRes.data, statsRes.data, metaRes.data || []);
+        setNodes(n);
+        setEdges(e);
+      }
       if (statsRes.ok) setStats(statsRes.data);
       if (metaRes.ok) setMetadata(metaRes.data || []);
       setLoading(false);
     });
   }, []);
 
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const onNodesChange: OnNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
+  const onEdgesChange: OnEdgesChange = useCallback((changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+
   if (loading) return <Spin size="large" style={{ display: "block", margin: "80px auto" }} />;
   if (!data) return <Empty description="Не удалось загрузить lineage" />;
 
   return (
     <div>
-      <Title level={4}>Потоки данных</Title>
-      <Text type="secondary" style={{ display: "block", marginBottom: 24 }}>
-        Откуда берутся данные и как попадают в дашборды
-      </Text>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div>
+          <Title level={4}>Потоки данных</Title>
+          <Text type="secondary">Откуда берутся данные и как попадают в дашборды</Text>
+        </div>
+        <Button icon={<ReloadOutlined />} onClick={loadData}>Обновить</Button>
+      </div>
 
-      {/* Summary */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
+      <Row gutter={16} style={{ marginBottom: 16 }}>
         <Col span={8}><Card><Statistic title="Коллекторы" value={Object.keys(data.collectors).length} prefix={<CloudOutlined />} /></Card></Col>
         <Col span={8}><Card><Statistic title="Таблицы" value={Object.keys(data.tables).length} prefix={<DatabaseOutlined />} /></Card></Col>
         <Col span={8}><Card><Statistic title="API эндпоинты" value={Object.keys(data.api_endpoints).length} prefix={<ApiOutlined />} /></Card></Col>
       </Row>
 
-      {/* Visual Flow: Collectors → Tables → API */}
-      <Card title="Поток данных: Коллекторы → Таблицы → API" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* Collectors */}
-          <div>
-            <Text strong style={{ fontSize: 12, color: "#3A8DFF", display: "block", marginBottom: 8 }}>Коллекторы</Text>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {Object.entries(data.collectors).map(([name, info]) => (
-                <CollectorNode key={name} name={name} info={info} />
-              ))}
-            </div>
-          </div>
-
-          {/* Tables */}
-          <div>
-            <Text strong style={{ fontSize: 12, color: "#21B573", display: "block", marginBottom: 8 }}>Таблицы</Text>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {Object.entries(data.tables).map(([name, info]) => (
-                <TableCard key={name} name={name} info={info} stats={stats} />
-              ))}
-            </div>
-          </div>
-
-          {/* API Endpoints */}
-          <div>
-            <Text strong style={{ fontSize: 12, color: "#42D9C8", display: "block", marginBottom: 8 }}>API эндпоинты</Text>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {Object.entries(data.api_endpoints).map(([endpoint, info]) => (
-                <EndpointNode key={endpoint} endpoint={endpoint} info={info} />
-              ))}
-            </div>
-          </div>
-
-          {/* Dynamic metadata from dbt/Dagster */}
-          {metadata.length > 0 && (
-            <div>
-              <Text strong style={{ fontSize: 12, color: "#FFB020", display: "block", marginBottom: 8 }}>
-                <SyncOutlined style={{ marginRight: 4 }} />
-                Динамические метаданные (обновлено из dbt/Dagster)
-              </Text>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {metadata.map((m: any) => (
-                  <div key={m.id} style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid rgba(255,176,32,0.3)", background: "rgba(255,176,32,0.04)" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                      <Tag color="orange" style={{ margin: 0 }}>{m.entity_type}</Tag>
-                      <Text strong style={{ fontSize: 12 }}>{m.entity_name}</Text>
-                      <Text type="secondary" style={{ fontSize: 10, marginLeft: "auto" }}>
-                        {new Date(m.updated_at).toLocaleString()}
-                      </Text>
-                    </div>
-                    {m.metadata && Object.keys(m.metadata).length > 0 && (
-                      <div style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>
-                        {Object.entries(m.metadata).map(([k, v]) => (
-                          <span key={k}><Tag style={{ fontSize: 10, margin: 0 }}>{k}</Tag>: {String(v)} </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      {/* Interactive Graph */}
+      <Card title="Интерактивный граф потока данных" style={{ marginBottom: 16 }}>
+        <div style={{ height: 600, border: "1px solid var(--ant-color-border-secondary)", borderRadius: 8 }}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            fitView
+            fitViewOptions={{ padding: 0.2 }}
+            minZoom={0.3}
+            maxZoom={2}
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background gap={16} />
+            <Controls />
+            <MiniMap
+              nodeColor={(n) => nodeColors[n.type || ""] || "#666"}
+              maskColor="rgba(0,0,0,0.1)"
+              style={{ width: 120, height: 80 }}
+            />
+          </ReactFlow>
+        </div>
+        <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11, color: "#8c8c8c" }}>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#3A8DFF", marginRight: 4 }} /> Коллекторы</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#21B573", marginRight: 4 }} /> Таблицы</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#42D9C8", marginRight: 4 }} /> API эндпоинты</span>
         </div>
       </Card>
+
+      {/* Dynamic metadata */}
+      {metadata.length > 0 && (
+        <Card title={<span><SyncOutlined style={{ marginRight: 6 }} />Динамические метаданные (dbt/Dagster)</span>}>
+          <Table
+            dataSource={metadata}
+            columns={[
+              { title: "Тип", dataIndex: "entity_type", key: "type", render: (v: string) => <Tag color="orange">{v}</Tag> },
+              { title: "Имя", dataIndex: "entity_name", key: "name" },
+              { title: "Обновлено", dataIndex: "updated_at", key: "updated_at", render: (v: string) => new Date(v).toLocaleString("ru-RU") },
+            ]}
+            size="small"
+            pagination={false}
+            rowKey="id"
+          />
+        </Card>
+      )}
     </div>
   );
 }
