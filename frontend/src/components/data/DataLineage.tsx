@@ -157,31 +157,32 @@ export function DataLineage() {
   const [data, setData] = useState<LineageData | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [metadata, setMetadata] = useState<any[]>([]);
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [edges, setEdges] = useState<Edge[]>([]);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [flowNodes, setFlowNodes] = useState<Node[]>([]);
+  const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
+  const [loadKey, setLoadKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    Promise.all([fetchLineageFlow(), fetchLineageTableStats(), fetchLineageMetadata()]).then(([flowRes, statsRes, metaRes]) => {
-      if (flowRes.ok) {
-        setData(flowRes.data);
-        const { nodes: n, edges: e } = buildFlowGraph(flowRes.data, statsRes.data, metaRes.data || []);
-        // Debug: log what we got
-        console.log("[lineage] nodes:", n.length, "edges:", e.length);
-        console.log("[lineage] sample edge:", e[0]);
-        console.log("[lineage] sample node ids:", n.map((nd) => nd.id));
-        setNodes(n);
-        setEdges(e);
-      }
-      if (statsRes.ok) setStats(statsRes.data);
-      if (metaRes.ok) setMetadata(metaRes.data || []);
-      setLoading(false);
-    });
-  }, [refreshKey]);
+    Promise.all([fetchLineageFlow(), fetchLineageTableStats(), fetchLineageMetadata()])
+      .then(([flowRes, statsRes, metaRes]) => {
+        if (cancelled) return;
+        if (flowRes.ok) {
+          setData(flowRes.data);
+          const { nodes: n, edges: e } = buildFlowGraph(flowRes.data, statsRes.data, metaRes.data || []);
+          setFlowNodes(n);
+          setFlowEdges(e);
+        }
+        if (statsRes.ok) setStats(statsRes.data);
+        if (metaRes.ok) setMetadata(metaRes.data || []);
+        setLoading(false);
+      })
+      .catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [loadKey]);
 
-  const onNodesChange: OnNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
-  const onEdgesChange: OnEdgesChange = useCallback((changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+  const onNodesChange: OnNodesChange = useCallback((changes) => setFlowNodes((nds) => applyNodeChanges(changes, nds)), []);
+  const onEdgesChange: OnEdgesChange = useCallback((changes) => setFlowEdges((eds) => applyEdgeChanges(changes, eds)), []);
 
   if (loading) return <Spin size="large" style={{ display: "block", margin: "80px auto" }} />;
   if (!data) return <Empty description="Не удалось загрузить lineage" />;
@@ -193,7 +194,7 @@ export function DataLineage() {
           <Title level={4}>Потоки данных</Title>
           <Text type="secondary">Откуда берутся данные и как попадают в дашборды</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => setRefreshKey((k) => k + 1)}>Обновить</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => setLoadKey((k) => k + 1)}>Обновить</Button>
       </div>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
@@ -206,8 +207,8 @@ export function DataLineage() {
       <Card title="Интерактивный граф потока данных" style={{ marginBottom: 16 }}>
         <div style={{ height: 600, border: "1px solid var(--ant-color-border-secondary)", borderRadius: 8 }}>
           <ReactFlow
-            nodes={nodes}
-            edges={edges}
+            nodes={flowNodes}
+            edges={flowEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
@@ -227,10 +228,10 @@ export function DataLineage() {
           </ReactFlow>
         </div>
         <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11, color: "#8c8c8c" }}>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#3A8DFF", marginRight: 4 }} /> Коллекторы ({nodes.filter((n) => n.type === "collector").length})</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#21B573", marginRight: 4 }} /> Таблицы ({nodes.filter((n) => n.type === "table").length})</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#42D9C8", marginRight: 4 }} /> API ({nodes.filter((n) => n.type === "endpoint").length})</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#FFB020", marginRight: 4 }} /> Связи: {edges.length}</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#3A8DFF", marginRight: 4 }} /> Коллекторы ({flowNodes.filter((n) => n.type === "collector").length})</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#21B573", marginRight: 4 }} /> Таблицы ({flowNodes.filter((n) => n.type === "table").length})</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#42D9C8", marginRight: 4 }} /> API ({flowNodes.filter((n) => n.type === "endpoint").length})</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#FFB020", marginRight: 4 }} /> Связи: {flowEdges.length}</span>
         </div>
       </Card>
 
