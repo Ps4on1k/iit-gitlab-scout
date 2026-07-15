@@ -209,6 +209,22 @@ const lineageData: {
         { name: "created_at", type: "timestamp", description: "Время ошибки" },
       ],
     },
+    dependency_catalog: {
+      written_by: ["admin API"],
+      read_by: ["dependency-audit"],
+      description: "Каталог зависимостей: экосистемы, имена файлов, URL для проверки версий",
+      category: "reference",
+      fields: [
+        { name: "id", type: "serial", description: "ID записи" },
+        { name: "ecosystem", type: "text", description: "Экосистема: npm, pip, go, cargo и т.д." },
+        { name: "language", type: "text", description: "Язык программирования" },
+        { name: "framework", type: "text", description: "Фреймворк (nullable)" },
+        { name: "file_names", type: "text[]", description: "Имена файлов зависимости (package.json, requirements.txt и т.д.)" },
+        { name: "dependency_field", type: "text", description: "Поле в файле зависимости" },
+        { name: "version_check_url", type: "text", description: "URL шаблон для проверки актуальной версии" },
+        { name: "is_active", type: "boolean", description: "Активна ли запись" },
+      ],
+    },
     // dbt materialized views (created by dbt run)
     mart_dashboard: {
       written_by: ["dbt"],

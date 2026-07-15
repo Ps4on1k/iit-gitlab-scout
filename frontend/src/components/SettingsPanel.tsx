@@ -1,13 +1,11 @@
 import { Tabs } from "antd";
-import { ProjectOutlined, UserOutlined, ClockCircleOutlined, TeamOutlined, FileTextOutlined, KeyOutlined, PercentageOutlined, ApartmentOutlined } from "@ant-design/icons";
+import { ProjectOutlined, UserOutlined, ClockCircleOutlined, FileTextOutlined, KeyOutlined, PercentageOutlined } from "@ant-design/icons";
 import { AdminPanel } from "./AdminPanel";
 import { UserManagement } from "./UserManagement";
 import { SchedulerPanel } from "./SchedulerPanel";
-import { ContributorDirectoryPanel } from "./directory/ContributorDirectoryPanel";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { PersonalTokensPanel } from "./PersonalTokensPanel";
 import { WeightsPanel } from "./WeightsPanel";
-import { DependenciesCatalogPanel } from "./DependenciesCatalogPanel";
 
 export function SettingsPanel() {
   return (
@@ -31,23 +29,13 @@ export function SettingsPanel() {
             children: <UserManagement />,
           },
           {
-            key: "directory",
-            label: <span><TeamOutlined /> Контрибьюторы</span>,
-            children: <ContributorDirectoryPanel />,
-          },
-          {
-            key: "catalog",
-            label: <span><ApartmentOutlined /> Зависимости</span>,
-            children: <DependenciesCatalogPanel />,
-          },
-          {
             key: "weights",
             label: <span><PercentageOutlined /> Веса</span>,
             children: <WeightsPanel />,
           },
           {
             key: "scheduler",
-            label: <span><ClockCircleOutlined /> Сбор статистики</span>,
+            label: <span><ClockCircleOutlined /> Планировщик</span>,
             children: <SchedulerPanel />,
           },
           {
