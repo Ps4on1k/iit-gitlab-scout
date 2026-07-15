@@ -65,12 +65,11 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./dbt:/usr/app/dbt
+    env_file:
+      - .env
     environment:
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
-      - POSTGRES_DB=${POSTGRES_DB:-gitlab_scout}
-      - POSTGRES_USER=${POSTGRES_USER:-gitlab_scout}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
     depends_on:
       postgres:
         condition: service_healthy
@@ -100,9 +99,10 @@ services:
     build: ./dagster
     ports:
       - "3001:3000"
+    env_file:
+      - .env
     environment:
       - DAGSTER_HOME=/app/dagster_project
-      - DATABASE_URL=postgresql://gitlab_scout:changeme@postgres:5432/gitlab_scout
     volumes:
       - ./dagster:/app
     depends_on:
