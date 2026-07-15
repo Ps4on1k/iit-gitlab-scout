@@ -21,5 +21,5 @@ models:
       +materialized: view
       +schema: staging
     marts:
-      +materialized: materializedview
+      +materialized: materialized_view
       +schema: marts

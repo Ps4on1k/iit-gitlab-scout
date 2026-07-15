@@ -7,7 +7,7 @@ with deploy_stats as (
     count(*) filter (where status = 'success') as success,
     count(*) filter (where status = 'failed' or pipeline_status = 'failed') as failed,
     count(*) filter (where status = 'canceled') as canceled
-  from {{ ref('stg_deployments') }}
+  from "gitlab_scout"."public_staging"."stg_deployments"
   where created_at >= current_date - interval '90 days'
 ),
 
@@ -16,7 +16,7 @@ lead_times as (
     avg(extract(epoch from (
       d.created_at - (d.raw_json->'deployable'->'commit'->>'committed_date')::timestamptz
     )))::int as avg_lead_time_sec
-  from {{ ref('stg_deployments') }} d
+  from "gitlab_scout"."public_staging"."stg_deployments" d
   where d.status = 'success'
     and d.created_at >= current_date - interval '90 days'
     and d.raw_json->'deployable'->'commit'->>'committed_date' is not null
@@ -27,7 +27,7 @@ mttr as (
     select created_at, status,
            lag(created_at) over (order by created_at) as prev_created,
            lag(status) over (order by created_at) as prev_status
-    from {{ ref('stg_deployments') }}
+    from "gitlab_scout"."public_staging"."stg_deployments"
     where created_at >= current_date - interval '90 days'
   )
   select avg(extract(epoch from (created_at - prev_created)) / 60)::int as avg_mttr_min

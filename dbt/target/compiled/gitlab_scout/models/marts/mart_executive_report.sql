@@ -5,10 +5,10 @@ with project_stats as (
   select
     count(*) as total_projects,
     count(*) filter (where exists (
-      select 1 from {{ ref('stg_commits') }} c
+      select 1 from "gitlab_scout"."public_staging"."stg_commits" c
       where c.project_id = p.id and c.committed_date >= current_date - interval '90 days'
     )) as active_projects
-  from {{ source('raw', 'projects') }} p
+  from "gitlab_scout"."public"."projects" p
 ),
 
 contributor_stats as (
@@ -16,7 +16,7 @@ contributor_stats as (
     count(distinct author_email) as total_contributors,
     count(*) as total_commits,
     count(distinct to_char(committed_date, 'YYYY-MM-DD')) as active_days
-  from {{ ref('stg_commits') }}
+  from "gitlab_scout"."public_staging"."stg_commits"
   where committed_date >= current_date - interval '90 days'
 ),
 
@@ -25,7 +25,7 @@ branch_stats as (
     count(*) as total_branches,
     count(*) filter (where not merged and last_commit_date >= current_date - interval '90 days') as active_branches,
     count(*) filter (where not merged and (last_commit_date < current_date - interval '90 days' or last_commit_date is null)) as stale_branches
-  from {{ ref('stg_branches') }}
+  from "gitlab_scout"."public_staging"."stg_branches"
 ),
 
 mr_stats as (
@@ -33,7 +33,7 @@ mr_stats as (
     count(*) as mr_total,
     count(*) filter (where state = 'merged') as mr_merged,
     count(*) filter (where state = 'opened') as mr_opened
-  from {{ ref('stg_merge_requests') }}
+  from "gitlab_scout"."public_staging"."stg_merge_requests"
   where created_at >= current_date - interval '90 days'
 ),
 
@@ -44,7 +44,7 @@ deploy_stats as (
     count(*) filter (where status = 'failed') as deploy_failed,
     case when count(*) > 0 then round((count(*) filter (where status = 'failed')::numeric / count(*)) * 100, 2) else 0 end as failure_rate,
     91 as deploy_days_count
-  from {{ ref('stg_deployments') }}
+  from "gitlab_scout"."public_staging"."stg_deployments"
   where created_at >= current_date - interval '90 days'
 ),
 
@@ -52,7 +52,7 @@ lead_time as (
   select avg(extract(epoch from (
     d.created_at - (d.raw_json->'deployable'->'commit'->>'committed_date')::timestamptz
   )))::int as avg_lead_time_sec
-  from {{ ref('stg_deployments') }} d
+  from "gitlab_scout"."public_staging"."stg_deployments" d
   where d.status = 'success'
     and d.created_at >= current_date - interval '90 days'
     and d.raw_json->'deployable'->'commit'->>'committed_date' is not null
@@ -63,7 +63,7 @@ mttr as (
     select created_at, status,
            lag(created_at) over (order by created_at) as prev_created,
            lag(status) over (order by created_at) as prev_status
-    from {{ ref('stg_deployments') }}
+    from "gitlab_scout"."public_staging"."stg_deployments"
     where created_at >= current_date - interval '90 days'
   )
   select avg(extract(epoch from (created_at - prev_created)) / 60)::int as avg_mttr_min
