@@ -167,6 +167,10 @@ export function DataLineage() {
       if (flowRes.ok) {
         setData(flowRes.data);
         const { nodes: n, edges: e } = buildFlowGraph(flowRes.data, statsRes.data, metaRes.data || []);
+        // Debug: log what we got
+        console.log("[lineage] nodes:", n.length, "edges:", e.length);
+        console.log("[lineage] sample edge:", e[0]);
+        console.log("[lineage] sample node ids:", n.map((nd) => nd.id));
         setNodes(n);
         setEdges(e);
       }
@@ -223,9 +227,10 @@ export function DataLineage() {
           </ReactFlow>
         </div>
         <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11, color: "#8c8c8c" }}>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#3A8DFF", marginRight: 4 }} /> Коллекторы</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#21B573", marginRight: 4 }} /> Таблицы</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#42D9C8", marginRight: 4 }} /> API эндпоинты</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#3A8DFF", marginRight: 4 }} /> Коллекторы ({nodes.filter((n) => n.type === "collector").length})</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#21B573", marginRight: 4 }} /> Таблицы ({nodes.filter((n) => n.type === "table").length})</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#42D9C8", marginRight: 4 }} /> API ({nodes.filter((n) => n.type === "endpoint").length})</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#FFB020", marginRight: 4 }} /> Связи: {edges.length}</span>
         </div>
       </Card>
 
