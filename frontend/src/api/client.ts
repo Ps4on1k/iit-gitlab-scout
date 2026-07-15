@@ -487,3 +487,20 @@ export async function fetchCollectionStats(): Promise<ApiResponse<any>> {
 export async function fetchCollectionHealth(): Promise<ApiResponse<any>> {
   return fetchJson("/v1/data-collection/health");
 }
+
+export async function fetchLineageMetadata(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/data-lineage/metadata");
+}
+
+export async function updateLineageMetadata(entityType: string, entityName: string, metadata: any): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/data-lineage/metadata", {
+    method: "POST",
+    body: JSON.stringify({ entity_type: entityType, entity_name: entityName, metadata }),
+  });
+}
+
+export async function deleteLineageMetadata(entityType: string, entityName: string): Promise<ApiResponse<any>> {
+  return fetchJson(`/v1/data-lineage/metadata/${encodeURIComponent(entityType)}/${encodeURIComponent(entityName)}`, {
+    method: "DELETE",
+  });
+}

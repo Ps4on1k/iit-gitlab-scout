@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, Spin, Empty, Typography, Tag, Row, Col, Statistic, Collapse, Table, Tooltip, Badge } from "antd";
-import { DatabaseOutlined, CloudOutlined, ApiOutlined, ArrowRightOutlined, ArrowDownOutlined, InfoCircleOutlined, ExpandOutlined } from "@ant-design/icons";
-import { fetchLineageFlow, fetchLineageTableStats } from "../../api/client";
+import { DatabaseOutlined, CloudOutlined, ApiOutlined, ArrowRightOutlined, ArrowDownOutlined, InfoCircleOutlined, ExpandOutlined, SyncOutlined } from "@ant-design/icons";
+import { fetchLineageFlow, fetchLineageTableStats, fetchLineageMetadata } from "../../api/client";
 
 const { Text, Title } = Typography;
 
@@ -137,11 +137,13 @@ export function DataLineage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<LineageData | null>(null);
   const [stats, setStats] = useState<any>(null);
+  const [metadata, setMetadata] = useState<any[]>([]);
 
   useEffect(() => {
-    Promise.all([fetchLineageFlow(), fetchLineageTableStats()]).then(([flowRes, statsRes]) => {
+    Promise.all([fetchLineageFlow(), fetchLineageTableStats(), fetchLineageMetadata()]).then(([flowRes, statsRes, metaRes]) => {
       if (flowRes.ok) setData(flowRes.data);
       if (statsRes.ok) setStats(statsRes.data);
+      if (metaRes.ok) setMetadata(metaRes.data || []);
       setLoading(false);
     });
   }, []);
@@ -195,6 +197,36 @@ export function DataLineage() {
               ))}
             </div>
           </div>
+
+          {/* Dynamic metadata from dbt/Dagster */}
+          {metadata.length > 0 && (
+            <div>
+              <Text strong style={{ fontSize: 12, color: "#FFB020", display: "block", marginBottom: 8 }}>
+                <SyncOutlined style={{ marginRight: 4 }} />
+                Динамические метаданные (обновлено из dbt/Dagster)
+              </Text>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {metadata.map((m: any) => (
+                  <div key={m.id} style={{ padding: "8px 12px", borderRadius: 6, border: "1px solid rgba(255,176,32,0.3)", background: "rgba(255,176,32,0.04)" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <Tag color="orange" style={{ margin: 0 }}>{m.entity_type}</Tag>
+                      <Text strong style={{ fontSize: 12 }}>{m.entity_name}</Text>
+                      <Text type="secondary" style={{ fontSize: 10, marginLeft: "auto" }}>
+                        {new Date(m.updated_at).toLocaleString()}
+                      </Text>
+                    </div>
+                    {m.metadata && Object.keys(m.metadata).length > 0 && (
+                      <div style={{ fontSize: 11, color: "var(--ant-color-textSecondary)" }}>
+                        {Object.entries(m.metadata).map(([k, v]) => (
+                          <span key={k}><Tag style={{ fontSize: 10, margin: 0 }}>{k}</Tag>: {String(v)} </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
     </div>

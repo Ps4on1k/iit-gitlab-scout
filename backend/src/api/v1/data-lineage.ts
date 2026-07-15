@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { requireAuth, type JwtPayload } from "../../utils/auth.js";
+import { requireAuth, requireAdmin, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 
 const lineageData: {
@@ -414,5 +414,46 @@ export async function dataLineageRoutes(app: FastifyInstance) {
         totalTables: tables.length,
       },
     };
+  });
+
+  // CRUD for dynamic lineage metadata (used by dbt/Dagster)
+  app.post<{
+    Body: { entity_type: string; entity_name: string; metadata: any };
+  }>("/api/v1/data-lineage/metadata", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { entity_type, entity_name, metadata } = request.body;
+    if (!entity_type || !entity_name) {
+      return reply.status(400).send({ ok: false, error: "entity_type and entity_name are required" });
+    }
+    const pool = getPool();
+    const result = await pool.query(
+      `INSERT INTO lineage_metadata (entity_type, entity_name, metadata)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (entity_type, entity_name)
+       DO UPDATE SET metadata = $3, updated_at = now()
+       RETURNING *`,
+      [entity_type, entity_name, JSON.stringify(metadata || {})]
+    );
+    return { ok: true, data: result.rows[0] };
+  });
+
+  app.get("/api/v1/data-lineage/metadata", { preHandler: [requireAdmin] }, async () => {
+    const pool = getPool();
+    const result = await pool.query("SELECT * FROM lineage_metadata ORDER BY entity_type, entity_name");
+    return { ok: true, data: result.rows };
+  });
+
+  app.delete<{
+    Params: { type: string; name: string };
+  }>("/api/v1/data-lineage/metadata/:type/:name", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { type, name } = request.params as { type: string; name: string };
+    const pool = getPool();
+    const result = await pool.query(
+      "DELETE FROM lineage_metadata WHERE entity_type = $1 AND entity_name = $2 RETURNING id",
+      [type, name]
+    );
+    if (result.rows.length === 0) {
+      return reply.status(404).send({ ok: false, error: "Not found" });
+    }
+    return { ok: true, data: { deleted: true } };
   });
 }
