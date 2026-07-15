@@ -355,8 +355,8 @@ export async function dataLineageRoutes(app: FastifyInstance) {
 
     try {
       const statsResult = await pool.query(
-        `SELECT n_live_tup, pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
-         FROM pg_stat_user_tables WHERE tablename = $1`,
+        `SELECT n_live_tup, pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname)) as size
+         FROM pg_stat_user_tables WHERE relname = $1`,
         [name]
       );
       if (statsResult.rows.length > 0) {
@@ -388,10 +388,10 @@ export async function dataLineageRoutes(app: FastifyInstance) {
     const tables = Object.keys(lineageData.tables);
 
     const statsResult = await pool.query(
-      `SELECT tablename, n_live_tup,
-              pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size
+      `SELECT relname as tablename, n_live_tup,
+              pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname)) as size
        FROM pg_stat_user_tables
-       WHERE tablename = ANY($1)
+       WHERE relname = ANY($1)
        ORDER BY n_live_tup DESC`,
       [tables]
     );
