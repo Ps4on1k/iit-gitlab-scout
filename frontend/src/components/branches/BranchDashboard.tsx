@@ -79,7 +79,7 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
         ? [...new Set([...filters.projectIds, ...projects.filter((p) => p.tags?.some((t) => filters.tags.includes(t))).map((p) => p.id)])]
         : filters.projectIds;
       const statusParam = statusFilter === "all" ? undefined : statusFilter;
-      const res = await fetchBranches(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, undefined, statusParam);
+      const res = await fetchBranches(effectiveProjectIds.length > 0 ? effectiveProjectIds : undefined, undefined, statusParam, filters.dateFrom, filters.dateTo, filters.contributors?.[0]);
       if (signal?.aborted) return;
       if (res.ok) { setBranches(res.data!.branches); setSummary(res.data!.summary); }
     } finally { setLoading(false); }

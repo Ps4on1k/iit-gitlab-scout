@@ -1,8 +1,9 @@
--- Materialized view for contributor metrics
--- Pre-computes per-contributor statistics
+-- Per-project contributor metrics for RBAC filtering
+-- Each row = one author per project
 
 with contributor_stats as (
   select
+    c.project_id,
     c.author_email,
     max(c.author_name) as author_name,
     count(*) as total_commits,
@@ -14,10 +15,11 @@ with contributor_stats as (
     min(c.committed_date) as first_commit
   from {{ ref('stg_commits') }} c
   where c.committed_date >= current_date - interval '90 days'
-  group by c.author_email
+  group by c.project_id, c.author_email
 )
 
 select
+  project_id,
   author_email,
   author_name,
   total_commits,

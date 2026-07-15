@@ -83,8 +83,10 @@ export async function fetchSchedulerErrors(limit?: number, offset?: number, task
 }
 
 export async function clearSchedulerErrors(taskName?: string): Promise<ApiResponse<{ deleted: number }>> {
-  const qs = taskName ? `?task_name=${encodeURIComponent(taskName)}` : "";
-  return fetchJson(`/v1/scheduler/errors${qs}`, { method: "DELETE" });
+  if (taskName) {
+    return fetchJson(`/v1/scheduler/errors/by-task?task_name=${encodeURIComponent(taskName)}`, { method: "DELETE" });
+  }
+  return fetchJson("/v1/scheduler/errors", { method: "DELETE" });
 }
 
 export async function runAllSchedulerTasks(): Promise<ApiResponse<{ started: boolean }>> {

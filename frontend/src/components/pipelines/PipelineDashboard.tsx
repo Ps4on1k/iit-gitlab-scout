@@ -4,7 +4,6 @@ import { DatabaseOutlined, ReloadOutlined, DownloadOutlined, SwapOutlined, LinkO
 import { Line, Pie } from "@ant-design/charts";
 import { fetchProjects } from "../../api/client";
 import { getProjectUrl } from "../../utils/projectUrl";
-import { collectPipelines } from "../../api/pipeline-client";
 import { chartColors } from "../../utils/chartTheme";
 import { delay } from "../../utils/collect";
 

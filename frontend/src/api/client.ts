@@ -185,11 +185,14 @@ export async function collectBranches(projectId: number): Promise<ApiResponse<{ 
   return fetchJson("/v1/branches/collect", { method: "POST", body: JSON.stringify({ project_id: projectId }) });
 }
 
-export async function fetchBranches(projectIds?: number[], tag?: string, status?: string): Promise<ApiResponse<{ branches: Branch[]; summary: BranchSummary }>> {
+export async function fetchBranches(projectIds?: number[], tag?: string, status?: string, dateFrom?: string, dateTo?: string, contributor?: string): Promise<ApiResponse<{ branches: Branch[]; summary: BranchSummary }>> {
   const parts: string[] = [];
   if (projectIds && projectIds.length > 0) parts.push(`project_ids=${projectIds.join(",")}`);
   if (tag) parts.push(`tag=${tag}`);
   if (status) parts.push(`status=${status}`);
+  if (dateFrom) parts.push(`date_from=${dateFrom}`);
+  if (dateTo) parts.push(`date_to=${dateTo}`);
+  if (contributor) parts.push(`contributor=${encodeURIComponent(contributor)}`);
   const qs = parts.length > 0 ? `?${parts.join("&")}` : "";
   return fetchJson<{ branches: Branch[]; summary: BranchSummary }>(`/v1/branches${qs}`);
 }
@@ -506,5 +509,5 @@ export async function deleteLineageMetadata(entityType: string, entityName: stri
 }
 
 export async function triggerDagsterCollect(): Promise<ApiResponse<any>> {
-  return fetchJson("/v1/dagster/trigger", { method: "POST" });
+  return fetchJson("/v1/dagster/trigger", { method: "POST", body: "{}" });
 }

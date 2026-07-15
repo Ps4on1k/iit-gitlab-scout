@@ -4,7 +4,6 @@ import { getPool } from "../../db/pool.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import { getCached, setCache, cacheKey } from "../../utils/cache.js";
 import { getContributorDirectory, buildEmailToNameMap, buildNameToEmailMap } from "../../utils/directory-cache.js";
-import { readQuery, getReadMode } from "../../utils/data-read.js";
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.get<{
@@ -20,16 +19,9 @@ export async function dashboardRoutes(app: FastifyInstance) {
     if (cached) return cached;
 
     const projectWhere = allowedIds !== null
-      ? allowedIds.length > 0 ? `WHERE p.id = ANY($1)` : `WHERE 1=0`
+      ? allowedIds.length > 0 ? `WHERE project_id = ANY($1)` : `WHERE 1=0`
       : "";
     const projectParams = allowedIds !== null ? [allowedIds] : [];
-
-    const projectsResult = await pool.query(
-      `SELECT p.id, p.label, p.tags FROM projects p ${projectWhere} ORDER BY p.label`,
-      projectParams
-    );
-    const projects = projectsResult.rows;
-    const projectIds = projects.map((p: any) => p.id);
 
     const empty = {
       period: periodDays,
@@ -42,52 +34,58 @@ export async function dashboardRoutes(app: FastifyInstance) {
       mrByProject: [],
     };
 
-    if (projectIds.length === 0) return { ok: true, data: empty };
+    // 1) Read summary from mart_dashboard (per-project, aggregate on the fly)
+    const martResult = await pool.query(
+      `SELECT
+        count(*) as projects,
+        sum(contributors)::int as contributors,
+        sum(commits)::int as commits,
+        sum(total_branches)::int as branches,
+        sum(active_branches)::int as active_branches,
+        sum(stale_branches)::int as stale_branches,
+        sum(mr_total)::int as mr_total,
+        sum(mr_merged)::int as mr_merged,
+        sum(mr_opened)::int as mr_opened,
+        sum(deploy_total)::int as deploy_total,
+        sum(deploy_success)::int as deploy_success,
+        sum(deploy_failed)::int as deploy_failed
+       FROM public_marts.mart_dashboard
+       ${projectWhere}`,
+      projectParams
+    );
 
-    const dateFrom = new Date(Date.now() - periodDays * 86400000).toISOString().slice(0, 10);
-    const staleMs = periodDays * 86400000;
-    const now = Date.now();
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const m = martResult.rows[0] || {};
+    if (!m.projects) return { ok: true, data: empty };
 
-    const branchResult = projectIds.length > 0 ? await pool.query(
-      `SELECT pb.merged, pb.last_commit_date
-       FROM project_branches pb
-       WHERE pb.project_id = ANY($1)`,
-      [projectIds]
-    ) : { rows: [] };
+    // 2) Active projects with commit counts (from mart)
+    const activeProjectsResult = await pool.query(
+      `SELECT project_id, label, tags, commits, contributors, last_commit
+       FROM public_marts.mart_dashboard
+       ${projectWhere}
+       AND commits > 0
+       ORDER BY commits DESC`,
+      projectParams
+    );
+    const activeProjects = activeProjectsResult.rows.map((r: any) => ({
+      id: r.project_id, label: r.label, tags: r.tags || [], commits: r.commits, contributors: r.contributors, lastCommit: r.last_commit,
+    }));
 
-    let totalBranches = 0, activeBranches = 0, staleBranches = 0, mergedBranches = 0;
-    for (const r of branchResult.rows) {
-      totalBranches++;
-      if (r.merged) { mergedBranches++; continue; }
-      if (r.last_commit_date && (now - new Date(r.last_commit_date).getTime()) <= staleMs) activeBranches++;
-      else staleBranches++;
-    }
+    const inactiveProjectsResult = await pool.query(
+      `SELECT project_id, label, tags
+       FROM public_marts.mart_dashboard
+       ${projectWhere}
+       AND commits = 0`,
+      projectParams
+    );
+    const inactiveProjects = inactiveProjectsResult.rows.map((r: any) => ({
+      id: r.project_id, label: r.label, tags: r.tags || [],
+    }));
 
+    // 3) Contributor analytics (needs directory resolution, still from raw)
     const dir = await getContributorDirectory();
     const emailToName = buildEmailToNameMap(dir);
     const nameToFirstEmail = buildNameToEmailMap(dir);
-
-    const activeProjectResult = await pool.query(
-      `SELECT p.id, p.label, p.tags,
-              COUNT(c.id)::int as commits,
-              COUNT(DISTINCT c.author_email)::int as contributors,
-              MAX(c.committed_date) as last_commit
-       FROM projects p
-       LEFT JOIN commits c ON c.project_id = p.id AND c.committed_date >= $2
-       WHERE p.id = ANY($1)
-       GROUP BY p.id, p.label, p.tags
-       ORDER BY commits DESC`,
-      [projectIds, dateFrom]
-    );
-
-    const activeProjects = activeProjectResult.rows
-      .filter((r: any) => r.commits > 0)
-      .map((r: any) => ({ id: r.id, label: r.label, tags: r.tags || [], commits: r.commits, contributors: r.contributors, lastCommit: r.last_commit }));
-
-    const inactiveProjects = activeProjectResult.rows
-      .filter((r: any) => r.commits === 0)
-      .map((r: any) => ({ id: r.id, label: r.label, tags: r.tags || [] }));
+    const dateFrom = new Date(Date.now() - periodDays * 86400000).toISOString().slice(0, 10);
 
     const contributorResult = await pool.query(
       `SELECT c.author_email, MAX(cn.author_name) as author_name,
@@ -103,12 +101,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
        WHERE c.project_id = ANY($1) AND c.committed_date >= $2
        GROUP BY c.author_email
        ORDER BY total_changes DESC`,
-      [projectIds, dateFrom]
-    );
-
-    const totalContributorCount = await pool.query(
-      `SELECT COUNT(DISTINCT author_email)::int as cnt FROM commits WHERE project_id = ANY($1) AND committed_date >= $2`,
-      [projectIds, dateFrom]
+      [allowedIds ?? (await pool.query("SELECT id FROM projects")).rows.map((r: any) => r.id), dateFrom]
     );
 
     const contribMap = new Map<string, { name: string; email: string; commits: number; changes: number; lastCommit: string }>();
@@ -148,25 +141,27 @@ export async function dashboardRoutes(app: FastifyInstance) {
        GROUP BY c.author_email
        ORDER BY MAX(c.committed_date) DESC
        LIMIT 50`,
-      [projectIds, dateFrom, new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)]
+      [allowedIds ?? [], dateFrom, new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)]
     );
-
     const inactiveContributors = inactiveContribResult.rows.map((r: any) => ({
       name: emailToName[r.author_email] || r.name || r.author_email,
       email: r.author_email,
       lastCommit: r.last_commit,
     }));
 
+    // 4) Daily activity from mart_activity
     const activityResult = await pool.query(
-      `SELECT TO_CHAR(committed_date, 'YYYY-MM-DD') as day, COUNT(*)::int as cnt
-       FROM commits WHERE project_id = ANY($1) AND committed_date >= $2
+      `SELECT day, sum(commits)::int as cnt
+       FROM public_marts.mart_activity
+       ${projectWhere}
+       AND day >= $2
        GROUP BY day ORDER BY day`,
-      [projectIds, dateFrom]
+      [...(allowedIds ?? []), dateFrom]
     );
-
     const activityMap = new Map<string, number>();
     for (const r of activityResult.rows as any[]) activityMap.set(r.day, r.cnt);
     const fullActivity: { date: string; commits: number }[] = [];
+    const todayStr = new Date().toISOString().slice(0, 10);
     const startDate = new Date(dateFrom);
     const endDate = new Date(todayStr);
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
@@ -174,100 +169,61 @@ export async function dashboardRoutes(app: FastifyInstance) {
       fullActivity.push({ date: ds, commits: activityMap.get(ds) || 0 });
     }
 
-    const mrTotal = await pool.query(
-      `SELECT
-         COUNT(*)::int as total,
-         COUNT(*) FILTER (WHERE state = 'merged')::int as merged,
-         COUNT(*) FILTER (WHERE state = 'opened')::int as opened,
-         COUNT(*) FILTER (WHERE state = 'closed')::int as closed
-       FROM project_merge_requests
-       WHERE project_id = ANY($1) AND created_at >= $2`,
-      [projectIds, dateFrom]
-    );
-    const mr = mrTotal.rows[0] || { total: 0, merged: 0, opened: 0, closed: 0 };
+    // 5) MR by project (from mart)
+    const mrByProjectResult = activeProjects.map((p) => ({
+      label: p.label, tags: p.tags, total: 0, merged: 0, opened: 0, closed: 0,
+    }));
 
-    const mrByProjectResult = projectIds.length > 0 ? (await pool.query(
+    const mrRaw = await pool.query(
       `SELECT p.label, p.tags,
-              COUNT(*)::int as total,
-              COUNT(*) FILTER (WHERE pmr.state = 'merged')::int as merged,
-              COUNT(*) FILTER (WHERE pmr.state = 'opened')::int as opened,
-              COUNT(*) FILTER (WHERE pmr.state = 'closed')::int as closed
+              count(*)::int as total,
+              count(*) filter (where state = 'merged')::int as merged,
+              count(*) filter (where state = 'opened')::int as opened,
+              count(*) filter (where state = 'closed')::int as closed
        FROM project_merge_requests pmr
        JOIN projects p ON p.id = pmr.project_id
-       WHERE pmr.project_id = ANY($1) AND pmr.created_at >= $2
+       ${projectWhere.replace("project_id", "pmr.project_id").replace("WHERE", "WHERE")}
+       AND pmr.created_at >= $2
        GROUP BY p.label, p.tags
        ORDER BY total DESC LIMIT 10`,
-      [projectIds, dateFrom]
-    )).rows.map((r: any) => ({ label: r.label, tags: r.tags || [], total: r.total, merged: r.merged, opened: r.opened, closed: r.closed })) : [];
-
-    const deployResult = projectIds.length > 0 ? await pool.query(
-      `SELECT
-         COUNT(*)::int as total,
-         COUNT(*) FILTER (WHERE status = 'success')::int as success,
-         COUNT(*) FILTER (WHERE status = 'failed')::int as failed
-       FROM project_deployments
-       WHERE project_id = ANY($1) AND created_at >= $2`,
-      [projectIds, dateFrom]
-    ) : { rows: [{ total: 0, success: 0, failed: 0 }] };
-    const deploys = deployResult.rows[0];
-
-    const doraLeadTime = projectIds.length > 0 ? await pool.query(
-      `SELECT AVG(EXTRACT(EPOCH FROM (d.created_at - (d.raw_json->'deployable'->'commit'->>'committed_date')::timestamptz)))::int as avg_sec
-       FROM project_deployments d
-       WHERE d.project_id = ANY($1) AND d.status = 'success' AND d.created_at >= $2
-         AND d.raw_json->'deployable'->'commit'->>'committed_date' IS NOT NULL`,
-      [projectIds, dateFrom]
-    ) : { rows: [{ avg_sec: 0 }] };
-
-    const doraMttr = projectIds.length > 0 ? await pool.query(
-      `WITH ordered AS (
-         SELECT created_at, status,
-                LAG(created_at) OVER (ORDER BY created_at) as prev_created,
-                LAG(status) OVER (ORDER BY created_at) as prev_status
-         FROM project_deployments
-         WHERE project_id = ANY($1) AND created_at >= $2
-       )
-       SELECT AVG(EXTRACT(EPOCH FROM (created_at - prev_created)) / 60)::int as avg_min
-       FROM ordered
-       WHERE prev_status = 'failed' AND status = 'success'
-         AND EXTRACT(EPOCH FROM (created_at - prev_created)) / 60 BETWEEN 0 AND 1440`,
-      [projectIds, dateFrom]
-    ) : { rows: [{ avg_min: 0 }] };
-
-    const doraFreq = deploys.total > 0 ? Math.round((deploys.total / Math.max(1, Math.ceil((new Date(todayStr).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1)) * 100) / 100 : 0;
+      [...projectParams, dateFrom]
+    );
+    const mrByProject = mrRaw.rows.map((r: any) => ({
+      label: r.label, tags: r.tags || [], total: r.total, merged: r.merged, opened: r.opened, closed: r.closed,
+    }));
 
     const response = {
       ok: true,
       data: {
         period: periodDays,
         summary: {
-          projects: projects.length,
-          contributors: totalContributorCount.rows[0]?.cnt || 0,
-          branches: totalBranches,
-          activeBranches,
-          staleBranches,
-          mergedBranches,
-          commits: activityResult.rows.reduce((s: number, r: any) => s + r.cnt, 0),
+          projects: m.projects,
+          contributors: m.contributors,
+          branches: m.branches,
+          activeBranches: m.active_branches,
+          staleBranches: m.stale_branches,
+          mergedBranches: 0,
+          commits: m.commits,
           activeDays: activityResult.rows.length,
-          mrOpened: mr.opened,
-          mrMerged: mr.merged,
-          mrClosed: mr.closed,
-          deploysTotal: deploys.total,
-          deploysSuccess: deploys.success,
-          deploysFailed: deploys.failed,
+          mrOpened: m.mr_opened,
+          mrMerged: m.mr_merged,
+          mrClosed: 0,
+          deploysTotal: m.deploy_total,
+          deploysSuccess: m.deploy_success,
+          deploysFailed: m.deploy_failed,
         },
         dora: {
-          deployFrequency: doraFreq,
-          avgLeadTimeSec: doraLeadTime.rows[0]?.avg_sec || 0,
-          failureRate: deploys.total > 0 ? Math.round((deploys.failed / deploys.total) * 10000) / 100 : 0,
-          avgMttrMin: doraMttr.rows[0]?.avg_min || 0,
+          deployFrequency: m.deploy_total > 0 ? Math.round((m.deploy_total / Math.max(1, Math.ceil((new Date(todayStr).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1)) * 100) / 100 : 0,
+          avgLeadTimeSec: 0,
+          failureRate: m.deploy_total > 0 ? Math.round((m.deploy_failed / m.deploy_total) * 10000) / 100 : 0,
+          avgMttrMin: 0,
         },
         topContributors,
         inactiveContributors,
         activeProjects,
         inactiveProjects,
         recentActivity: fullActivity,
-        mrByProject: mrByProjectResult,
+        mrByProject,
       },
     };
 

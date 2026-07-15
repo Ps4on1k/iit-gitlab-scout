@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typography } from "antd";
 import { DatabaseOutlined, ReloadOutlined, LinkOutlined } from "@ant-design/icons";
-import { fetchIssues, collectIssues, fetchProjects } from "../../api/client";
+import { fetchIssues, fetchProjects } from "../../api/client";
 
 import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";

@@ -1,77 +1,72 @@
--- Materialized view for main dashboard
--- Replaces 9 sequential queries in dashboard.ts with a single pre-computed view
+-- Per-project dashboard metrics for RBAC filtering
+-- Each row = one project with aggregated KPI for last 90 days
 
-with project_stats as (
-  select
-    p.id as project_id,
-    p.label,
-    p.tags,
-    count(c.id) as commits,
-    count(distinct c.author_email) as contributors,
-    max(c.committed_date) as last_commit
-  from {{ ref('stg_commits') }} c
-  join {{ source('raw', 'projects') }} p on p.id = c.project_id
-  group by p.id, p.label, p.tags
-),
+select
+  p.id as project_id,
+  p.label,
+  p.tags,
+  coalesce(commits_by_project.total_commits, 0) as commits,
+  coalesce(commits_by_project.contributors, 0) as contributors,
+  commits_by_project.last_commit,
+  coalesce(bs.total_branches, 0) as total_branches,
+  coalesce(bs.active_branches, 0) as active_branches,
+  coalesce(bs.stale_branches, 0) as stale_branches,
+  coalesce(ms.mr_total, 0) as mr_total,
+  coalesce(ms.mr_merged, 0) as mr_merged,
+  coalesce(ms.mr_opened, 0) as mr_opened,
+  coalesce(ds.deploy_total, 0) as deploy_total,
+  coalesce(ds.deploy_success, 0) as deploy_success,
+  coalesce(ds.deploy_failed, 0) as deploy_failed,
+  coalesce(ps.pipeline_total, 0) as pipeline_total,
+  coalesce(ps.pipeline_success, 0) as pipeline_success,
+  coalesce(ps.pipeline_failed, 0) as pipeline_failed
+from {{ source('raw', 'projects') }} p
 
-branch_stats as (
-  select
-    count(*) as total_branches,
-    count(*) filter (where not merged and last_commit_date >= current_date - interval '90 days') as active_branches,
-    count(*) filter (where not merged and (last_commit_date < current_date - interval '90 days' or last_commit_date is null)) as stale_branches,
-    count(*) filter (where merged) as merged_branches
+left join (
+  select project_id,
+         count(*) as total_commits,
+         count(distinct author_email) as contributors,
+         max(committed_date) as last_commit
+  from {{ ref('stg_commits') }}
+  where committed_date >= current_date - interval '90 days'
+  group by project_id
+) commits_by_project on commits_by_project.project_id = p.id
+
+left join (
+  select project_id,
+         count(*) as total_branches,
+         count(*) filter (where not merged and last_commit_date >= current_date - interval '90 days') as active_branches,
+         count(*) filter (where not merged and (last_commit_date < current_date - interval '90 days' or last_commit_date is null)) as stale_branches
   from {{ ref('stg_branches') }}
-),
+  group by project_id
+) bs on bs.project_id = p.id
 
-mr_stats as (
-  select
-    count(*) as total_mr,
-    count(*) filter (where state = 'merged') as merged_mr,
-    count(*) filter (where state = 'opened') as opened_mr,
-    count(*) filter (where state = 'closed') as closed_mr
+left join (
+  select project_id,
+         count(*) as mr_total,
+         count(*) filter (where state = 'merged') as mr_merged,
+         count(*) filter (where state = 'opened') as mr_opened
   from {{ ref('stg_merge_requests') }}
   where created_at >= current_date - interval '90 days'
-),
+  group by project_id
+) ms on ms.project_id = p.id
 
-deploy_stats as (
-  select
-    count(*) as total_deploys,
-    count(*) filter (where status = 'success') as success_deploys,
-    count(*) filter (where status = 'failed') as failed_deploys
+left join (
+  select project_id,
+         count(*) as deploy_total,
+         count(*) filter (where status = 'success') as deploy_success,
+         count(*) filter (where status = 'failed') as deploy_failed
   from {{ ref('stg_deployments') }}
   where created_at >= current_date - interval '90 days'
-),
+  group by project_id
+) ds on ds.project_id = p.id
 
-pipeline_stats as (
-  select
-    count(*) as total_pipelines,
-    count(*) filter (where status = 'success') as success_pipelines,
-    count(*) filter (where status = 'failed') as failed_pipelines,
-    avg(duration) filter (where status = 'success' and duration is not null) as avg_duration
+left join (
+  select project_id,
+         count(*) as pipeline_total,
+         count(*) filter (where status = 'success') as pipeline_success,
+         count(*) filter (where status = 'failed') as pipeline_failed
   from {{ ref('stg_pipelines') }}
   where created_at >= current_date - interval '90 days'
-),
-
-summary as (
-  select
-    (select count(*) from project_stats) as total_projects,
-    (select count(distinct author_email) from {{ ref('stg_commits') }} where committed_date >= current_date - interval '90 days') as total_contributors,
-    (select sum(commits) from project_stats) as total_commits,
-    (select count(distinct committed_date) from {{ ref('stg_commits') }} where committed_date >= current_date - interval '90 days') as active_days,
-    (select total_branches from branch_stats) as total_branches,
-    (select active_branches from branch_stats) as active_branches,
-    (select stale_branches from branch_stats) as stale_branches,
-    (select merged_branches from branch_stats) as merged_branches,
-    (select total_mr from mr_stats) as mr_total,
-    (select merged_mr from mr_stats) as mr_merged,
-    (select opened_mr from mr_stats) as mr_opened,
-    (select closed_mr from mr_stats) as mr_closed,
-    (select total_deploys from deploy_stats) as deploy_total,
-    (select success_deploys from deploy_stats) as deploy_success,
-    (select failed_deploys from deploy_stats) as deploy_failed,
-    (select total_pipelines from pipeline_stats) as pipeline_total,
-    (select success_pipelines from pipeline_stats) as pipeline_success,
-    (select failed_pipelines from pipeline_stats) as pipeline_failed
-)
-
-select * from summary
+  group by project_id
+) ps on ps.project_id = p.id

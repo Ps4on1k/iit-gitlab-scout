@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, Table, Spin, Empty, Typography, Tag, Row, Col, Statistic, Button, message } from "antd";
-import { ReloadOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined, ClockCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { ReloadOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
 import { fetchCollectionStats, fetchCollectionHealth, triggerDagsterCollect } from "../../api/client";
 
 const { Text, Title } = Typography;
@@ -44,13 +44,22 @@ export function DataCollectionMonitor() {
     { title: "Таблица", dataIndex: "name", key: "name", render: (v: string) => <Text code>{v}</Text> },
     { title: "Записей", dataIndex: "count", key: "count", align: "right" as const, render: (v: number) => v.toLocaleString() },
   ];
-
   const recordData = Object.entries(stats.records).map(([name, count]) => ({ name, count: count as number }));
 
-  const taskColumns = [
-    { title: "Задача", dataIndex: "task_name", key: "task_name", render: (v: string) => <Tag>{v}</Tag> },
-    { title: "Статус", dataIndex: "enabled", key: "enabled", render: (v: boolean) => v ? <Tag color="green">Включена</Tag> : <Tag>Отключена</Tag> },
-    { title: "Последний запуск", dataIndex: "last_run_at", key: "last_run_at", render: (v: string) => v ? new Date(v).toLocaleString() : <Text type="secondary">Нет</Text> },
+  const freshnessColumns = [
+    { title: "Источник", dataIndex: "source", key: "source" },
+    { title: "Последнее обновление", dataIndex: "lastUpdate", key: "lastUpdate", render: (v: string) => v ? new Date(v).toLocaleString("ru-RU") : <Text type="secondary">Нет данных</Text> },
+    { title: "Возраст (дн.)", dataIndex: "ageDays", key: "ageDays", render: (v: number | null) => {
+      if (v === null) return <Text type="secondary">—</Text>;
+      const color = v <= 1 ? "#21B573" : v <= 7 ? "#FFB020" : "#E5484D";
+      return <span style={{ color, fontWeight: 600 }}>{v}</span>;
+    }},
+    { title: "Статус", dataIndex: "status", key: "status", render: (v: string) => v === "fresh" ? <Tag color="green">Свежие</Tag> : v === "stale" ? <Tag color="orange">Устарели</Tag> : <Tag color="red">Нет данных</Tag> },
+  ];
+  const freshnessData = [
+    { source: "Коммиты", lastUpdate: stats.freshness?.lastCommit, ageDays: stats.freshness?.lastCommit ? Math.floor((Date.now() - new Date(stats.freshness.lastCommit).getTime()) / 86400000) : null, status: stats.freshness?.lastCommit ? (Math.floor((Date.now() - new Date(stats.freshness.lastCommit).getTime()) / 86400000) <= 7 ? "fresh" : "stale") : "unknown" },
+    { source: "Merge Requests", lastUpdate: stats.freshness?.lastMr, ageDays: stats.freshness?.lastMr ? Math.floor((Date.now() - new Date(stats.freshness.lastMr).getTime()) / 86400000) : null, status: stats.freshness?.lastMr ? (Math.floor((Date.now() - new Date(stats.freshness.lastMr).getTime()) / 86400000) <= 7 ? "fresh" : "stale") : "unknown" },
+    { source: "Пайплайны", lastUpdate: stats.freshness?.lastPipeline, ageDays: stats.freshness?.lastPipeline ? Math.floor((Date.now() - new Date(stats.freshness.lastPipeline).getTime()) / 86400000) : null, status: stats.freshness?.lastPipeline ? (Math.floor((Date.now() - new Date(stats.freshness.lastPipeline).getTime()) / 86400000) <= 7 ? "fresh" : "stale") : "unknown" },
   ];
 
   return (
@@ -60,8 +69,10 @@ export function DataCollectionMonitor() {
           <Title level={4}>Сбор данных</Title>
           <Text type="secondary">Мониторинг состояния коллекторов и свежести данных</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={loadData}>Обновить</Button>
-        <Button type="primary" icon={<ThunderboltOutlined />} onClick={handleTrigger} loading={triggering}>Собрать статистику</Button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Button icon={<ReloadOutlined />} onClick={loadData}>Обновить</Button>
+          <Button type="primary" icon={<ThunderboltOutlined />} onClick={handleTrigger} loading={triggering}>Собрать статистику</Button>
+        </div>
       </div>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
@@ -82,18 +93,17 @@ export function DataCollectionMonitor() {
         </Card>
       )}
 
-      <Row gutter={16}>
-        <Col span={12}>
-          <Card title="Записи по таблицам">
-            <Table dataSource={recordData} columns={recordColumns} size="small" pagination={false} rowKey="name" />
-          </Card>
-        </Col>
-        <Col span={12}>
-          <Card title="Задачи сбора">
-            <Table dataSource={stats.tasks || []} columns={taskColumns} size="small" pagination={false} rowKey="task_name" />
+      <Row gutter={16} style={{ marginBottom: 24 }}>
+        <Col span={24}>
+          <Card title="Свежесть данных">
+            <Table dataSource={freshnessData} columns={freshnessColumns} size="small" pagination={false} rowKey="source" />
           </Card>
         </Col>
       </Row>
+
+      <Card title="Записи по таблицам">
+        <Table dataSource={recordData} columns={recordColumns} size="small" pagination={false} rowKey="name" />
+      </Card>
     </div>
   );
 }
