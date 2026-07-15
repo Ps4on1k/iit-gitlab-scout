@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, Spin, Empty, Typography, Tag, Row, Col, Statistic, Table, Badge, Button } from "antd";
 import { DatabaseOutlined, CloudOutlined, ApiOutlined, SyncOutlined, ReloadOutlined } from "@ant-design/icons";
 import { fetchLineageFlow, fetchLineageTableStats, fetchLineageMetadata } from "../../api/client";
@@ -160,6 +160,7 @@ export function DataLineage() {
   const [flowNodes, setFlowNodes] = useState<Node[]>([]);
   const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
   const [loadKey, setLoadKey] = useState(0);
+  const reactFlowInstance = useRef<any>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,6 +181,11 @@ export function DataLineage() {
       .catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [loadKey]);
+
+  const onInit = useCallback((instance: any) => {
+    reactFlowInstance.current = instance;
+    setTimeout(() => instance.fitView({ padding: 0.3 }), 100);
+  }, []);
 
   const onNodesChange: OnNodesChange = useCallback((changes) => setFlowNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange: OnEdgesChange = useCallback((changes) => setFlowEdges((eds) => applyEdgeChanges(changes, eds)), []);
@@ -205,18 +211,21 @@ export function DataLineage() {
 
       {/* Interactive Graph */}
       <Card title="Интерактивный граф потока данных" style={{ marginBottom: 16 }}>
-        <div style={{ height: 600, border: "1px solid var(--ant-color-border-secondary)", borderRadius: 8 }}>
+        <div style={{ height: 600, border: "1px solid var(--ant-color-border-secondary)", borderRadius: 8, position: "relative" }}>
           <ReactFlow
             nodes={flowNodes}
             edges={flowEdges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
+            onInit={onInit}
             nodeTypes={nodeTypes}
             fitView
-            fitViewOptions={{ padding: 0.2 }}
-            minZoom={0.3}
+            fitViewOptions={{ padding: 0.3 }}
+            minZoom={0.2}
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
+            style={{ width: "100%", height: "100%" }}
+            defaultEdgeOptions={{ type: "smoothstep", animated: true, style: { stroke: "#3A8DFF", strokeWidth: 2 } }}
           >
             <Background gap={16} />
             <Controls />
