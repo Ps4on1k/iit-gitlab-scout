@@ -1,18 +1,43 @@
-from dagster import asset, AssetExecutionContext, AssetIn
-from dagster_project.resources.postgres import PostgresResource
+from dagster import asset, AssetExecutionContext
+import subprocess
+import os
 
 
-@asset(deps=[AssetIn("gitlab_commits"), AssetIn("gitlab_merge_requests"), AssetIn("gitlab_pipelines")], compute_kind="dbt")
-def dbt_staging(context: AssetExecutionContext, postgres: PostgresResource) -> None:
+@asset(deps=["gitlab_commits", "gitlab_merge_requests", "gitlab_pipelines"], compute_kind="dbt")
+def dbt_staging(context: AssetExecutionContext) -> None:
     """Run dbt staging models."""
     context.log.info("Running dbt staging models...")
-    # TODO: Execute dbt run --select staging
+
+    result = subprocess.run(
+        ["dbt", "run", "--select", "staging", "--profiles-dir", "/usr/app/dbt"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "POSTGRES_HOST": "postgres"}
+    )
+
+    if result.returncode != 0:
+        context.log.error(f"dbt staging failed: {result.stderr}")
+        raise Exception(f"dbt staging failed: {result.stderr}")
+
     context.log.info("dbt staging complete")
+    context.log.info(result.stdout[-500:] if len(result.stdout) > 500 else result.stdout)
 
 
-@asset(deps=[AssetIn("dbt_staging")], compute_kind="dbt")
-def dbt_marts(context: AssetExecutionContext, postgres: PostgresResource) -> None:
+@asset(deps=["dbt_staging"], compute_kind="dbt")
+def dbt_marts(context: AssetExecutionContext) -> None:
     """Run dbt mart models (materialized views)."""
     context.log.info("Running dbt mart models...")
-    # TODO: Execute dbt run --select marts
+
+    result = subprocess.run(
+        ["dbt", "run", "--select", "marts", "--profiles-dir", "/usr/app/dbt"],
+        capture_output=True,
+        text=True,
+        env={**os.environ, "POSTGRES_HOST": "postgres"}
+    )
+
+    if result.returncode != 0:
+        context.log.error(f"dbt marts failed: {result.stderr}")
+        raise Exception(f"dbt marts failed: {result.stderr}")
+
     context.log.info("dbt marts complete")
+    context.log.info(result.stdout[-500:] if len(result.stdout) > 500 else result.stdout)
