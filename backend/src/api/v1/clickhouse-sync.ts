@@ -3,9 +3,12 @@ import { requireAdmin } from "../../utils/auth.js";
 import { syncAllToClickHouse } from "../../services/clickhouse-sync.js";
 
 export async function clickhouseSyncRoutes(app: FastifyInstance) {
-  app.post("/api/v1/clickhouse/sync", { preHandler: [requireAdmin] }, async (request, reply) => {
+  app.post<{
+    Body: { full_sync?: boolean };
+  }>("/api/v1/clickhouse/sync", { preHandler: [requireAdmin] }, async (request, reply) => {
     try {
-      const results = await syncAllToClickHouse();
+      const { full_sync } = request.body || {};
+      const results = await syncAllToClickHouse(full_sync);
       return { ok: true, data: results };
     } catch (err) {
       return reply.status(500).send({

@@ -3,19 +3,44 @@ import { getClickHouse } from "../db/clickhouse.js";
 
 const BATCH_SIZE = 10000;
 
+/**
+ * Incremental sync: only sync rows newer than the last sync timestamp.
+ * Falls back to full sync if no previous sync exists.
+ */
 export async function syncTableToClickHouse(
   tableName: string,
   columns: string[],
-  dateColumn?: string
-): Promise<{ synced: number }> {
+  dateColumn?: string,
+  fullSync = false
+): Promise<{ synced: number; incremental: boolean }> {
   const pgPool = getPool();
   const ch = getClickHouse();
+
+  // Check last sync time from ClickHouse
+  let lastSync: Date | null = null;
+  if (!fullSync && dateColumn) {
+    try {
+      const result = await ch.query({
+        query: `SELECT max(${dateColumn}) as last_sync FROM ${tableName}`,
+      });
+      const text = await result.text();
+      const rows = JSON.parse(text).data;
+      if (rows[0]?.last_sync) {
+        lastSync = new Date(rows[0].last_sync);
+      }
+    } catch {
+      // Table doesn't exist yet in CH, do full sync
+    }
+  }
 
   const conditions: string[] = [];
   const params: any[] = [];
   let idx = 1;
 
-  if (dateColumn) {
+  if (dateColumn && lastSync) {
+    conditions.push(`${dateColumn} > $${idx++}`);
+    params.push(lastSync.toISOString());
+  } else if (dateColumn) {
     conditions.push(`${dateColumn} >= $${idx++}`);
     params.push(new Date(Date.now() - 90 * 86400000).toISOString());
   }
@@ -27,7 +52,7 @@ export async function syncTableToClickHouse(
   );
   const total = countResult.rows[0].total;
 
-  if (total === 0) return { synced: 0 };
+  if (total === 0) return { synced: 0, incremental: !!lastSync };
 
   let offset = 0;
   let synced = 0;
@@ -63,11 +88,11 @@ export async function syncTableToClickHouse(
     offset += BATCH_SIZE;
   }
 
-  return { synced };
+  return { synced, incremental: !!lastSync };
 }
 
-export async function syncAllToClickHouse(): Promise<Record<string, number>> {
-  const results: Record<string, number> = {};
+export async function syncAllToClickHouse(fullSync = false): Promise<Record<string, { synced: number; incremental: boolean }>> {
+  const results: Record<string, { synced: number; incremental: boolean }> = {};
 
   const tables: { name: string; columns: string[]; dateColumn?: string }[] = [
     { name: "commits", columns: ["id", "project_id", "sha", "author_name", "author_email", "message", "committed_date", "additions", "deletions"], dateColumn: "committed_date" },
@@ -80,11 +105,11 @@ export async function syncAllToClickHouse(): Promise<Record<string, number>> {
 
   for (const table of tables) {
     try {
-      const result = await syncTableToClickHouse(table.name, table.columns, table.dateColumn);
-      results[table.name] = result.synced;
+      const result = await syncTableToClickHouse(table.name, table.columns, table.dateColumn, fullSync);
+      results[table.name] = result;
     } catch (err) {
       console.error(`[clickhouse-sync] Error syncing ${table.name}:`, err);
-      results[table.name] = -1;
+      results[table.name] = { synced: -1, incremental: false };
     }
   }
 
