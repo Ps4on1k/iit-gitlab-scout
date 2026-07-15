@@ -103,8 +103,10 @@ services:
       - .env
     environment:
       - DAGSTER_HOME=/app/dagster_project
+      - POSTGRES_HOST=postgres
     volumes:
       - ./dagster:/app
+      - ./dbt:/usr/app/dbt
     depends_on:
       postgres:
         condition: service_healthy

@@ -4,7 +4,9 @@ import { getPool } from "../../db/pool.js";
 
 const lineageData: {
   collectors: Record<string, any>;
+  staging: Record<string, any>;
   tables: Record<string, any>;
+  marts: Record<string, any>;
   api_endpoints: Record<string, any>;
 } = {
   collectors: {
@@ -233,7 +235,8 @@ const lineageData: {
         { name: "is_active", type: "boolean", description: "Активна ли запись" },
       ],
     },
-    // dbt materialized views (created by dbt run)
+  },
+  marts: {
     mart_dashboard: {
       written_by: ["dbt"],
       read_by: ["dashboard API"],
@@ -241,7 +244,6 @@ const lineageData: {
       description: "Материализованное представление для дашборда (агрегированные KPI)",
       fields: [
         { name: "total_projects", type: "integer", description: "Общее количество проектов" },
-        { name: "active_projects", type: "integer", description: "Активные проекты (с коммитами за 90 дн.)" },
         { name: "total_contributors", type: "integer", description: "Уникальные контрибьюторы" },
         { name: "total_commits", type: "integer", description: "Общее количество коммитов" },
         { name: "active_days", type: "integer", description: "Дни с активностью" },
@@ -267,7 +269,6 @@ const lineageData: {
         { name: "failure_rate", type: "numeric", description: "Доля ошибок (%)" },
         { name: "deploy_frequency", type: "numeric", description: "Частота деплоев (в день)" },
         { name: "avg_lead_time_sec", type: "integer", description: "Среднее время доставки (сек)" },
-        { name: "avg_mttr_min", type: "integer", description: "Среднее время восстановления (мин)" },
       ],
     },
     mart_contributors: {
@@ -281,8 +282,6 @@ const lineageData: {
         { name: "total_commits", type: "integer", description: "Общее количество коммитов" },
         { name: "total_changes", type: "integer", description: "Общее количество изменений" },
         { name: "active_days", type: "integer", description: "Активные дни" },
-        { name: "commits_per_day", type: "numeric", description: "Коммитов в день (среднее)" },
-        { name: "changes_per_day", type: "numeric", description: "Изменений в день (среднее)" },
       ],
     },
     mart_activity: {
@@ -293,8 +292,6 @@ const lineageData: {
       fields: [
         { name: "day", type: "date", description: "Дата" },
         { name: "commits", type: "integer", description: "Коммитов за день" },
-        { name: "merge_requests", type: "integer", description: "MR за день" },
-        { name: "pipelines", type: "integer", description: "Пайплайнов за день" },
       ],
     },
     mart_benchmark: {
@@ -306,11 +303,7 @@ const lineageData: {
         { name: "tag", type: "text", description: "Тег проекта" },
         { name: "project_count", type: "integer", description: "Количество проектов" },
         { name: "total_commits", type: "integer", description: "Коммитов" },
-        { name: "contributors", type: "integer", description: "Контрибьюторов" },
-        { name: "total_deploys", type: "integer", description: "Деплоев" },
         { name: "failure_rate", type: "numeric", description: "Доля ошибок (%)" },
-        { name: "pipeline_success_rate", type: "integer", description: "Успешность пайплайнов (%)" },
-        { name: "merge_rate", type: "integer", description: "Доля слитых MR (%)" },
       ],
     },
     mart_executive_report: {
@@ -320,27 +313,25 @@ const lineageData: {
       description: "Материализованное представление для исполнительного отчёта",
       fields: [
         { name: "total_projects", type: "integer", description: "Всего проектов" },
-        { name: "active_projects", type: "integer", description: "Активных проектов" },
         { name: "total_contributors", type: "integer", description: "Контрибьюторов" },
         { name: "total_commits", type: "integer", description: "Коммитов" },
         { name: "failure_rate", type: "numeric", description: "Доля ошибок деплоев (%)" },
         { name: "deploy_frequency", type: "numeric", description: "Частота деплоев (в день)" },
         { name: "avg_lead_time_sec", type: "integer", description: "Среднее время доставки (сек)" },
-        { name: "avg_mttr_min", type: "integer", description: "Среднее время восстановления (мин)" },
       ],
     },
   },
   api_endpoints: {
-    "/api/v1/dashboard": { reads_from: ["commits", "project_branches", "project_merge_requests", "contributor_directory", "project_deployments"], description: "Главная панель обзора" },
-    "/api/v1/contributor-analytics": { reads_from: ["contributor_profiles", "contributor_directory", "commits"], description: "Аналитика контрибьюторов" },
+    "/api/v1/dashboard": { reads_from: ["mart_dashboard", "contributor_directory"], description: "Главная панель обзора" },
+    "/api/v1/contributor-analytics": { reads_from: ["mart_contributors", "contributor_directory"], description: "Аналитика контрибьюторов" },
     "/api/v1/mr-analytics": { reads_from: ["project_merge_requests", "contributor_directory"], description: "Аналитика merge request'ов" },
     "/api/v1/pipelines": { reads_from: ["project_pipelines", "projects"], description: "Аналитика пайплайнов" },
-    "/api/v1/dora-metrics": { reads_from: ["project_deployments"], description: "DORA-метрики" },
-    "/api/v1/benchmark": { reads_from: ["commits", "project_pipelines", "project_merge_requests", "project_branches"], description: "Бенчмарк по тегам" },
+    "/api/v1/dora-metrics": { reads_from: ["mart_dora"], description: "DORA-метрики" },
+    "/api/v1/benchmark": { reads_from: ["mart_benchmark"], description: "Бенчмарк по тегам" },
     "/api/v1/branches": { reads_from: ["project_branches", "projects"], description: "Список веток" },
     "/api/v1/stack/languages": { reads_from: ["project_languages", "projects"], description: "Аналитика языков" },
-    "/api/v1/activity": { reads_from: ["project_activity", "commits"], description: "Дневная активность" },
-    "/api/v1/executive-report": { reads_from: ["все таблицы"], description: "Исполнительный отчёт" },
+    "/api/v1/activity": { reads_from: ["mart_activity"], description: "Дневная активность" },
+    "/api/v1/executive-report": { reads_from: ["mart_executive_report"], description: "Исполнительный отчёт" },
   },
 };
 
@@ -400,6 +391,7 @@ export async function dataLineageRoutes(app: FastifyInstance) {
   app.get("/api/v1/data-lineage/stats", { preHandler: [requireAuth] }, async () => {
     const pool = getPool();
     const tables = Object.keys(lineageData.tables);
+    const martNames = Object.keys(lineageData.marts);
 
     const statsResult = await pool.query(
       `SELECT relname as tablename, n_live_tup,
@@ -410,8 +402,20 @@ export async function dataLineageRoutes(app: FastifyInstance) {
       [tables]
     );
 
+    const martStatsResult = await pool.query(
+      `SELECT relname as tablename, n_live_tup,
+              pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname)) as size
+       FROM pg_stat_user_tables
+       WHERE relname = ANY($1)
+       ORDER BY n_live_tup DESC`,
+      [martNames]
+    );
+
     const stats: Record<string, { rowCount: number; size: string }> = {};
     for (const row of statsResult.rows) {
+      stats[row.tablename] = { rowCount: row.n_live_tup, size: row.size };
+    }
+    for (const row of martStatsResult.rows) {
       stats[row.tablename] = { rowCount: row.n_live_tup, size: row.size };
     }
 
@@ -419,13 +423,20 @@ export async function dataLineageRoutes(app: FastifyInstance) {
       ok: true,
       data: {
         collectors: lineageData.collectors,
+        staging: lineageData.staging,
         tables: Object.entries(lineageData.tables).map(([name, info]) => ({
+          name,
+          ...info,
+          stats: stats[name] || { rowCount: 0, size: "0 bytes" },
+        })),
+        marts: Object.entries(lineageData.marts).map(([name, info]) => ({
           name,
           ...info,
           stats: stats[name] || { rowCount: 0, size: "0 bytes" },
         })),
         totalCollectors: Object.keys(lineageData.collectors).length,
         totalTables: tables.length,
+        totalMarts: martNames.length,
       },
     };
   });

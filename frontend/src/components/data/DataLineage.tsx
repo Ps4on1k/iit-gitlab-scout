@@ -8,7 +8,8 @@ const { Text, Title } = Typography;
 interface LineageData {
   collectors: Record<string, { writes_to: string[]; description: string }>;
   staging: Record<string, { reads_from: string[]; description: string; category?: string }>;
-  tables: Record<string, { written_by: string[]; read_by: string[]; reads_from?: string[]; description: string; fields?: any[] }>;
+  tables: Record<string, { written_by: string[]; read_by: string[]; description: string; fields?: any[] }>;
+  marts: Record<string, { written_by: string[]; read_by: string[]; reads_from?: string[]; description: string; fields?: any[] }>;
   api_endpoints: Record<string, { reads_from: string[]; description: string }>;
 }
 
@@ -44,79 +45,30 @@ function buildGraph(data: LineageData, stats: any) {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
 
-  // Collectors
   const collectorNames = Object.keys(data.collectors);
+  const stagingNames = data.staging ? Object.keys(data.staging) : [];
+  const tableNames = Object.keys(data.tables);
+  const martNames = Object.keys(data.marts || {});
+  const epNames = Object.keys(data.api_endpoints);
+
   collectorNames.forEach((name, i) => {
     nodes.push({ id: `c-${name}`, x: COL_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.collectors[name].description, color: COLORS.collector });
   });
 
-  // Staging
-  const stagingNames = data.staging ? Object.keys(data.staging) : [];
   stagingNames.forEach((name, i) => {
     nodes.push({ id: `s-${name}`, x: STAGING_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.staging[name].description, color: COLORS.staging });
-    // Collector → Staging
-    (data.staging[name].reads_from || []).forEach((table) => {
-      const cIdx = collectorNames.findIndex((c) => data.collectors[c]?.writes_to?.includes(table));
-      if (cIdx >= 0) {
-        edges.push({ x1: COL_X + NODE_W, y1: SVG_PAD + cIdx * ROW_H + NODE_H / 2, x2: STAGING_X, y2: SVG_PAD + i * ROW_H + NODE_H / 2, source: `c-${collectorNames[cIdx]}`, target: `s-${name}`, color: COLORS.collector });
-      }
-    });
   });
 
-  // Tables
-  const tableNames = Object.keys(data.tables);
   tableNames.forEach((name, i) => {
     const ts = stats?.tables?.find((t: any) => t.name === name);
     nodes.push({ id: `t-${name}`, x: TABLE_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.tables[name].description, color: COLORS.table, badge: ts?.stats?.rowCount ? String(ts.stats.rowCount) : undefined });
   });
 
-  // Staging → Tables
-  stagingNames.forEach((sName, si) => {
-    (data.staging[sName].reads_from || []).forEach((tName) => {
-      const tIdx = tableNames.indexOf(tName);
-      if (tIdx >= 0) {
-        edges.push({ x1: STAGING_X + NODE_W, y1: SVG_PAD + si * ROW_H + NODE_H / 2, x2: TABLE_X, y2: SVG_PAD + tIdx * ROW_H + NODE_H / 2, source: `s-${sName}`, target: `t-${tName}`, color: COLORS.staging });
-      }
-    });
-  });
-
-  // Collector → Table (direct)
-  collectorNames.forEach((cName) => {
-    const cIdx = collectorNames.indexOf(cName);
-    const cy = SVG_PAD + cIdx * ROW_H + NODE_H / 2;
-    (data.collectors[cName].writes_to || []).forEach((tName) => {
-      const tIdx = tableNames.indexOf(tName);
-      if (tIdx >= 0 && !stagingNames.some((s) => data.staging?.[s]?.reads_from?.includes(tName))) {
-        edges.push({ x1: COL_X + NODE_W, y1: cy, x2: TABLE_X, y2: SVG_PAD + tIdx * ROW_H + NODE_H / 2, source: `c-${cName}`, target: `t-${tName}`, color: COLORS.collector });
-      }
-    });
-  });
-
-  // Mart tables
-  const martNames = tableNames.filter((n) => n.startsWith("mart_"));
   martNames.forEach((name, i) => {
-    const ts = stats?.tables?.find((t: any) => t.name === name);
-    nodes.push({ id: `m-${name}`, x: MART_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.tables[name]?.description || "", color: COLORS.mart, badge: ts?.stats?.rowCount ? String(ts.stats.rowCount) : undefined });
+    const ts = stats?.marts?.find((t: any) => t.name === name);
+    nodes.push({ id: `m-${name}`, x: MART_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.marts[name].description, color: COLORS.mart, badge: ts?.stats?.rowCount ? String(ts.stats.rowCount) : undefined });
   });
 
-  // Table → Mart
-  martNames.forEach((mName) => {
-    const mIdx = martNames.indexOf(mName);
-    const readsFrom = data.tables[mName]?.reads_from || [];
-    readsFrom.forEach((sName) => {
-      const sIdx = stagingNames.indexOf(sName);
-      if (sIdx >= 0) {
-        edges.push({ x1: STAGING_X + NODE_W, y1: SVG_PAD + sIdx * ROW_H + NODE_H / 2, x2: MART_X, y2: SVG_PAD + mIdx * ROW_H + NODE_H / 2, source: `s-${sName}`, target: `m-${mName}`, color: COLORS.staging });
-      }
-      const tIdx = tableNames.indexOf(sName);
-      if (tIdx >= 0 && !martNames.includes(sName)) {
-        edges.push({ x1: TABLE_X + NODE_W, y1: SVG_PAD + tIdx * ROW_H + NODE_H / 2, x2: MART_X, y2: SVG_PAD + mIdx * ROW_H + NODE_H / 2, source: `t-${sName}`, target: `m-${mName}`, color: COLORS.table });
-      }
-    });
-  });
-
-  // API Endpoints
-  const epNames = Object.keys(data.api_endpoints);
   epNames.forEach((name, i) => {
     nodes.push({ id: `e-${name}`, x: EP_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.api_endpoints[name].description, color: COLORS.endpoint });
   });
@@ -124,11 +76,10 @@ function buildGraph(data: LineageData, stats: any) {
   collectorNames.forEach((cName) => {
     const cIdx = collectorNames.indexOf(cName);
     const cy = SVG_PAD + cIdx * ROW_H + NODE_H / 2;
-    data.collectors[cName].writes_to.forEach((tName) => {
+    (data.collectors[cName].writes_to || []).forEach((tName) => {
       const tIdx = tableNames.indexOf(tName);
       if (tIdx >= 0) {
-        const ty = SVG_PAD + tIdx * ROW_H + NODE_H / 2;
-        edges.push({ x1: COL_X + NODE_W, y1: cy, x2: TABLE_X, y2: ty, source: `c-${cName}`, target: `t-${tName}`, color: COLORS.collector });
+        edges.push({ x1: COL_X + NODE_W, y1: cy, x2: TABLE_X, y2: SVG_PAD + tIdx * ROW_H + NODE_H / 2, source: `c-${cName}`, target: `t-${tName}`, color: COLORS.collector });
       }
     });
   });
@@ -136,17 +87,42 @@ function buildGraph(data: LineageData, stats: any) {
   tableNames.forEach((tName) => {
     const tIdx = tableNames.indexOf(tName);
     const ty = SVG_PAD + tIdx * ROW_H + NODE_H / 2;
-    Object.entries(data.api_endpoints).forEach(([eName, info]) => {
-      if (info.reads_from.includes(tName)) {
-        const eIdx = epNames.indexOf(eName);
-        if (eIdx >= 0) {
-          edges.push({ x1: TABLE_X + NODE_W, y1: ty, x2: EP_X, y2: SVG_PAD + eIdx * ROW_H + NODE_H / 2, source: `t-${tName}`, target: `e-${eName}`, color: COLORS.endpoint });
-        }
+    stagingNames.forEach((sName) => {
+      if (data.staging[sName].reads_from?.includes(tName)) {
+        const sIdx = stagingNames.indexOf(sName);
+        edges.push({ x1: TABLE_X + NODE_W, y1: ty, x2: STAGING_X, y2: SVG_PAD + sIdx * ROW_H + NODE_H / 2, source: `t-${tName}`, target: `s-${sName}`, color: COLORS.staging });
       }
     });
   });
 
-  const svgH = SVG_PAD + Math.max(collectorNames.length, tableNames.length, epNames.length) * ROW_H + SVG_PAD;
+  martNames.forEach((mName) => {
+    const mIdx = martNames.indexOf(mName);
+    const my = SVG_PAD + mIdx * ROW_H + NODE_H / 2;
+    (data.marts[mName].reads_from || []).forEach((sName) => {
+      const sIdx = stagingNames.indexOf(sName);
+      if (sIdx >= 0) {
+        edges.push({ x1: STAGING_X + NODE_W, y1: SVG_PAD + sIdx * ROW_H + NODE_H / 2, x2: MART_X, y2: my, source: `s-${sName}`, target: `m-${mName}`, color: COLORS.mart });
+      }
+    });
+  });
+
+  epNames.forEach((eName) => {
+    const eIdx = epNames.indexOf(eName);
+    const ey = SVG_PAD + eIdx * ROW_H + NODE_H / 2;
+    (data.api_endpoints[eName].reads_from || []).forEach((sourceName) => {
+      const mIdx = martNames.indexOf(sourceName);
+      if (mIdx >= 0) {
+        edges.push({ x1: MART_X + NODE_W, y1: SVG_PAD + mIdx * ROW_H + NODE_H / 2, x2: EP_X, y2: ey, source: `m-${sourceName}`, target: `e-${eName}`, color: COLORS.endpoint });
+        return;
+      }
+      const tIdx = tableNames.indexOf(sourceName);
+      if (tIdx >= 0) {
+        edges.push({ x1: TABLE_X + NODE_W, y1: SVG_PAD + tIdx * ROW_H + NODE_H / 2, x2: EP_X, y2: ey, source: `t-${sourceName}`, target: `e-${eName}`, color: COLORS.endpoint });
+      }
+    });
+  });
+
+  const svgH = SVG_PAD + Math.max(collectorNames.length, stagingNames.length, tableNames.length, martNames.length, epNames.length) * ROW_H + SVG_PAD;
   return { nodes, edges, svgHeight: svgH };
 }
 
@@ -219,8 +195,8 @@ export function DataLineage() {
         <Col span={4}><Card><Statistic title="Коллекторы" value={Object.keys(data.collectors).length} prefix={<CloudOutlined />} /></Card></Col>
         <Col span={4}><Card><Statistic title="Staging" value={Object.keys(data.staging || {}).length} prefix={<DatabaseOutlined />} /></Card></Col>
         <Col span={4}><Card><Statistic title="Таблицы" value={Object.keys(data.tables).length} prefix={<DatabaseOutlined />} /></Card></Col>
-        <Col span={4}><Card><Statistic title="Витрины" value={Object.keys(data.tables).filter((n) => n.startsWith("mart_")).length} prefix={<DatabaseOutlined />} /></Card></Col>
-        <Col span={4}><Card><Statistic title="API эндпоинты" value={Object.keys(data.api_endpoints).length} prefix={<ApiOutlined />} /></Card></Col>
+        <Col span={4}><Card><Statistic title="Витрины" value={Object.keys(data.marts || {}).length} prefix={<DatabaseOutlined />} /></Card></Col>
+        <Col span={4}><Card><Statistic title="API" value={Object.keys(data.api_endpoints).length} prefix={<ApiOutlined />} /></Card></Col>
       </Row>
 
       <Card title="Граф потока данных" style={{ marginBottom: 16 }}>

@@ -18,9 +18,10 @@ def dbt_staging(context: AssetExecutionContext) -> None:
     context.log.info("Running dbt staging models...")
 
     result = subprocess.run(
-        ["dbt", "run", "--select", "staging", "--profiles-dir", "/usr/app/dbt"],
+        ["dbt", "run", "--select", "staging", "--profiles-dir", "/usr/app/dbt", "--project-dir", "/usr/app/dbt"],
         capture_output=True,
         text=True,
+        cwd="/usr/app/dbt",
         env={**os.environ, "POSTGRES_HOST": "postgres"}
     )
 
@@ -42,9 +43,10 @@ def dbt_marts(context: AssetExecutionContext) -> None:
     context.log.info("Running dbt mart models...")
 
     result = subprocess.run(
-        ["dbt", "run", "--select", "marts", "--profiles-dir", "/usr/app/dbt"],
+        ["dbt", "run", "--select", "marts", "--profiles-dir", "/usr/app/dbt", "--project-dir", "/usr/app/dbt"],
         capture_output=True,
         text=True,
+        cwd="/usr/app/dbt",
         env={**os.environ, "POSTGRES_HOST": "postgres"}
     )
 

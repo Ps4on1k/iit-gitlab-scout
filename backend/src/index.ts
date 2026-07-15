@@ -35,6 +35,7 @@ import { executiveReportRoutes } from "./api/v1/executive-report.js";
 import { dataLineageRoutes } from "./api/v1/data-lineage.js";
 import { dataCollectionRoutes } from "./api/v1/data-collection.js";
 import { clickhouseSyncRoutes } from "./api/v1/clickhouse-sync.js";
+import { dagsterTriggerRoutes } from "./api/v1/dagster-trigger.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { requireAuth } from "./utils/auth.js";
 
@@ -154,6 +155,7 @@ await app.register(dataLineageRoutes);
 await app.register(dataCollectionRoutes);
 await app.register(clickhouseSyncRoutes);
 await app.register(executiveReportRoutes);
+await app.register(dagsterTriggerRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

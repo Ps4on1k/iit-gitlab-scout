@@ -504,3 +504,7 @@ export async function deleteLineageMetadata(entityType: string, entityName: stri
     method: "DELETE",
   });
 }
+
+export async function triggerDagsterCollect(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/dagster/trigger", { method: "POST" });
+}

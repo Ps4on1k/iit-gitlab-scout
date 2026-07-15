@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, Table, Spin, Empty, Typography, Tag, Row, Col, Statistic, Button, message } from "antd";
-import { ReloadOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
-import { fetchCollectionStats, fetchCollectionHealth } from "../../api/client";
+import { ReloadOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined, ClockCircleOutlined, ThunderboltOutlined } from "@ant-design/icons";
+import { fetchCollectionStats, fetchCollectionHealth, triggerDagsterCollect } from "../../api/client";
 
 const { Text, Title } = Typography;
 
@@ -9,6 +9,7 @@ export function DataCollectionMonitor() {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<any>(null);
   const [health, setHealth] = useState<any>(null);
+  const [triggering, setTriggering] = useState(false);
 
   const loadData = () => {
     setLoading(true);
@@ -17,6 +18,17 @@ export function DataCollectionMonitor() {
       if (healthRes.ok) setHealth(healthRes.data);
       setLoading(false);
     });
+  };
+
+  const handleTrigger = async () => {
+    setTriggering(true);
+    const res = await triggerDagsterCollect();
+    setTriggering(false);
+    if (res.ok) {
+      message.success("Сбор данных запущен в Dagster. Мониторинг на http://localhost:3001");
+    } else {
+      message.error(res.error || "Ошибка запуска Dagster");
+    }
   };
 
   useEffect(() => { loadData(); }, []);
@@ -49,6 +61,7 @@ export function DataCollectionMonitor() {
           <Text type="secondary">Мониторинг состояния коллекторов и свежести данных</Text>
         </div>
         <Button icon={<ReloadOutlined />} onClick={loadData}>Обновить</Button>
+        <Button type="primary" icon={<ThunderboltOutlined />} onClick={handleTrigger} loading={triggering}>Собрать статистику</Button>
       </div>
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
