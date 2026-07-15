@@ -1,11 +1,9 @@
-FROM ghcr.io/dbt-labs/dbt-postgres:1.7
+FROM python:3.11-slim
 
 WORKDIR /usr/app/dbt
+
+RUN pip install --no-cache-dir dbt-postgres==1.7.*
 
 COPY dbt_project.yml .
 COPY profiles.yml .
 COPY models/ models/
-COPY macros/ macros/
-COPY tests/ tests/
-
-RUN dbt deps --profiles-dir /usr/app/dbt || true

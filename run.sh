@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Configuration
 COMPOSE_FILE="docker-compose.ghcr.yml"
+PROFILES="--profile dbt --profile analytics --profile dagster"
 SERVICES="backend frontend caddy"
 TIMEOUT_STOP=30
 TIMEOUT_STARTUP=60
@@ -10,14 +10,11 @@ TIMEOUT_MIGRATE=30
 TIMEOUT_HEALTH=10
 HEALTH_URL="http://localhost:8080/"
 
-echo "🛑 Stopping containers..."
-
-if ! docker compose -f "$COMPOSE_FILE" stop $SERVICES; then
-    echo "⚠️  Warning: Failed to stop containers (they may not be running)"
-fi
+echo "🛑 Stopping all containers..."
+docker compose -f "$COMPOSE_FILE" $PROFILES down 2>/dev/null || true
 
 echo "🗑️  Removing old containers..."
-docker compose -f "$COMPOSE_FILE" rm -f $SERVICES
+docker compose -f "$COMPOSE_FILE" $PROFILES rm -f 2>/dev/null || true
 
 echo "📦 Pulling latest images from GHCR..."
 if ! docker compose -f "$COMPOSE_FILE" pull $SERVICES; then
@@ -25,10 +22,10 @@ if ! docker compose -f "$COMPOSE_FILE" pull $SERVICES; then
     exit 1
 fi
 
-echo "🚀 Starting containers with fresh images..."
-if ! docker compose -f "$COMPOSE_FILE" up -d $SERVICES; then
+echo "🚀 Starting all services..."
+if ! docker compose -f "$COMPOSE_FILE" $PROFILES up -d $SERVICES dagster clickhouse; then
     echo "❌ Error: Failed to start containers"
-    docker compose -f "$COMPOSE_FILE" logs --tail=50 $SERVICES
+    docker compose -f "$COMPOSE_FILE" $PROFILES logs --tail=50 $SERVICES
     exit 1
 fi
 
@@ -75,6 +72,9 @@ if ! curl -f -s --max-time "$TIMEOUT_HEALTH" "$HEALTH_URL" > /dev/null; then
 fi
 
 echo "✅ Update complete! All services are running."
-echo "ℹ️  Database was not affected"
+echo ""
 echo "🌐 HTTP:  http://$(hostname -I | awk '{print $1}'):8080"
 echo "🔒 HTTPS: https://$(hostname -I | awk '{print $1}'):8443"
+echo "📊 Dagster: http://$(hostname -I | awk '{print $1}'):3001"
+echo ""
+echo "Profiles active: dbt, analytics, dagster"

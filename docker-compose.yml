@@ -95,24 +95,11 @@ services:
         hard: 262144
     profiles: ["analytics"]
 
-  # Dagster — workflow orchestrator (replaces in-process scheduler)
-  dagster-webserver:
+  # Dagster — workflow orchestrator
+  dagster:
     build: ./dagster
     ports:
       - "3001:3000"
-    environment:
-      - DAGSTER_HOME=/app/dagster_project
-      - DATABASE_URL=postgresql://gitlab_scout:changeme@postgres:5432/gitlab_scout
-    volumes:
-      - ./dagster:/app
-    depends_on:
-      postgres:
-        condition: service_healthy
-    profiles: ["dagster"]
-
-  dagster-daemon:
-    build: ./dagster
-    command: ["dagster", "daemon", "run"]
     environment:
       - DAGSTER_HOME=/app/dagster_project
       - DATABASE_URL=postgresql://gitlab_scout:changeme@postgres:5432/gitlab_scout

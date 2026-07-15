@@ -9,4 +9,4 @@ COPY dagster_project/ dagster_project/
 
 EXPOSE 3000
 
-CMD ["dagster", "webserver", "-h", "0.0.0.0", "-p", "3000"]
+CMD ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "dagster_project"]
