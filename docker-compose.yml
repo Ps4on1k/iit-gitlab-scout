@@ -78,9 +78,9 @@ services:
   # ClickHouse — OLAP engine for fast analytics queries
   clickhouse:
     image: clickhouse/clickhouse-server:24.3-alpine
-    ports:
-      - "8123:8123"
-      - "9000:9000"
+    expose:
+      - "8123"
+      - "9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
