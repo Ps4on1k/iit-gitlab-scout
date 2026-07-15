@@ -1,10 +1,8 @@
 import { Tabs } from "antd";
-import { UserOutlined, ClockCircleOutlined, FileTextOutlined, KeyOutlined, PercentageOutlined } from "@ant-design/icons";
+import { UserOutlined, FileTextOutlined, KeyOutlined } from "@ant-design/icons";
 import { UserManagement } from "./UserManagement";
-import { SchedulerPanel } from "./SchedulerPanel";
 import { AuditLogPanel } from "./AuditLogPanel";
 import { PersonalTokensPanel } from "./PersonalTokensPanel";
-import { WeightsPanel } from "./WeightsPanel";
 
 export function SettingsPanel() {
   return (
@@ -21,16 +19,6 @@ export function SettingsPanel() {
             key: "users",
             label: <span><UserOutlined /> Пользователи</span>,
             children: <UserManagement />,
-          },
-          {
-            key: "weights",
-            label: <span><PercentageOutlined /> Веса</span>,
-            children: <WeightsPanel />,
-          },
-          {
-            key: "scheduler",
-            label: <span><ClockCircleOutlined /> Планировщик</span>,
-            children: <SchedulerPanel />,
           },
           {
             key: "audit",

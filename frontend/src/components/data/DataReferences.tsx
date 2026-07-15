@@ -1,8 +1,9 @@
 import { Tabs } from "antd";
-import { ProjectOutlined, TeamOutlined, ApartmentOutlined } from "@ant-design/icons";
+import { TeamOutlined, ApartmentOutlined, ProjectOutlined, PercentageOutlined } from "@ant-design/icons";
 import { AdminPanel } from "../AdminPanel";
 import { ContributorDirectoryPanel } from "../directory/ContributorDirectoryPanel";
 import { DependenciesCatalogPanel } from "../DependenciesCatalogPanel";
+import { WeightsPanel } from "../WeightsPanel";
 
 export function DataReferences() {
   return (
@@ -24,6 +25,11 @@ export function DataReferences() {
             key: "dependencies",
             label: <span><ApartmentOutlined /> Зависимости</span>,
             children: <DependenciesCatalogPanel />,
+          },
+          {
+            key: "weights",
+            label: <span><PercentageOutlined /> Веса</span>,
+            children: <WeightsPanel />,
           },
         ]}
       />
