@@ -1,0 +1,173 @@
+{
+  "collectors": {
+    "contributor-collector": {
+      "reads_from": ["GitLab API: /projects/:id/repository/commits", "GitLab API: /projects/:id/repository/commits/:sha"],
+      "writes_to": ["commits", "contributor_profiles"],
+      "description": "Сбор коммитов и агрегация профилей контрибьюторов"
+    },
+    "branch-collector": {
+      "reads_from": ["GitLab API: /projects/:id/repository/branches", "GitLab API: /projects/:id/repository/commits/:sha"],
+      "writes_to": ["project_branches", "commits", "contributor_profiles"],
+      "description": "Сбор веток и их метаданных"
+    },
+    "mr-collector": {
+      "reads_from": ["GitLab API: /projects/:id/merge_requests", "GitLab API: /projects/:id/merge_requests/:iid/approvals"],
+      "writes_to": ["project_merge_requests"],
+      "description": "Сбор merge request'ов и одобрений"
+    },
+    "issue-collector": {
+      "reads_from": ["GitLab API: /projects/:id/issues"],
+      "writes_to": ["project_issues"],
+      "description": "Сбор задач (issues)"
+    },
+    "pipeline-collector": {
+      "reads_from": ["GitLab API: /projects/:id/pipelines", "GitLab API: /projects/:id/deployments"],
+      "writes_to": ["project_pipelines", "project_deployments"],
+      "description": "Сбор пайплайнов и деплоев CI/CD"
+    },
+    "stack-collector": {
+      "reads_from": ["GitLab API: /projects/:id/languages"],
+      "writes_to": ["project_languages"],
+      "description": "Сбор информации о языках программирования"
+    },
+    "activity-collector": {
+      "reads_from": ["GitLab API: /projects/:id/events", "GitLab API: /projects/:id/merge_requests", "GitLab API: /projects/:id/pipelines"],
+      "writes_to": ["project_activity"],
+      "description": "Сбор дневной активности (коммиты, MR, пайплайны)"
+    },
+    "dependency-audit": {
+      "reads_from": ["GitLab API: /projects/:id/repository/tree", "GitLab API: /projects/:id/repository/files/:path", "npm/PyPI/Maven API"],
+      "writes_to": ["project_dependencies_audit"],
+      "description": "Аудит зависимостей и проверка актуальности версий"
+    }
+  },
+  "tables": {
+    "commits": {
+      "written_by": ["contributor-collector", "branch-collector"],
+      "read_by": ["dashboard", "contributor-analytics", "executive-report", "mr-analytics"],
+      "description": "Уникальные коммиты с метаданными автора, additions/deletions",
+      "estimated_rows_per_project": "1000-50000"
+    },
+    "contributor_profiles": {
+      "written_by": ["contributor-collector", "branch-collector"],
+      "read_by": ["contributor-analytics", "benchmark"],
+      "description": "Агрегированная статистика контрибьюторов по проектам",
+      "estimated_rows_per_project": "5-50"
+    },
+    "project_branches": {
+      "written_by": ["branch-collector"],
+      "read_by": ["dashboard", "branches", "benchmark"],
+      "description": "Метаданные веток: merged, protected, last commit",
+      "estimated_rows_per_project": "10-500"
+    },
+    "project_merge_requests": {
+      "written_by": ["mr-collector"],
+      "read_by": ["dashboard", "mr-analytics", "benchmark", "contributor-analytics"],
+      "description": "Merge request'ы с авторами, рецензентами, одобрениями",
+      "estimated_rows_per_project": "50-5000"
+    },
+    "project_issues": {
+      "written_by": ["issue-collector"],
+      "read_by": ["issues"],
+      "description": "Задачи с состояниями, авторами, метками",
+      "estimated_rows_per_project": "10-1000"
+    },
+    "project_pipelines": {
+      "written_by": ["pipeline-collector"],
+      "read_by": ["dashboard", "pipelines", "dora-metrics", "contributor-analytics"],
+      "description": "Пайплайны CI/CD со статусами и длительностью",
+      "estimated_rows_per_project": "50-5000"
+    },
+    "project_deployments": {
+      "written_by": ["pipeline-collector"],
+      "read_by": ["dashboard", "dora-metrics", "executive-report"],
+      "description": "Деплои с привязкой к пайплайнам и коммитам",
+      "estimated_rows_per_project": "10-1000"
+    },
+    "project_languages": {
+      "written_by": ["stack-collector"],
+      "read_by": ["stack"],
+      "description": "Распределение языков программирования по проектам",
+      "estimated_rows_per_project": "2-20"
+    },
+    "project_activity": {
+      "written_by": ["activity-collector"],
+      "read_by": ["activity", "dashboard"],
+      "description": "Дневная агрегация: коммиты, MR, пайплайны",
+      "estimated_rows_per_project": "30-365"
+    },
+    "project_dependencies_audit": {
+      "written_by": ["dependency-audit"],
+      "read_by": ["dependencies"],
+      "description": "Аудит зависимостей: имя, версия, актуальность",
+      "estimated_rows_per_project": "20-500"
+    },
+    "projects": {
+      "written_by": ["admin API"],
+      "read_by": ["все эндпоинты"],
+      "description": "Справочник проектов GitLab с токенами и тегами"
+    },
+    "contributor_directory": {
+      "written_by": ["admin API"],
+      "read_by": ["все эндпоинты аналитики"],
+      "description": "Каноническое мapping имён → email'ов"
+    },
+    "scheduler_errors": {
+      "written_by": ["scheduler"],
+      "read_by": ["scheduler API"],
+      "description": "Лог ошибок сбора данных"
+    }
+  },
+  "api_endpoints": {
+    "/api/v1/dashboard": {
+      "reads_from": ["commits", "project_branches", "project_merge_requests", "contributor_directory", "project_deployments", "project_activity"],
+      "description": "Главная панель обзора — агрегированные KPI",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/contributor-analytics": {
+      "reads_from": ["contributor_profiles", "contributor_directory", "commits"],
+      "description": "Аналитика контрибьюторов — метрики, heatmap, скоринг",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/mr-analytics": {
+      "reads_from": ["project_merge_requests", "contributor_directory", "contributor_profiles"],
+      "description": "Аналитика merge request'ов",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/pipelines": {
+      "reads_from": ["project_pipelines", "projects"],
+      "description": "Аналитика пайплайнов CI/CD",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/dora-metrics": {
+      "reads_from": ["project_deployments"],
+      "description": "DORA-метрики: частота деплоев, lead time, MTTR, failure rate",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/benchmark": {
+      "reads_from": ["commits", "project_pipelines", "project_merge_requests", "project_branches", "project_deployments"],
+      "description": "Бенчмарк по тегам и контрибьюторам",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/branches": {
+      "reads_from": ["project_branches", "projects"],
+      "description": "Список веток с метриками здоровья",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/stack/languages": {
+      "reads_from": ["project_languages", "projects"],
+      "description": "Аналитика языков программирования",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/activity": {
+      "reads_from": ["project_activity", "commits"],
+      "description": "Дневная активность проектов",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/executive-report": {
+      "reads_from": ["все таблицы"],
+      "description": "Исполнительный отчёт для C-level",
+      "refresh_rate": "при каждом запросе"
+    }
+  }
+}

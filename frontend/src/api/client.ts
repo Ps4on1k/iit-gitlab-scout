@@ -463,3 +463,27 @@ export async function fetchExecutiveReport(queryString?: string): Promise<ApiRes
   const qs = queryString ? `?${queryString}` : "";
   return fetchJson<ExecutiveReportData>(`/v1/executive-report${qs}`);
 }
+
+export async function fetchLineageFlow(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/data-lineage/flow");
+}
+
+export async function fetchLineageTableStats(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/data-lineage/stats");
+}
+
+export async function fetchLineageTableDetail(name: string): Promise<ApiResponse<any>> {
+  return fetchJson(`/v1/data-lineage/table/${encodeURIComponent(name)}`);
+}
+
+export async function fetchCollectionJobs(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/data-collection/jobs");
+}
+
+export async function fetchCollectionStats(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/data-collection/stats");
+}
+
+export async function fetchCollectionHealth(): Promise<ApiResponse<any>> {
+  return fetchJson("/v1/data-collection/health");
+}
