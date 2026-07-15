@@ -66,6 +66,14 @@ export const StackDashboard = memo(function StackDashboard({ userRole }: Props) 
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  const filteredProjectCount = useMemo(() => {
+    if (selectedProjectIds.length > 0) return selectedProjectIds.length;
+    if (selectedTags.length > 0) {
+      return projects.filter((p) => p.tags?.some((t) => selectedTags.includes(t))).length;
+    }
+    return projects.length;
+  }, [selectedProjectIds, selectedTags, projects]);
+
   const stackProjectIds = useMemo(() => {
     if (selectedProjectIds.length > 0) return selectedProjectIds;
     if (selectedTags.length > 0) {
@@ -130,7 +138,7 @@ export const StackDashboard = memo(function StackDashboard({ userRole }: Props) 
 
       <Row gutter={16} style={{ marginBottom: 24 }}>
         <Col span={8}><Card><Statistic title="Языков" value={languages.length} /></Card></Col>
-        <Col span={8}><Card><Statistic title="Проектов" value={selectedProjectIds.length || projects.length} /></Card></Col>
+        <Col span={8}><Card><Statistic title="Проектов" value={filteredProjectCount} /></Card></Col>
       </Row>
 
       {/* Overall language bar */}
