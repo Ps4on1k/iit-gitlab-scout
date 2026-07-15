@@ -1,7 +1,0 @@
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13693 - LOGS_CAPTURED - Started capturing logs in process (pid: 13693).
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13693 - gitlab_commits - STEP_START - Started execution of step "gitlab_commits".
-2026-07-15 14:10:50 +0000 - dagster - INFO - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - gitlab_commits - Collected 0 commits from okkpo
-2026-07-15 14:10:50 +0000 - dagster - INFO - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - gitlab_commits - Total commits collected: 0
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13693 - gitlab_commits - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13693 - gitlab_commits - ASSET_MATERIALIZATION - Materialized value gitlab_commits.
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13693 - gitlab_commits - STEP_SUCCESS - Finished execution of step "gitlab_commits" in 157ms.

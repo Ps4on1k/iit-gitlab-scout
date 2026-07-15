@@ -1,7 +1,0 @@
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13696 - LOGS_CAPTURED - Started capturing logs in process (pid: 13696).
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13696 - lineage_update - STEP_START - Started execution of step "lineage_update".
-2026-07-15 14:10:50 +0000 - dagster - INFO - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - lineage_update - Updating lineage metadata...
-2026-07-15 14:10:50 +0000 - dagster - INFO - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - lineage_update - Lineage metadata updated successfully
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13696 - lineage_update - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13696 - lineage_update - ASSET_MATERIALIZATION - Materialized value lineage_update.
-2026-07-15 14:10:50 +0000 - dagster - DEBUG - daily_collection - 1235f57f-1c3f-400e-8b59-f17636531277 - 13696 - lineage_update - STEP_SUCCESS - Finished execution of step "lineage_update" in 46ms.

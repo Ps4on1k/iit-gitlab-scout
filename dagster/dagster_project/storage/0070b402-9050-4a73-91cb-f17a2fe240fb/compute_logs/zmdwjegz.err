@@ -1,7 +1,0 @@
-2026-07-15 14:41:21 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 884 - LOGS_CAPTURED - Started capturing logs in process (pid: 884).
-2026-07-15 14:41:21 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 884 - gitlab_pipelines - STEP_START - Started execution of step "gitlab_pipelines".
-2026-07-15 14:41:22 +0000 - dagster - INFO - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - gitlab_pipelines - Collected 106 pipelines from kppo/evolution/contr-terror-admin
-2026-07-15 14:41:22 +0000 - dagster - INFO - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - gitlab_pipelines - Total pipelines collected: 106
-2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 884 - gitlab_pipelines - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
-2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 884 - gitlab_pipelines - ASSET_MATERIALIZATION - Materialized value gitlab_pipelines.
-2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 884 - gitlab_pipelines - STEP_SUCCESS - Finished execution of step "gitlab_pipelines" in 432ms.
