@@ -80,6 +80,10 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(401).send({ ok: false, error: "Invalid credentials." });
     }
 
+    if (user.external_provider && user.external_provider !== "local") {
+      return reply.status(403).send({ ok: false, error: "Этот аккаунт использует SSO. Войдите через SSO." });
+    }
+
     if (!user.is_active) {
       logAuditAction(user.id, "login_blocked", `Login blocked (inactive account): ${username} from ${ip}`);
       return reply.status(403).send({ ok: false, error: "Account is blocked" });

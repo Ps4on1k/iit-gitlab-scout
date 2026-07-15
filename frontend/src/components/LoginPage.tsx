@@ -1,8 +1,18 @@
-import { useState } from "react";
-import { Form, Input, Button, Typography, Alert } from "antd";
-import { UserOutlined, LockOutlined } from "@ant-design/icons";
-import { login as apiLogin, setToken } from "../api/client";
+import { useState, useEffect } from "react";
+import { Form, Input, Button, Typography, Alert, Divider } from "antd";
+import { UserOutlined, LockOutlined, SafetyOutlined } from "@ant-design/icons";
+import { login as apiLogin, setToken, getMe } from "../api/client";
 import type { User } from "../types";
+
+async function fetchSSOConfig(): Promise<{ provider: string; enabled: boolean }> {
+  try {
+    const res = await fetch("/api/v1/auth/sso/config");
+    const data = await res.json();
+    return data.data || { provider: "local", enabled: false };
+  } catch {
+    return { provider: "local", enabled: false };
+  }
+}
 
 const { Title, Text } = Typography;
 
@@ -22,6 +32,30 @@ export function LoginPage({ onLogin }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isDark] = useState(getIsDark);
+  const [ssoEnabled, setSsoEnabled] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ssoToken = params.get("sso_token");
+    const ssoError = params.get("sso_error");
+
+    if (ssoToken) {
+      setToken(ssoToken);
+      getMe().then((res) => {
+        if (res.ok && res.data) {
+          onLogin(res.data);
+        }
+      });
+      window.history.replaceState({}, "", "/");
+    } else if (ssoError) {
+      setError("SSO ошибка: " + ssoError);
+      window.history.replaceState({}, "", "/");
+    }
+
+    fetchSSOConfig().then((config) => {
+      setSsoEnabled(config.enabled);
+    });
+  }, []);
 
   const handleSubmit = async (values: { username: string; password: string }) => {
     setLoading(true);
@@ -47,7 +81,6 @@ export function LoginPage({ onLogin }: Props) {
       display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh",
       background: bg, position: "relative", overflow: "hidden",
     }}>
-      {/* Watermark */}
       <div style={{ position: "absolute", top: -540, left: -720, width: 1440, height: 1440, overflow: "hidden", pointerEvents: "none" }}>
         <svg viewBox="0 0 120 120" style={{ width: "100%", height: "100%", position: "absolute", top: 0, left: 0 }}>
           <path d="M60 8.18164V111.818" stroke={isDark ? "rgba(174,183,200,0.06)" : "rgba(17,19,21,0.03)"} strokeWidth="13.63" />
@@ -63,14 +96,22 @@ export function LoginPage({ onLogin }: Props) {
         boxShadow: isDark ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(0,0,0,0.08)",
         position: "relative", zIndex: 1,
       }}>
-        {/* Logo */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 32 }}>
           <img src="/logo.svg" alt="GitLab Scout" style={{ width: 48, height: 48, marginBottom: 12 }} />
           <Title level={2} style={{ margin: 0, color: headerColor, fontWeight: 700, letterSpacing: 0.5 }}>GitLab Scout</Title>
           <Text style={{ color: subColor, fontSize: 13, marginTop: 4 }}>Аналитика GitLab проектов</Text>
         </div>
 
-        {/* Form */}
+        {ssoEnabled && (
+          <>
+            <Button icon={<SafetyOutlined />} block size="large" href="/api/v1/auth/sso/authorize"
+              style={{ height: 44, fontWeight: 600, borderRadius: 8, marginBottom: 16, background: "#2563eb", borderColor: "#2563eb", color: "#fff" }}>
+              Войти через SSO
+            </Button>
+            <Divider style={{ margin: "16px 0", color: subColor }}>или</Divider>
+          </>
+        )}
+
         <Form onFinish={handleSubmit} layout="vertical" size="large" autoComplete="off">
           <Form.Item name="username" rules={[{ required: true, message: "Введите логин" }]}>
             <Input prefix={<UserOutlined style={{ color: isDark ? "rgba(241,245,249,0.4)" : undefined }} />}
@@ -92,7 +133,6 @@ export function LoginPage({ onLogin }: Props) {
         </Form>
       </div>
 
-      {/* Footer */}
       <div style={{
         position: "fixed", bottom: 0, left: 0, right: 0,
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",

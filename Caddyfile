@@ -2,6 +2,9 @@
 	handle /api/* {
 		reverse_proxy backend:3000
 	}
+	handle /dagster/* {
+		reverse_proxy oauth2-proxy:4180
+	}
 	reverse_proxy frontend:80
 }
 
@@ -10,6 +13,9 @@
 
 	handle /api/* {
 		reverse_proxy backend:3000
+	}
+	handle /dagster/* {
+		reverse_proxy oauth2-proxy:4180
 	}
 	reverse_proxy frontend:80
 

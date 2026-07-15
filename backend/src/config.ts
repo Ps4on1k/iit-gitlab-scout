@@ -20,6 +20,12 @@ const envSchema = z.object({
   CLICKHOUSE_DB: z.string().default("gitlab_scout"),
   CLICKHOUSE_USER: z.string().default("admin"),
   CLICKHOUSE_PASSWORD: z.string().default("changeme"),
+  SSO_PROVIDER: z.enum(["local", "oidc"]).default("local"),
+  OIDC_ISSUER_URL: z.string().optional(),
+  OIDC_CLIENT_ID: z.string().optional(),
+  OIDC_CLIENT_SECRET: z.string().optional(),
+  OIDC_CALLBACK_URL: z.string().optional(),
+  SSO_DEFAULT_ROLE: z.enum(["admin", "user", "manager"]).default("user"),
 });
 
 export type Env = z.infer<typeof envSchema>;
