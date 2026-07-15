@@ -1,0 +1,7 @@
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 881 - LOGS_CAPTURED - Started capturing logs in process (pid: 881).
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 881 - gitlab_merge_requests - STEP_START - Started execution of step "gitlab_merge_requests".
+2026-07-15 14:50:07 +0000 - dagster - INFO - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - gitlab_merge_requests - Collected 20 MRs from kppo/evolution/contr-terror-admin
+2026-07-15 14:50:07 +0000 - dagster - INFO - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - gitlab_merge_requests - Total MRs collected: 20
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 881 - gitlab_merge_requests - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 881 - gitlab_merge_requests - ASSET_MATERIALIZATION - Materialized value gitlab_merge_requests.
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 881 - gitlab_merge_requests - STEP_SUCCESS - Finished execution of step "gitlab_merge_requests" in 324ms.

@@ -1,0 +1,7 @@
+2026-07-15 14:24:37 +0000 - dagster - DEBUG - __ASSET_JOB - 4c846616-6dd9-480f-a105-911a4cb38789 - 41414 - LOGS_CAPTURED - Started capturing logs in process (pid: 41414).
+2026-07-15 14:24:37 +0000 - dagster - DEBUG - __ASSET_JOB - 4c846616-6dd9-480f-a105-911a4cb38789 - 41414 - gitlab_commits - STEP_START - Started execution of step "gitlab_commits".
+2026-07-15 14:24:37 +0000 - dagster - INFO - __ASSET_JOB - 4c846616-6dd9-480f-a105-911a4cb38789 - gitlab_commits - Collected 0 commits from okkpo
+2026-07-15 14:24:37 +0000 - dagster - INFO - __ASSET_JOB - 4c846616-6dd9-480f-a105-911a4cb38789 - gitlab_commits - Total commits collected: 0
+2026-07-15 14:24:37 +0000 - dagster - DEBUG - __ASSET_JOB - 4c846616-6dd9-480f-a105-911a4cb38789 - 41414 - gitlab_commits - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
+2026-07-15 14:24:37 +0000 - dagster - DEBUG - __ASSET_JOB - 4c846616-6dd9-480f-a105-911a4cb38789 - 41414 - gitlab_commits - ASSET_MATERIALIZATION - Materialized value gitlab_commits.
+2026-07-15 14:24:37 +0000 - dagster - DEBUG - __ASSET_JOB - 4c846616-6dd9-480f-a105-911a4cb38789 - 41414 - gitlab_commits - STEP_SUCCESS - Finished execution of step "gitlab_commits" in 126ms.

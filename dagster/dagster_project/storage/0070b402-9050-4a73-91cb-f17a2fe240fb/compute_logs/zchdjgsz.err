@@ -1,0 +1,10 @@
+2026-07-15 14:41:21 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 882 - LOGS_CAPTURED - Started capturing logs in process (pid: 882).
+2026-07-15 14:41:21 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 882 - gitlab_commits - STEP_START - Started execution of step "gitlab_commits".
+2026-07-15 14:41:22 +0000 - dagster - WARNING - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - gitlab_commits - Failed to collect commits from kppo/evolution/contr-terror-admin: column "sha" of relation "commits" does not exist
+LINE 1: INSERT INTO commits (project_id, sha, author_name, author_em...
+                                         ^
+
+2026-07-15 14:41:22 +0000 - dagster - INFO - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - gitlab_commits - Total commits collected: 0
+2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 882 - gitlab_commits - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
+2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 882 - gitlab_commits - ASSET_MATERIALIZATION - Materialized value gitlab_commits.
+2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 882 - gitlab_commits - STEP_SUCCESS - Finished execution of step "gitlab_commits" in 233ms.

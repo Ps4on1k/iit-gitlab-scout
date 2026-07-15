@@ -1,0 +1,7 @@
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 880 - LOGS_CAPTURED - Started capturing logs in process (pid: 880).
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 880 - gitlab_commits - STEP_START - Started execution of step "gitlab_commits".
+2026-07-15 14:50:07 +0000 - dagster - INFO - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - gitlab_commits - Collected 1 commits from kppo/evolution/contr-terror-admin
+2026-07-15 14:50:07 +0000 - dagster - INFO - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - gitlab_commits - Total commits collected: 1
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 880 - gitlab_commits - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 880 - gitlab_commits - ASSET_MATERIALIZATION - Materialized value gitlab_commits.
+2026-07-15 14:50:07 +0000 - dagster - DEBUG - __ASSET_JOB - 56cac84d-6017-488f-9e9a-28060fb69e39 - 880 - gitlab_commits - STEP_SUCCESS - Finished execution of step "gitlab_commits" in 187ms.

@@ -1,5 +1,6 @@
 from dagster import asset, AssetExecutionContext
 from dagster_project.utils.helpers import get_pg_connection, gitlab_request_paginated, batch_insert
+import urllib.parse
 
 
 @asset(compute_kind="gitlab")
@@ -24,8 +25,9 @@ def gitlab_commits(context: AssetExecutionContext) -> None:
                 if not token:
                     continue
 
+                encoded_path = urllib.parse.quote(path, safe='')
                 commits = gitlab_request_paginated(
-                    f"/projects/{path}/repository/commits",
+                    f"/projects/{encoded_path}/repository/commits",
                     token, base_url,
                     {"per_page": "100", "order_by": "committed_date", "sort": "desc"}
                 )
@@ -34,15 +36,17 @@ def gitlab_commits(context: AssetExecutionContext) -> None:
                 for c in commits:
                     rows.append((
                         proj_id, c.get("id", ""), c.get("author_name", ""),
-                        c.get("author_email", ""), c.get("message", ""),
+                        c.get("author_email", ""),
                         c.get("committed_date"), c.get("stats", {}).get("additions", 0),
-                        c.get("stats", {}).get("deletions", 0)
+                        c.get("stats", {}).get("deletions", 0),
+                        c.get("stats", {}).get("additions", 0) + c.get("stats", {}).get("deletions", 0),
+                        ""
                     ))
 
                 if rows:
                     batch_insert(conn, "commits",
-                        ["project_id", "sha", "author_name", "author_email", "message",
-                         "committed_date", "additions", "deletions"], rows)
+                        ["project_id", "commit_sha", "author_name", "author_email",
+                         "committed_date", "additions", "deletions", "total_changes", "branch"], rows)
                     total_commits += len(rows)
 
                 context.log.info(f"Collected {len(rows)} commits from {path}")
@@ -77,13 +81,14 @@ def gitlab_merge_requests(context: AssetExecutionContext) -> None:
                     continue
 
                 mrs = gitlab_request_paginated(
-                    f"/projects/{path}/merge_requests",
+                    f"/projects/{urllib.parse.quote(path, safe='')}/merge_requests",
                     token, base_url,
                     {"state": "all", "per_page": "100", "order_by": "created_at", "sort": "desc"}
                 )
 
                 rows = []
                 for mr in mrs:
+                    reviewers_list = [r.get("user", {}).get("username", "") for r in mr.get("reviewers", []) if r.get("user")]
                     rows.append((
                         proj_id, mr.get("iid"), mr.get("title", ""),
                         mr.get("state", ""), mr.get("author", {}).get("name", ""),
@@ -92,7 +97,7 @@ def gitlab_merge_requests(context: AssetExecutionContext) -> None:
                         mr.get("created_at"), mr.get("updated_at"),
                         mr.get("merged_at"), mr.get("closed_at"),
                         mr.get("merged_by", {}).get("username", "") if mr.get("merged_by") else "",
-                        len(mr.get("reviewers", [])),
+                        reviewers_list,
                         mr.get("user_notes_count", 0)
                     ))
 
@@ -135,7 +140,7 @@ def gitlab_pipelines(context: AssetExecutionContext) -> None:
                     continue
 
                 pipelines = gitlab_request_paginated(
-                    f"/projects/{path}/pipelines",
+                    f"/projects/{urllib.parse.quote(path, safe='')}/pipelines",
                     token, base_url,
                     {"per_page": "100", "order_by": "id", "sort": "desc"}
                 )

@@ -1,0 +1,11 @@
+2026-07-15 14:41:21 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 883 - LOGS_CAPTURED - Started capturing logs in process (pid: 883).
+2026-07-15 14:41:21 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 883 - gitlab_merge_requests - STEP_START - Started execution of step "gitlab_merge_requests".
+2026-07-15 14:41:22 +0000 - dagster - WARNING - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - gitlab_merge_requests - Failed to collect MRs from kppo/evolution/contr-terror-admin: column "reviewers" is of type text[] but expression is of type integer
+LINE 1: ...026-06-22T20:16:04.920Z',NULL,'anton.starovoitov',0,0),(1,19...
+                                                             ^
+HINT:  You will need to rewrite or cast the expression.
+
+2026-07-15 14:41:22 +0000 - dagster - INFO - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - gitlab_merge_requests - Total MRs collected: 0
+2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 883 - gitlab_merge_requests - STEP_OUTPUT - Yielded output "result" of type "Nothing". (Type check passed).
+2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 883 - gitlab_merge_requests - ASSET_MATERIALIZATION - Materialized value gitlab_merge_requests.
+2026-07-15 14:41:22 +0000 - dagster - DEBUG - __ASSET_JOB - 0070b402-9050-4a73-91cb-f17a2fe240fb - 883 - gitlab_merge_requests - STEP_SUCCESS - Finished execution of step "gitlab_merge_requests" in 444ms.
