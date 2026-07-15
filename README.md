@@ -2,263 +2,121 @@
 
 Веб-приложение для сбора и визуализации статистики из GitLab-репозиториев.
 
-![CI](https://github.com/YOUR_USERNAME/iit-gitlab-scout/actions/workflows/ci.yml/badge.svg)
-
-## Быстрый старт
-
-```bash
-git clone https://github.com/YOUR_USERNAME/iit-gitlab-scout.git
-cd iit-gitlab-scout
-
-# Конфигурация
-cp .env.example .env
-cp backend/.env.example backend/.env
-# Заполнить .env и backend/.env
-
-# Запуск
-make dev
-```
-
 ## Модули
 
 | Вкладка | Описание |
 |---------|----------|
+| **Обзор** | Главный дашборд: KPI, контрибьюторы, MR, деплои, активность |
+| **Аналитика** | Контрибьюторы, DORA-метрики, heatmap, deploy reliability |
 | **Языки** | Сбор языков из GitLab API, визуализация соотношения |
-| **Активность** | Коммиты, MR, пайплайны по дням/неделям |
-| **Контрибьюторы** | Статистика контрибьюторов, тепловая карта, таймлайн |
-| **Настройки** | Проекты, Пользователи, Периодичность обновления |
+| **Зависимости** | Аудит зависимостей, проверка актуальности версий |
+| **Бенчмарк** | Сравнение проектов по тегам |
+| **Данные** | Потоки данных (lineage), сбор данных (мониторинг + trigger), справочники |
+| **Настройки** | Проекты, пользователи, токены, веса метрик, аудит-лог |
 
-## Конфигурация проектов
+## Архитектура
 
-Проекты добавляются через UI (вкладка «Настройки» → «Проекты»):
+```
+┌─────────────┐     ┌──────────┐     ┌────────────┐
+│  GitLab API │────▶│ Dagster  │────▶│ PostgreSQL │
+└─────────────┘     │ (11 assets)│     └──────┬─────┘
+                    └──────────┘            │
+                         │            ┌────▼─────┐
+                         │            │   dbt    │
+                         │            │ (staging │
+                         │            │  + marts)│
+                         │            └────┬─────┘
+                         │                 │
+                    ┌────▼─────┐     ┌─────▼──────┐
+                    │ ClickHouse│     │  Backend   │
+                    │ (OLAP)    │     │  (Fastify) │
+                    └──────────┘     └─────┬──────┘
+                                           │
+                                    ┌──────▼──────┐
+                                    │  Frontend   │
+                                    │ (React+Ant) │
+                                    └─────────────┘
+```
 
-| Поле | Описание |
-|------|----------|
-| `path` | Путь к проекту (`owner/repo`) |
-| `label` | Читаемое имя |
-| `tag` | Тег для группировки |
-| `token` | Токен GitLab (AES-256-GCM шифрование) |
-| `base_url` | URL API |
+## Быстрый старт
+
+```bash
+git clone https://github.com/Ps4on1k/iit-gitlab-scout.git
+cd iit-gitlab-scout
+
+# Конфигурация
+cp .env.example .env
+# Отредактировать .env — заполнить JWT_SECRET, ENCRYPTION_KEY, GITLAB_PERSONAL_TOKEN
+
+# Запуск
+docker compose up -d
+
+# Миграции (если нужно)
+docker compose exec backend npm run migrate
+
+# Запуск Dagster (сбор данных)
+docker compose --profile dagster up -d
+```
+
+## Сервисы
+
+| Сервис | Описание | Порт |
+|--------|----------|------|
+| Caddy | Reverse proxy (единственный внешний вход) | 8080 (HTTP), 8443 (HTTPS) |
+| Backend | Fastify API | internal:3000 |
+| Frontend | React SPA | internal:80 |
+| PostgreSQL | Основная БД | internal:5432 |
+| ClickHouse | OLAP аналитика | internal:8123, 9000 |
+| Dagster | Оркестрация сбора | internal:3000 (UI через OAuth2 Proxy) |
+
+## Сбор данных
+
+Данные собираются автоматически через **Dagster** — 11 ассетов:
+
+| Ассет | Описание |
+|-------|----------|
+| `gitlab_commits` | Коммиты из GitLab API |
+| `gitlab_merge_requests` | Merge request'ы |
+| `gitlab_pipelines` | Пайплайны CI/CD |
+| `gitlab_branches` | Ветки проектов |
+| `gitlab_languages` | Языки программирования |
+| `gitlab_contributors` | Агрегация контрибьюторов |
+| `gitlab_activity` | Дневная активность |
+| `gitlab_dependencies` | Аудит зависимостей |
+| `dbt_staging` | Стандартизация данных (views) |
+| `dbt_marts` | Агрегация данных (materialized views) |
+| `lineage_update` | Обновление метаданных lineage |
+
+**Ручной запуск**: кнопка «Собрать статистику» в «Данные → Сбор данных»  
+**Расписание**: каждые 6 часов (cron в Dagster)  
+**Мониторинг**: Dagster UI через `/dagster/*` (с OAuth2 Proxy)
+
+Подробнее: [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md)
+
+## SSO / Active Directory
+
+Приложение поддерживает гибридный режим авторизации:
+- **Логин/пароль** — локальные аккаунты (для администраторов)
+- **OIDC SSO** — корпоративная авторизация через Azure AD, Keycloak и др.
+
+### Настройка SSO
+
+В `.env`:
+```bash
+SSO_PROVIDER=oidc
+OIDC_ISSUER_URL=https://your-idp.example.com
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_CALLBACK_URL=https://app.example.com/api/v1/auth/sso/callback
+SSO_DEFAULT_ROLE=user
+```
 
 ## Учётные записи
 
 | Логин | Пароль | Роль |
 |-------|--------|------|
-| `admin` | `admin` | Полный доступ |
-| `user` | `user` | Только просмотр |
-
----
-
-## Деплой на VM
-
-### Требования
-
-- Ubuntu 22.04+ / Debian 12+ / any Linux
-- Docker + Docker Compose v2
-- 2+ CPU, 2GB+ RAM
-
-### Способ 1: Из GitHub Container Registry (рекомендуется)
-
-Не нужно клонировать репозиторий или собирать образы. Достаточно docker-compose и .env.
-
-```bash
-# 1. Установить Docker
-curl -fsSL https://get.docker.com | sh
-sudo usermod -aG docker $USER
-newgrp docker
-
-# 2. Создать рабочую директорию
-mkdir -p /opt/gitlab-scout && cd /opt/gitlab-scout
-
-# 3. Скачать конфиги из репозитория
-curl -sLO https://raw.githubusercontent.com/YOUR_USERNAME/iit-gitlab-scout/main/docker-compose.ghcr.yml
-curl -sLO https://raw.githubusercontent.com/YOUR_USERNAME/iit-gitlab-scout/main/.env.example
-cp .env.example .env
-
-# 4. Сгенерировать ключи
-sed -i "s/changeme/$(openssl rand -hex 32)/" .env
-sed -i "s/00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff/$(openssl rand -hex 32)/" .env
-
-# 5. Запустить из GHCR
-docker compose -f docker-compose.ghcr.yml up -d
-
-# 6. Миграции БД
-docker compose -f docker-compose.ghcr.yml exec backend npm run migrate
-
-# 7. Проверка
-curl http://localhost:3000/health
-```
-
-### Способ 2: Из репозитория (сборка локально)
-
-```bash
-git clone https://github.com/YOUR_USERNAME/iit-gitlab-scout.git
-cd iit-gitlab-scout
-
-cp .env.example .env
-cp backend/.env.example backend/.env
-# Заполнить ключи
-
-docker compose up -d
-docker compose exec backend npm run migrate
-```
-
-### Настройка reverse proxy (nginx)
-
-```nginx
-server {
-    listen 80;
-    server_name gitlab-scout.your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    location /api/ {
-        proxy_pass http://localhost:3030;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-### Автозапуск (systemd)
-
-```bash
-sudo tee /etc/systemd/system/gitlab-scout.service <<EOF
-[Unit]
-Description=GitLab Scout
-After=docker.service
-Requires=docker.service
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-WorkingDirectory=/opt/gitlab-scout
-ExecStart=/usr/bin/docker compose -f docker-compose.ghcr.yml up -d
-ExecStop=/usr/bin/docker compose -f docker-compose.ghcr.yml down
-TimeoutStartSec=120
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl enable gitlab-scout
-sudo systemctl start gitlab-scout
-```
-
-### 3. Настройка окружения
-
-```bash
-cp .env.example .env
-cp backend/.env.example backend/.env
-```
-
-Отредактируйте `.env`:
-
-```bash
-# Сгенерировать безопасные ключи
-JWT_SECRET=$(openssl rand -hex 32)
-ENCRYPTION_KEY=$(openssl rand -hex 32)
-
-# Записать в .env
-sed -i "s/changeme/$JWT_SECRET/" .env
-sed -i "s/00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff/$ENCRYPTION_KEY/" .env
-
-# Записать пароль PostgreSQL в .env
-sed -i "s/changeme/$(openssl rand -hex 16)/" .env
-```
-
-### 4. Запуск
-
-```bash
-docker compose up -d
-```
-
-### 5. Миграции БД
-
-```bash
-docker compose exec backend npm run migrate
-```
-
-### 6. Проверка
-
-```bash
-# Healthcheck
-curl http://localhost:3030/health
-
-# Открыть в браузере
-open http://YOUR_VM_IP
-```
-
-### 7. Настройка reverse proxy (nginx)
-
-Если нужно разместить за nginx:
-
-```nginx
-server {
-    listen 80;
-    server_name gitlab-scout.your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-
-    location /api/ {
-        proxy_pass http://localhost:3030;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
-```
-
-### 8. Автозапуск (systemd)
-
-```bash
-sudo tee /etc/systemd/system/gitlab-scout.service <<EOF
-[Unit]
-Description=GitLab Scout
-After=docker.service
-Requires=docker.service
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-WorkingDirectory=/opt/iit-gitlab-scout
-ExecStart=/usr/bin/docker compose up -d
-ExecStop=/usr/bin/docker compose down
-TimeoutStartSec=120
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl enable gitlab-scout
-sudo systemctl start gitlab-scout
-```
-
----
-
-## GitHub Actions CI/CD
-
-Пайплайн автоматически:
-- **lint** — typecheck + ESLint
-- **test** — Vitest + PostgreSQL
-- **build** — Docker image (только на main)
-
-### Настройка
-
-1. Fork/Clone репозиторий в GitHub
-2. В Settings → Secrets добавьте:
-   - `DOCKER_USERNAME` — Docker Hub логин (опционально)
-   - `DOCKER_PASSWORD` — Docker Hub пароль (опционально)
-3. Пуш в `main` запускает полный пайплайн
-
----
+| `admin` | (из .env: ADMIN_PASSWORD) | Полный доступ |
+| `user` | (из .env: USER_PASSWORD) | Только просмотр |
 
 ## Переменные окружения
 
@@ -268,25 +126,67 @@ sudo systemctl start gitlab-scout
 | `JWT_SECRET` | Секрет JWT (≥16 символов) | — |
 | `ENCRYPTION_KEY` | Ключ шифрования (64 hex) | — |
 | `GITLAB_BASE_URL` | Base URL GitLab API | `https://gitlab.com/api/v4` |
+| `GITLAB_PERSONAL_TOKEN` | Токен GitLab по умолчанию | — |
 | `PORT` | Порт backend | `3000` |
-| `REQUEST_TIMEOUT` | Таймаут запросов (мс) | `30000` |
-| `RATE_LIMIT_RPS` | Лимит запросов/сек | `10` |
+| `RATE_LIMIT_RPS` | Лимит запросов/сек к GitLab | `10` (кэп 2) |
+| `DATA_READ_MODE` | Режим чтения: postgresql/clickhouse/hybrid | `postgresql` |
+| `SSO_PROVIDER` | Режим авторизации: local/oidc | `local` |
+| `OIDC_ISSUER_URL` | URL OIDC провайдера | — |
+| `OIDC_CLIENT_ID` | OIDC Client ID | — |
+| `OIDC_CLIENT_SECRET` | OIDC Client Secret | — |
+
+## Деплой
+
+### Docker Compose (рекомендуется)
+
+```bash
+docker compose up -d                          # Основные сервисы
+docker compose --profile dagster up -d        # + Dagster
+docker compose exec backend npm run migrate   # Миграции
+```
+
+### Обновление
+
+```bash
+git pull
+docker compose up -d --build
+docker compose --profile dagster up -d --build
+```
 
 ## Структура проекта
 
 ```
-├── .github/workflows/ci.yml   # GitHub Actions
-├── backend/                    # Node.js + Fastify + TypeScript
-│   ├── src/                    # API, services, db, utils
-│   ├── migrations/             # SQL-миграции (001–008)
-│   ├── Dockerfile
-│   └── package.json
-├── frontend/                   # React + TypeScript + Ant Design
-│   ├── src/                    # Components, API, types
-│   ├── Dockerfile
-│   └── package.json
-├── .env.example                # Переменные окружения
-├── docker-compose.yml          # PostgreSQL + backend + frontend
-├── Makefile                    # Команды сборки
-└── README.md
+├── backend/                     # Fastify + TypeScript
+│   ├── src/api/v1/              # API endpoints (auth, dashboard, lineage...)
+│   ├── src/services/            # Сборщики данных, планировщик
+│   ├── src/utils/               # Auth, cache, rate limiting, RBAC
+│   ├── migrations/              # SQL миграции (001-046)
+│   └── tests/                   # Vitest (55 tests)
+├── frontend/                    # React + Ant Design + Vite
+│   ├── src/components/          # Dashboard, Analytics, Data, Settings
+│   ├── src/api/                 # API клиент
+│   └── src/types/               # TypeScript типы
+├── dagster/                     # Dagster оркестрация
+│   ├── dagster_project/assets/  # 11 ассетов (collectors + dbt + lineage)
+│   ├── dagster_project/utils/   # GitLab client, PG connection
+│   └── requirements.txt         # Python зависимости (dagster, dbt-postgres)
+├── dbt/                         # dbt проект
+│   ├── models/staging/          # 6 staging views
+│   ├── models/marts/            # 6 materialized views (с project_id)
+│   └── profiles.yml             # PostgreSQL подключение
+├── docker-compose.yml           # 6 сервисов + profiles (dagster, analytics)
+├── Caddyfile                    # Reverse proxy
+└── docs/
+    └── DATA_COLLECTION.md       # Документация по сбору данных
 ```
+
+## Тесты
+
+```bash
+cd backend && npm test          # 55 tests
+npm run typecheck               # TypeScript проверка
+```
+
+## Лицензия
+
+Proprietary — Инновация ИТ
