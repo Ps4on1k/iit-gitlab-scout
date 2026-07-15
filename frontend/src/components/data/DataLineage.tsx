@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, Spin, Empty, Typography, Tag, Row, Col, Statistic, Table, Badge, Button } from "antd";
-import { DatabaseOutlined, CloudOutlined, ApiOutlined, SyncOutlined, ReloadOutlined } from "@ant-design/icons";
+import { DatabaseOutlined, CloudOutlined, ApiOutlined, SyncOutlined, ReloadOutlined, LinkOutlined } from "@ant-design/icons";
 import { fetchLineageFlow, fetchLineageTableStats, fetchLineageMetadata } from "../../api/client";
-import { ReactFlow, Background, Controls, MiniMap, type Node, type Edge, type NodeTypes, type OnNodesChange, type OnEdgesChange, applyNodeChanges, applyEdgeChanges, MarkerType } from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
 
 const { Text, Title } = Typography;
 
@@ -13,143 +11,78 @@ interface LineageData {
   api_endpoints: Record<string, { reads_from: string[]; description: string }>;
 }
 
-const nodeColors: Record<string, string> = {
-  collector: "#3A8DFF",
-  table: "#21B573",
-  endpoint: "#42D9C8",
-  metadata: "#FFB020",
-};
+const NODE_W = 170;
+const NODE_H = 50;
+const COL_X = 20;
+const TABLE_X = 260;
+const EP_X = 500;
+const ROW_H = 80;
+const SVG_PAD = 40;
 
-function CollectorNode({ data }: { data: any }) {
+const COLORS = { collector: "#3A8DFF", table: "#21B573", endpoint: "#42D9C8" };
+
+function SvgNode({ x, y, label, sub, color, badge }: { x: number; y: number; label: string; sub: string; color: string; badge?: string }) {
   return (
-    <div style={{ padding: "8px 12px", borderRadius: 8, background: "linear-gradient(135deg, rgba(58,141,255,0.12) 0%, rgba(66,217,200,0.12) 100%)", border: "1px solid rgba(58,141,255,0.3)", minWidth: 180 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <CloudOutlined style={{ color: "#3A8DFF", fontSize: 14 }} />
-        <Text strong style={{ fontSize: 12 }}>{data.label}</Text>
-      </div>
-      <div style={{ fontSize: 10, color: "#8c8c8c" }}>{data.description}</div>
-    </div>
+    <g>
+      <rect x={x} y={y} width={NODE_W} height={NODE_H} rx={8} fill={color} fillOpacity={0.1} stroke={color} strokeWidth={1.5} />
+      <text x={x + 10} y={y + 18} fontSize={11} fontWeight={600} fill={color}>{label.length > 22 ? label.slice(0, 20) + "…" : label}</text>
+      <text x={x + 10} y={y + 34} fontSize={9} fill="#888">{sub.length > 28 ? sub.slice(0, 26) + "…" : sub}</text>
+      {badge && <text x={x + NODE_W - 8} y={y + 18} fontSize={9} fill="#fff" textAnchor="end" fontWeight={600}><rect x={x + NODE_W - 40} y={y + 6} width={32} height={16} rx={8} fill={color} /><text x={x + NODE_W - 10} y={y + 18} fontSize={8} fill="#fff" textAnchor="middle" fontWeight={600}>{badge}</text></text>}
+    </g>
   );
 }
 
-function TableNode({ data }: { data: any }) {
-  return (
-    <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(33,181,115,0.08)", border: "1px solid rgba(33,181,115,0.3)", minWidth: 180 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <DatabaseOutlined style={{ color: "#21B573", fontSize: 14 }} />
-        <Text strong style={{ fontSize: 12 }}>{data.label}</Text>
-        {data.rowCount !== undefined && <Badge count={data.rowCount.toLocaleString()} style={{ backgroundColor: "#21B573", fontSize: 9 }} overflowCount={999999} />}
-      </div>
-      <div style={{ fontSize: 10, color: "#8c8c8c" }}>{data.description}</div>
-    </div>
-  );
-}
+function buildGraph(data: LineageData, stats: any) {
+  const nodes: { id: string; x: number; y: number; label: string; sub: string; color: string; badge?: string }[] = [];
+  const edges: { x1: number; y1: number; x2: number; y2: number; color: string }[] = [];
 
-function EndpointNode({ data }: { data: any }) {
-  return (
-    <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(66,217,200,0.08)", border: "1px solid rgba(66,217,200,0.3)", minWidth: 180 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-        <ApiOutlined style={{ color: "#42D9C8", fontSize: 14 }} />
-        <Text code style={{ fontSize: 11 }}>{data.label}</Text>
-      </div>
-      <div style={{ fontSize: 10, color: "#8c8c8c" }}>{data.description}</div>
-    </div>
-  );
-}
-
-const nodeTypes: NodeTypes = {
-  collector: CollectorNode,
-  table: TableNode,
-  endpoint: EndpointNode,
-};
-
-function buildFlowGraph(data: LineageData, stats: any, metadata: any[]) {
-  const nodes: Node[] = [];
-  const edges: Edge[] = [];
-  let xCollector = 0;
-  let xTable = 300;
-  let xEndpoint = 600;
-
-  // Collector nodes
   const collectorNames = Object.keys(data.collectors);
   collectorNames.forEach((name, i) => {
-    const info = data.collectors[name];
-    nodes.push({
-      id: `collector-${name}`,
-      type: "collector",
-      position: { x: xCollector, y: i * 90 },
-      data: { label: name, description: info.description },
-    });
-
-    // Edges from collector to tables
-    info.writes_to.forEach((table) => {
-      if (!data.tables[table]) return; // skip if target table doesn't exist
-      edges.push({
-        id: `e-${name}-${table}`,
-        source: `collector-${name}`,
-        target: `table-${table}`,
-        type: "default",
-        animated: true,
-        style: { stroke: "#3A8DFF", strokeWidth: 2 },
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#3A8DFF" },
-      });
-    });
+    const y = SVG_PAD + i * ROW_H;
+    nodes.push({ id: `c-${name}`, x: COL_X, y, label: name, sub: data.collectors[name].description, color: COLORS.collector });
   });
 
-  // Table nodes
   const tableNames = Object.keys(data.tables);
   tableNames.forEach((name, i) => {
-    const info = data.tables[name];
-    const tableStats = stats?.tables?.find((t: any) => t.name === name);
-    nodes.push({
-      id: `table-${name}`,
-      type: "table",
-      position: { x: xTable, y: i * 90 },
-      data: { label: name, description: info.description, rowCount: tableStats?.stats?.rowCount },
-    });
+    const y = SVG_PAD + i * ROW_H;
+    const ts = stats?.tables?.find((t: any) => t.name === name);
+    const badge = ts?.stats?.rowCount ? String(ts.stats.rowCount) : undefined;
+    nodes.push({ id: `t-${name}`, x: TABLE_X, y, label: name, sub: data.tables[name].description, color: COLORS.table, badge });
   });
 
-  // Endpoint nodes
-  const endpointNames = Object.keys(data.api_endpoints);
-  endpointNames.forEach((name, i) => {
-    const info = data.api_endpoints[name];
-    nodes.push({
-      id: `endpoint-${name}`,
-      type: "endpoint",
-      position: { x: xEndpoint, y: i * 90 },
-      data: { label: name, description: info.description },
-    });
+  const epNames = Object.keys(data.api_endpoints);
+  epNames.forEach((name, i) => {
+    const y = SVG_PAD + i * ROW_H;
+    nodes.push({ id: `e-${name}`, x: EP_X, y, label: name, sub: data.api_endpoints[name].description, color: COLORS.endpoint });
+  });
 
-    // Edges from tables to endpoint
-    info.reads_from.forEach((table) => {
-      if (data.tables[table]) {
-        edges.push({
-          id: `e-${table}-${name}`,
-          source: `table-${table}`,
-          target: `endpoint-${name}`,
-          type: "default",
-          style: { stroke: "#42D9C8", strokeWidth: 1.5 },
-          markerEnd: { type: MarkerType.ArrowClosed, color: "#42D9C8" },
-        });
+  collectorNames.forEach((cName) => {
+    const cIdx = collectorNames.indexOf(cName);
+    const cy = SVG_PAD + cIdx * ROW_H + NODE_H / 2;
+    data.collectors[cName].writes_to.forEach((tName) => {
+      const tIdx = tableNames.indexOf(tName);
+      if (tIdx >= 0) {
+        const ty = SVG_PAD + tIdx * ROW_H + NODE_H / 2;
+        edges.push({ x1: COL_X + NODE_W, y1: cy, x2: TABLE_X, y2: ty, color: COLORS.collector });
       }
     });
   });
 
-  // Dynamic metadata nodes
-  metadata.forEach((m, i) => {
-    nodes.push({
-      id: `meta-${m.entity_type}-${m.entity_name}`,
-      type: "collector",
-      position: { x: xCollector, y: (collectorNames.length + i) * 90 + 40 },
-      data: { label: `${m.entity_type}: ${m.entity_name}`, description: `Динамические метаданные (обновлено ${dayjs(m.updated_at).format("DD.MM HH:mm")})` },
+  tableNames.forEach((tName) => {
+    const tIdx = tableNames.indexOf(tName);
+    const ty = SVG_PAD + tIdx * ROW_H + NODE_H / 2;
+    data.api_endpoints && Object.entries(data.api_endpoints).forEach(([eName, info]) => {
+      if (info.reads_from.includes(tName)) {
+        const eIdx = epNames.indexOf(eName);
+        if (eIdx >= 0) {
+          const ey = SVG_PAD + eIdx * ROW_H + NODE_H / 2;
+          edges.push({ x1: TABLE_X + NODE_W, y1: ty, x2: EP_X, y2: ey, color: COLORS.endpoint });
+        }
+      }
     });
   });
 
-  return { nodes, edges };
-}
-
-function dayjs(date: string) {
-  return { format: (fmt: string) => new Date(date).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) };
+  return { nodes, edges, svgHeight: SVG_PAD + Math.max(collectorNames.length, tableNames.length, epNames.length) * ROW_H + SVG_PAD };
 }
 
 export function DataLineage() {
@@ -157,10 +90,8 @@ export function DataLineage() {
   const [data, setData] = useState<LineageData | null>(null);
   const [stats, setStats] = useState<any>(null);
   const [metadata, setMetadata] = useState<any[]>([]);
-  const [flowNodes, setFlowNodes] = useState<Node[]>([]);
-  const [flowEdges, setFlowEdges] = useState<Edge[]>([]);
+  const [graph, setGraph] = useState<ReturnType<typeof buildGraph> | null>(null);
   const [loadKey, setLoadKey] = useState(0);
-  const reactFlowInstance = useRef<any>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -170,9 +101,7 @@ export function DataLineage() {
         if (cancelled) return;
         if (flowRes.ok) {
           setData(flowRes.data);
-          const { nodes: n, edges: e } = buildFlowGraph(flowRes.data, statsRes.data, metaRes.data || []);
-          setFlowNodes(n);
-          setFlowEdges(e);
+          setGraph(buildGraph(flowRes.data, statsRes.data));
         }
         if (statsRes.ok) setStats(statsRes.data);
         if (metaRes.ok) setMetadata(metaRes.data || []);
@@ -182,16 +111,8 @@ export function DataLineage() {
     return () => { cancelled = true; };
   }, [loadKey]);
 
-  const onInit = useCallback((instance: any) => {
-    reactFlowInstance.current = instance;
-    setTimeout(() => instance.fitView({ padding: 0.3 }), 100);
-  }, []);
-
-  const onNodesChange: OnNodesChange = useCallback((changes) => setFlowNodes((nds) => applyNodeChanges(changes, nds)), []);
-  const onEdgesChange: OnEdgesChange = useCallback((changes) => setFlowEdges((eds) => applyEdgeChanges(changes, eds)), []);
-
   if (loading) return <Spin size="large" style={{ display: "block", margin: "80px auto" }} />;
-  if (!data) return <Empty description="Не удалось загрузить lineage" />;
+  if (!data || !graph) return <Empty description="Не удалось загрузить lineage" />;
 
   return (
     <div>
@@ -209,42 +130,40 @@ export function DataLineage() {
         <Col span={8}><Card><Statistic title="API эндпоинты" value={Object.keys(data.api_endpoints).length} prefix={<ApiOutlined />} /></Card></Col>
       </Row>
 
-      {/* Interactive Graph */}
-      <Card title="Интерактивный граф потока данных" style={{ marginBottom: 16 }}>
-        <div style={{ height: 600, border: "1px solid var(--ant-color-border-secondary)", borderRadius: 8, position: "relative" }}>
-          <ReactFlow
-            nodes={flowNodes}
-            edges={flowEdges}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onInit={onInit}
-            nodeTypes={nodeTypes}
-            fitView
-            fitViewOptions={{ padding: 0.3 }}
-            minZoom={0.2}
-            maxZoom={2}
-            proOptions={{ hideAttribution: true }}
-            style={{ width: "100%", height: "100%" }}
-            defaultEdgeOptions={{ type: "smoothstep", animated: true, style: { stroke: "#3A8DFF", strokeWidth: 2 } }}
-          >
-            <Background gap={16} />
-            <Controls />
-            <MiniMap
-              nodeColor={(n) => nodeColors[n.type || ""] || "#666"}
-              maskColor="rgba(0,0,0,0.1)"
-              style={{ width: 120, height: 80 }}
-            />
-          </ReactFlow>
+      <Card title="Граф потока данных" style={{ marginBottom: 16 }}>
+        <div style={{ overflowX: "auto" }}>
+          <svg width={EP_X + NODE_W + SVG_PAD} height={graph.svgHeight} style={{ minWidth: 700 }}>
+            {/* Column headers */}
+            <text x={COL_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.collector} textAnchor="middle">Коллекторы</text>
+            <text x={TABLE_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.table} textAnchor="middle">Таблицы</text>
+            <text x={EP_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.endpoint} textAnchor="middle">API</text>
+
+            {/* Edges */}
+            {graph.edges.map((edge, i) => (
+              <line key={`edge-${i}`} x1={edge.x1} y1={edge.y1} x2={edge.x2} y2={edge.y2} stroke={edge.color} strokeWidth={1.5} strokeOpacity={0.5} markerEnd="url(#arrow)" />
+            ))}
+
+            {/* Arrow marker */}
+            <defs>
+              <marker id="arrow" markerWidth={8} markerHeight={6} refX={8} refY={3} orient="auto" markerUnits="strokeWidth">
+                <path d="M0,0 L8,3 L0,6 Z" fill="#888" />
+              </marker>
+            </defs>
+
+            {/* Nodes */}
+            {graph.nodes.map((n) => (
+              <SvgNode key={n.id} x={n.x} y={n.y} label={n.label} sub={n.sub} color={n.color} badge={n.badge} />
+            ))}
+          </svg>
         </div>
         <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11, color: "#8c8c8c" }}>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#3A8DFF", marginRight: 4 }} /> Коллекторы ({flowNodes.filter((n) => n.type === "collector").length})</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#21B573", marginRight: 4 }} /> Таблицы ({flowNodes.filter((n) => n.type === "table").length})</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#42D9C8", marginRight: 4 }} /> API ({flowNodes.filter((n) => n.type === "endpoint").length})</span>
-          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: "#FFB020", marginRight: 4 }} /> Связи: {flowEdges.length}</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.collector, marginRight: 4 }} /> Коллекторы</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.table, marginRight: 4 }} /> Таблицы</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.endpoint, marginRight: 4 }} /> API эндпоинты</span>
+          <span>→ направление потока данных</span>
         </div>
       </Card>
 
-      {/* Dynamic metadata */}
       {metadata.length > 0 && (
         <Card title={<span><SyncOutlined style={{ marginRight: 6 }} />Динамические метаданные (dbt/Dagster)</span>}>
           <Table
