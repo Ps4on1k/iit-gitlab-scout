@@ -165,9 +165,9 @@ export function DataLineage() {
 
       {/* Visual Flow: Collectors → Tables → API */}
       <Card title="Поток данных: Коллекторы → Таблицы → API" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", gap: 24 }}>
-          {/* Left: Collectors */}
-          <div style={{ flex: "0 0 250px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Collectors */}
+          <div>
             <Text strong style={{ fontSize: 12, color: "#3A8DFF", display: "block", marginBottom: 8 }}>Коллекторы</Text>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {Object.entries(data.collectors).map(([name, info]) => (
@@ -176,8 +176,8 @@ export function DataLineage() {
             </div>
           </div>
 
-          {/* Middle: Tables */}
-          <div style={{ flex: 1 }}>
+          {/* Tables */}
+          <div>
             <Text strong style={{ fontSize: 12, color: "#21B573", display: "block", marginBottom: 8 }}>Таблицы</Text>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {Object.entries(data.tables).map(([name, info]) => (
@@ -186,8 +186,8 @@ export function DataLineage() {
             </div>
           </div>
 
-          {/* Right: API Endpoints */}
-          <div style={{ flex: "0 0 280px" }}>
+          {/* API Endpoints */}
+          <div>
             <Text strong style={{ fontSize: 12, color: "#42D9C8", display: "block", marginBottom: 8 }}>API эндпоинты</Text>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {Object.entries(data.api_endpoints).map(([endpoint, info]) => (

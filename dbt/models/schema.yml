@@ -1,0 +1,58 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: public
+    tables:
+      - name: commits
+      - name: project_merge_requests
+      - name: project_pipelines
+      - name: project_deployments
+      - name: project_branches
+      - name: contributor_profiles
+      - name: project_languages
+      - name: project_activity
+      - name: project_dependencies_audit
+      - name: projects
+      - name: contributor_directory
+
+models:
+  - name: stg_commits
+    description: "Стандартизированные коммиты"
+    columns:
+      - name: id
+        tests: [unique, not_null]
+      - name: project_id
+        tests: [not_null]
+      - name: sha
+        tests: [not_null]
+
+  - name: stg_merge_requests
+    description: "Стандартизированные merge request'ы"
+    columns:
+      - name: id
+        tests: [unique, not_null]
+
+  - name: stg_pipelines
+    description: "Стандартизированные пайплайны"
+    columns:
+      - name: id
+        tests: [unique, not_null]
+
+  - name: stg_deployments
+    description: "Стандартизированные деплои"
+    columns:
+      - name: id
+        tests: [unique, not_null]
+
+  - name: stg_branches
+    description: "Стандартизированные ветки"
+    columns:
+      - name: id
+        tests: [unique, not_null]
+
+  - name: stg_contributors
+    description: "Стандартизированные профили контрибьюторов"
+    columns:
+      - name: id
+        tests: [unique, not_null]
