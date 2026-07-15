@@ -4,6 +4,7 @@ import { getPool } from "../../db/pool.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import { getCached, setCache, cacheKey } from "../../utils/cache.js";
 import { getContributorDirectory, buildEmailToNameMap, buildNameToEmailMap } from "../../utils/directory-cache.js";
+import { readQuery, getReadMode } from "../../utils/data-read.js";
 
 export async function dashboardRoutes(app: FastifyInstance) {
   app.get<{
