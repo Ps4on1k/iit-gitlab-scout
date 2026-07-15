@@ -156,8 +156,9 @@ export function DataLineage() {
   const [metadata, setMetadata] = useState<any[]>([]);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const loadData = useCallback(() => {
+  useEffect(() => {
     setLoading(true);
     Promise.all([fetchLineageFlow(), fetchLineageTableStats(), fetchLineageMetadata()]).then(([flowRes, statsRes, metaRes]) => {
       if (flowRes.ok) {
@@ -170,9 +171,7 @@ export function DataLineage() {
       if (metaRes.ok) setMetadata(metaRes.data || []);
       setLoading(false);
     });
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  }, [refreshKey]);
 
   const onNodesChange: OnNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
   const onEdgesChange: OnEdgesChange = useCallback((changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
@@ -187,7 +186,7 @@ export function DataLineage() {
           <Title level={4}>Потоки данных</Title>
           <Text type="secondary">Откуда берутся данные и как попадают в дашборды</Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={loadData}>Обновить</Button>
+        <Button icon={<ReloadOutlined />} onClick={() => setRefreshKey((k) => k + 1)}>Обновить</Button>
       </div>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
