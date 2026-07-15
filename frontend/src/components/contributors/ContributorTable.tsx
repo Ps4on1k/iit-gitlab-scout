@@ -330,7 +330,7 @@ export function ContributorTable({ data, loading, onContributorClick, dateFrom, 
 
   const arrow = (key: SortKey) => sortKey === key ? (sortAsc ? " ↑" : " ↓") : " ↕";
 
-  if (!loading && data.length === 0) return <Empty description="Нет данных. Нажмите «Собрать данные»." />;
+  if (!loading && data.length === 0) return <Empty description="Нет данных. Данные собираются автоматически через Dagster." />;
 
   const thStyle: React.CSSProperties = {
     background: "var(--ant-color-fill-secondary)",

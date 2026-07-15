@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from "react";
 import { ConfigProvider, Layout, Button, Typography, Spin, Tooltip } from "antd";
-import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined, UpOutlined, FilePdfOutlined, DatabaseOutlined, CheckCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
+import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined, UpOutlined, FilePdfOutlined, DatabaseOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
@@ -28,7 +28,6 @@ const DataLineage = lazy(() => import("./components/data/DataLineage").then(m =>
 const DataCollectionMonitor = lazy(() => import("./components/data/DataCollectionMonitor").then(m => ({ default: m.DataCollectionMonitor })));
 const DataHealth = lazy(() => import("./components/data/DataHealth").then(m => ({ default: m.DataHealth })));
 const DataReferences = lazy(() => import("./components/data/DataReferences").then(m => ({ default: m.DataReferences })));
-const SchedulerPanel = lazy(() => import("./components/SchedulerPanel").then(m => ({ default: m.SchedulerPanel })));
 
 const { Header, Content } = Layout;
 
@@ -56,7 +55,7 @@ const defaultFilters: GlobalFilters = {
   contributors: [],
 };
 
-type TabKey = "dashboard" | "analytics" | "stack" | "dependencies" | "benchmark" | "settings" | "data-lineage" | "data-collection" | "data-health" | "data-references" | "data-scheduler";
+type TabKey = "dashboard" | "analytics" | "stack" | "dependencies" | "benchmark" | "settings" | "data-lineage" | "data-collection" | "data-health" | "data-references";
 type AnalyticsTab = "contributors" | "deploy-reliability" | "activity" | "branches" | "pipelines" | "dora";
 
 function getInitialDarkMode(): boolean {
@@ -93,7 +92,7 @@ function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalF
   window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
 }
 
-const TAB_LABELS: Record<TabKey, string> = { dashboard: "Обзор", analytics: "Аналитика", stack: "Языки", dependencies: "Зависимости", benchmark: "Бенчмарк", settings: "Настройки", "data-lineage": "Потоки данных", "data-collection": "Сбор данных", "data-health": "Здоровье", "data-references": "Справочники", "data-scheduler": "Планировщик" };
+const TAB_LABELS: Record<TabKey, string> = { dashboard: "Обзор", analytics: "Аналитика", stack: "Языки", dependencies: "Зависимости", benchmark: "Бенчмарк", settings: "Настройки", "data-lineage": "Потоки данных", "data-collection": "Сбор данных", "data-health": "Здоровье", "data-references": "Справочники" };
 const ANALYTICS_LABELS: Record<AnalyticsTab, string> = { contributors: "Контрибьюторы", "deploy-reliability": "Надёжность", activity: "Активность", branches: "Ветки", pipelines: "CI/CD", dora: "DORA" };
 
 export default function App() {
@@ -211,7 +210,6 @@ export default function App() {
                       { key: "data-collection", icon: <DatabaseOutlined />, label: "Сбор данных" },
                       { key: "data-health", icon: <CheckCircleOutlined />, label: "Здоровье" },
                       { key: "data-references", icon: <TeamOutlined />, label: "Справочники" },
-                      { key: "data-scheduler", icon: <ClockCircleOutlined />, label: "Планировщик" },
                     ].map((item) => (
                       <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : (darkMode ? "#94a3b8" : "#4b5563"), background: tab === item.key ? (darkMode ? "rgba(58,141,255,0.1)" : "rgba(58,141,255,0.08)") : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
                     ))}
@@ -248,7 +246,6 @@ export default function App() {
                 {tab === "data-collection" && user.role === "admin" && <DataCollectionMonitor />}
                 {tab === "data-health" && user.role === "admin" && <DataHealth />}
                 {tab === "data-references" && user.role === "admin" && <DataReferences />}
-                {tab === "data-scheduler" && user.role === "admin" && <SchedulerPanel />}
               </Suspense>
               </ErrorBoundary>
             </Content>

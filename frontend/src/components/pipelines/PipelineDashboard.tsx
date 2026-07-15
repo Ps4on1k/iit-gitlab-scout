@@ -7,7 +7,7 @@ import { getProjectUrl } from "../../utils/projectUrl";
 import { collectPipelines } from "../../api/pipeline-client";
 import { chartColors } from "../../utils/chartTheme";
 import { delay } from "../../utils/collect";
-import { CollectButton } from "../common/CollectButton";
+
 import type { ProjectConfig, Role } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
 
@@ -84,7 +84,7 @@ export function PipelineDashboard({ userRole, filters }: Props) {
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        {userRole === "admin" && <CollectButton collector="pipelines" projectIds={pipelineProjectIds} onComplete={loadData} color="#B8A8D8" />}
+
         <Tooltip title={useMedian ? "Показывать средние (mean)" : "Показывать медианы (median)"}>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--ant-color-textTertiary)" }}>
             <SwapOutlined />

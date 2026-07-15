@@ -7,19 +7,22 @@ const { Text, Title } = Typography;
 
 interface LineageData {
   collectors: Record<string, { writes_to: string[]; description: string }>;
-  tables: Record<string, { written_by: string[]; read_by: string[]; description: string; fields?: any[] }>;
+  staging: Record<string, { reads_from: string[]; description: string; category?: string }>;
+  tables: Record<string, { written_by: string[]; read_by: string[]; reads_from?: string[]; description: string; fields?: any[] }>;
   api_endpoints: Record<string, { reads_from: string[]; description: string }>;
 }
 
-const NODE_W = 170;
-const NODE_H = 50;
-const COL_X = 20;
-const TABLE_X = 260;
-const EP_X = 500;
-const ROW_H = 80;
+const NODE_W = 150;
+const NODE_H = 44;
+const COL_X = 10;
+const STAGING_X = 180;
+const TABLE_X = 350;
+const MART_X = 520;
+const EP_X = 690;
+const ROW_H = 56;
 const SVG_PAD = 40;
 
-const COLORS = { collector: "#3A8DFF", table: "#21B573", endpoint: "#42D9C8" };
+const COLORS = { collector: "#3A8DFF", staging: "#FFB020", table: "#21B573", mart: "#9B59B6", endpoint: "#42D9C8" };
 
 interface GraphNode {
   id: string;
@@ -41,17 +44,78 @@ function buildGraph(data: LineageData, stats: any) {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];
 
+  // Collectors
   const collectorNames = Object.keys(data.collectors);
   collectorNames.forEach((name, i) => {
     nodes.push({ id: `c-${name}`, x: COL_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.collectors[name].description, color: COLORS.collector });
   });
 
+  // Staging
+  const stagingNames = data.staging ? Object.keys(data.staging) : [];
+  stagingNames.forEach((name, i) => {
+    nodes.push({ id: `s-${name}`, x: STAGING_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.staging[name].description, color: COLORS.staging });
+    // Collector → Staging
+    (data.staging[name].reads_from || []).forEach((table) => {
+      const cIdx = collectorNames.findIndex((c) => data.collectors[c]?.writes_to?.includes(table));
+      if (cIdx >= 0) {
+        edges.push({ x1: COL_X + NODE_W, y1: SVG_PAD + cIdx * ROW_H + NODE_H / 2, x2: STAGING_X, y2: SVG_PAD + i * ROW_H + NODE_H / 2, source: `c-${collectorNames[cIdx]}`, target: `s-${name}`, color: COLORS.collector });
+      }
+    });
+  });
+
+  // Tables
   const tableNames = Object.keys(data.tables);
   tableNames.forEach((name, i) => {
     const ts = stats?.tables?.find((t: any) => t.name === name);
     nodes.push({ id: `t-${name}`, x: TABLE_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.tables[name].description, color: COLORS.table, badge: ts?.stats?.rowCount ? String(ts.stats.rowCount) : undefined });
   });
 
+  // Staging → Tables
+  stagingNames.forEach((sName, si) => {
+    (data.staging[sName].reads_from || []).forEach((tName) => {
+      const tIdx = tableNames.indexOf(tName);
+      if (tIdx >= 0) {
+        edges.push({ x1: STAGING_X + NODE_W, y1: SVG_PAD + si * ROW_H + NODE_H / 2, x2: TABLE_X, y2: SVG_PAD + tIdx * ROW_H + NODE_H / 2, source: `s-${sName}`, target: `t-${tName}`, color: COLORS.staging });
+      }
+    });
+  });
+
+  // Collector → Table (direct)
+  collectorNames.forEach((cName) => {
+    const cIdx = collectorNames.indexOf(cName);
+    const cy = SVG_PAD + cIdx * ROW_H + NODE_H / 2;
+    (data.collectors[cName].writes_to || []).forEach((tName) => {
+      const tIdx = tableNames.indexOf(tName);
+      if (tIdx >= 0 && !stagingNames.some((s) => data.staging?.[s]?.reads_from?.includes(tName))) {
+        edges.push({ x1: COL_X + NODE_W, y1: cy, x2: TABLE_X, y2: SVG_PAD + tIdx * ROW_H + NODE_H / 2, source: `c-${cName}`, target: `t-${tName}`, color: COLORS.collector });
+      }
+    });
+  });
+
+  // Mart tables
+  const martNames = tableNames.filter((n) => n.startsWith("mart_"));
+  martNames.forEach((name, i) => {
+    const ts = stats?.tables?.find((t: any) => t.name === name);
+    nodes.push({ id: `m-${name}`, x: MART_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.tables[name]?.description || "", color: COLORS.mart, badge: ts?.stats?.rowCount ? String(ts.stats.rowCount) : undefined });
+  });
+
+  // Table → Mart
+  martNames.forEach((mName) => {
+    const mIdx = martNames.indexOf(mName);
+    const readsFrom = data.tables[mName]?.reads_from || [];
+    readsFrom.forEach((sName) => {
+      const sIdx = stagingNames.indexOf(sName);
+      if (sIdx >= 0) {
+        edges.push({ x1: STAGING_X + NODE_W, y1: SVG_PAD + sIdx * ROW_H + NODE_H / 2, x2: MART_X, y2: SVG_PAD + mIdx * ROW_H + NODE_H / 2, source: `s-${sName}`, target: `m-${mName}`, color: COLORS.staging });
+      }
+      const tIdx = tableNames.indexOf(sName);
+      if (tIdx >= 0 && !martNames.includes(sName)) {
+        edges.push({ x1: TABLE_X + NODE_W, y1: SVG_PAD + tIdx * ROW_H + NODE_H / 2, x2: MART_X, y2: SVG_PAD + mIdx * ROW_H + NODE_H / 2, source: `t-${sName}`, target: `m-${mName}`, color: COLORS.table });
+      }
+    });
+  });
+
+  // API Endpoints
   const epNames = Object.keys(data.api_endpoints);
   epNames.forEach((name, i) => {
     nodes.push({ id: `e-${name}`, x: EP_X, y: SVG_PAD + i * ROW_H, label: name, sub: data.api_endpoints[name].description, color: COLORS.endpoint });
@@ -152,16 +216,20 @@ export function DataLineage() {
       </div>
 
       <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={8}><Card><Statistic title="Коллекторы" value={Object.keys(data.collectors).length} prefix={<CloudOutlined />} /></Card></Col>
-        <Col span={8}><Card><Statistic title="Таблицы" value={Object.keys(data.tables).length} prefix={<DatabaseOutlined />} /></Card></Col>
-        <Col span={8}><Card><Statistic title="API эндпоинты" value={Object.keys(data.api_endpoints).length} prefix={<ApiOutlined />} /></Card></Col>
+        <Col span={4}><Card><Statistic title="Коллекторы" value={Object.keys(data.collectors).length} prefix={<CloudOutlined />} /></Card></Col>
+        <Col span={4}><Card><Statistic title="Staging" value={Object.keys(data.staging || {}).length} prefix={<DatabaseOutlined />} /></Card></Col>
+        <Col span={4}><Card><Statistic title="Таблицы" value={Object.keys(data.tables).length} prefix={<DatabaseOutlined />} /></Card></Col>
+        <Col span={4}><Card><Statistic title="Витрины" value={Object.keys(data.tables).filter((n) => n.startsWith("mart_")).length} prefix={<DatabaseOutlined />} /></Card></Col>
+        <Col span={4}><Card><Statistic title="API эндпоинты" value={Object.keys(data.api_endpoints).length} prefix={<ApiOutlined />} /></Card></Col>
       </Row>
 
       <Card title="Граф потока данных" style={{ marginBottom: 16 }}>
         <div style={{ overflowX: "auto" }}>
           <svg width={EP_X + NODE_W + 40} height={graph.svgHeight} style={{ minWidth: 700 }} onClick={() => setSelectedNodeId(null)}>
             <text x={COL_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.collector} textAnchor="middle">Коллекторы</text>
+            <text x={STAGING_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.staging} textAnchor="middle">Staging</text>
             <text x={TABLE_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.table} textAnchor="middle">Таблицы</text>
+            <text x={MART_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.mart} textAnchor="middle">Витрины</text>
             <text x={EP_X + NODE_W / 2} y={20} fontSize={13} fontWeight={700} fill={COLORS.endpoint} textAnchor="middle">API</text>
 
             <defs>
@@ -195,7 +263,9 @@ export function DataLineage() {
         </div>
         <div style={{ display: "flex", gap: 16, marginTop: 8, fontSize: 11, color: "#8c8c8c" }}>
           <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.collector, marginRight: 4 }} /> Коллекторы</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.staging, marginRight: 4 }} /> Staging</span>
           <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.table, marginRight: 4 }} /> Таблицы</span>
+          <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.mart, marginRight: 4 }} /> Витрины</span>
           <span><span style={{ display: "inline-block", width: 12, height: 12, borderRadius: 2, background: COLORS.endpoint, marginRight: 4 }} /> API</span>
           <span><span style={{ display: "inline-block", width: 12, height: 2, background: "#FF6B35", marginRight: 4, verticalAlign: "middle" }} /> Выделенные связи</span>
         </div>

@@ -7,7 +7,7 @@ import { ContributorTable } from "./ContributorTable";
 import { HeatmapChart } from "./HeatmapChart";
 import { CommitTimelineChart } from "./CommitTimelineChart";
 import { getTagColor } from "../../utils/tagColors";
-import { CollectButton } from "../common/CollectButton";
+
 import {
   fetchContributorsList,
   fetchContributorMetrics,
@@ -235,9 +235,6 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       </div>
 
       <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        {userRole === "admin" && (
-          <CollectButton collector="contributors" projectIds={contributorIds} dateFrom={filters.dateFrom} dateTo={filters.dateTo} onComplete={loadData} color="#8BAADB" label="Собрать данные" />
-        )}
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

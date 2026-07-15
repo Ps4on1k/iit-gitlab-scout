@@ -6,7 +6,7 @@ import { ProjectLabel } from "../common/ProjectLabel";
 import { collectStack, fetchLanguageSummary, fetchLanguages } from "../../api/stack-client";
 import { getTagColor } from "../../utils/tagColors";
 import { delay } from "../../utils/collect";
-import { CollectButton } from "../common/CollectButton";
+
 import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";
 import type { LanguageSummary, StackFilters } from "../../types/stack";
@@ -132,7 +132,7 @@ export const StackDashboard = memo(function StackDashboard({ userRole }: Props) 
             }}
             maxTagCount="responsive" />
         )}
-        {userRole === "admin" && <CollectButton collector="stack" projectIds={stackProjectIds} onComplete={loadData} color="#98C8D8" label="Собрать стек" />}
+
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 
@@ -167,7 +167,7 @@ export const StackDashboard = memo(function StackDashboard({ userRole }: Props) 
                 ))}
               </div>
             </div>
-          ) : <Empty description="Нет данных. Нажмите «Собрать стек»." />
+          ) :               <Empty description="Нет данных. Данные собираются автоматически через Dagster." />
         )}
       </Card>
 

@@ -3,7 +3,7 @@ import { Card, Row, Col, Statistic, Select, Button, Tag, message, Input, DatePic
 import { DatabaseOutlined, ReloadOutlined, SearchOutlined, WarningOutlined, CheckCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import { fetchBranches, collectBranches, fetchProjects } from "../../api/client";
 import { ProjectLabel } from "../common/ProjectLabel";
-import { CollectButton } from "../common/CollectButton";
+
 import { delay } from "../../utils/collect";
 import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";
@@ -188,7 +188,7 @@ export const BranchDashboard = memo(function BranchDashboard({ userRole, filters
             { value: "merged", label: "Замерженные" },
           ]} />
         <Input placeholder="Поиск по ветке..." prefix={<SearchOutlined />} allowClear style={{ width: 200 }} value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-        {userRole === "admin" && <CollectButton collector="branches" projectIds={branchProjectIds} onComplete={loadData} color="#8BC8A8" />}
+
         <Button icon={<ReloadOutlined />} onClick={() => loadData()} loading={loading}>Обновить</Button>
       </div>
 

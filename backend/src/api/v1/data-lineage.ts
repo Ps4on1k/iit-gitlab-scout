@@ -17,6 +17,14 @@ const lineageData: {
     "activity-collector": { writes_to: ["project_activity"], description: "Сбор дневной активности" },
     "dependency-audit": { writes_to: ["project_dependencies_audit"], description: "Аудит зависимостей и проверка актуальности версий" },
   },
+  staging: {
+    "stg_commits": { reads_from: ["commits"], description: "Стандартизированные коммиты", category: "staging" },
+    "stg_merge_requests": { reads_from: ["project_merge_requests"], description: "Стандартизированные MR", category: "staging" },
+    "stg_pipelines": { reads_from: ["project_pipelines"], description: "Стандартизированные пайплайны", category: "staging" },
+    "stg_deployments": { reads_from: ["project_deployments"], description: "Стандартизированные деплои", category: "staging" },
+    "stg_branches": { reads_from: ["project_branches"], description: "Стандартизированные ветки", category: "staging" },
+    "stg_contributors": { reads_from: ["contributor_profiles"], description: "Стандартизированные контрибьюторы", category: "staging" },
+  },
   tables: {
     commits: {
       written_by: ["contributor-collector", "branch-collector"],
@@ -229,6 +237,7 @@ const lineageData: {
     mart_dashboard: {
       written_by: ["dbt"],
       read_by: ["dashboard API"],
+      reads_from: ["stg_commits", "stg_branches", "stg_merge_requests", "stg_deployments"],
       description: "Материализованное представление для дашборда (агрегированные KPI)",
       fields: [
         { name: "total_projects", type: "integer", description: "Общее количество проектов" },
@@ -249,6 +258,7 @@ const lineageData: {
     mart_dora: {
       written_by: ["dbt"],
       read_by: ["dora-metrics API"],
+      reads_from: ["stg_deployments"],
       description: "Материализованное представление для DORA-метрик",
       fields: [
         { name: "total", type: "integer", description: "Всего деплоев" },
@@ -263,6 +273,7 @@ const lineageData: {
     mart_contributors: {
       written_by: ["dbt"],
       read_by: ["contributor-analytics API"],
+      reads_from: ["stg_commits"],
       description: "Материализованное представление для аналитики контрибьюторов",
       fields: [
         { name: "author_email", type: "text", description: "Email контрибьютора" },
@@ -277,6 +288,7 @@ const lineageData: {
     mart_activity: {
       written_by: ["dbt"],
       read_by: ["activity API"],
+      reads_from: ["stg_commits"],
       description: "Материализованное представление для дневной активности",
       fields: [
         { name: "day", type: "date", description: "Дата" },
@@ -288,6 +300,7 @@ const lineageData: {
     mart_benchmark: {
       written_by: ["dbt"],
       read_by: ["benchmark API"],
+      reads_from: ["stg_commits", "stg_pipelines", "stg_merge_requests", "stg_branches", "stg_deployments"],
       description: "Материализованное представление для бенчмарка по тегам",
       fields: [
         { name: "tag", type: "text", description: "Тег проекта" },
@@ -303,6 +316,7 @@ const lineageData: {
     mart_executive_report: {
       written_by: ["dbt"],
       read_by: ["executive-report API"],
+      reads_from: ["stg_commits", "stg_branches", "stg_merge_requests", "stg_deployments"],
       description: "Материализованное представление для исполнительного отчёта",
       fields: [
         { name: "total_projects", type: "integer", description: "Всего проектов" },

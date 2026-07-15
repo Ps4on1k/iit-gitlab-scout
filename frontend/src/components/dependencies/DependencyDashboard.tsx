@@ -3,7 +3,7 @@ import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typogra
 import { ReloadOutlined, SearchOutlined, LinkOutlined } from "@ant-design/icons";
 import { Pie } from "@ant-design/charts";
 import { fetchDependencies, fetchProjects } from "../../api/client";
-import { CollectButton } from "../common/CollectButton";
+
 import { chartColors } from "../../utils/chartTheme";
 import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";
@@ -114,7 +114,7 @@ export function DependencyDashboard() {
           options={allTags.map((t) => ({ value: t, label: t }))} maxTagCount="responsive" />
         <Select placeholder="Экосистема" allowClear style={{ width: 140 }} value={sourceFilter} onChange={setSourceFilter}
           options={allSources.map((s) => ({ value: s, label: s }))} />
-        <CollectButton collector="dependencies" projectIds={depProjectIds} onComplete={loadData} />
+
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Card, Row, Col, Statistic, Table, Select, Button, Tag, message, Typography } from "antd";
 import { DatabaseOutlined, ReloadOutlined, LinkOutlined } from "@ant-design/icons";
 import { fetchIssues, collectIssues, fetchProjects } from "../../api/client";
-import { CollectButton } from "../common/CollectButton";
+
 import { getProjectUrl } from "../../utils/projectUrl";
 import type { ProjectConfig } from "../../types";
 import type { Issue, IssueSummary } from "../../types/analytics";
@@ -57,7 +57,7 @@ export function IssueDashboard() {
           maxTagCount="responsive" />
         <Select placeholder="Статус" allowClear style={{ width: 140 }} value={stateFilter} onChange={setStateFilter}
           options={[{ value: "opened", label: "Opened" }, { value: "closed", label: "Closed" }]} />
-        <CollectButton collector="issues" projectIds={issueProjectIds} onComplete={loadData} />
+
         <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
       </div>
 

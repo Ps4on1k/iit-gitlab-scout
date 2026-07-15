@@ -5,7 +5,7 @@ import { fetchProjects, fetchMRAnalytics, collectMR } from "../../api/client";
 import { collectActivity, fetchActivity } from "../../api/activity-client";
 import { getProjectUrl } from "../../utils/projectUrl";
 import { delay } from "../../utils/collect";
-import { CollectButton } from "../common/CollectButton";
+
 import { Line } from "@ant-design/charts";
 import { chartColors } from "../../utils/chartTheme";
 import type { ProjectConfig } from "../../types";
@@ -129,7 +129,7 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
           </span>
         </Tooltip>
         <Space>
-          {userRole === "admin" && <CollectButton collector="activity_mr" projectIds={activityProjectIds} onComplete={loadAll} color="#E0C0A0" label="Собрать данные" />}
+
           <Button icon={<ReloadOutlined />} onClick={loadData} loading={loading}>Обновить</Button>
         </Space>
       </div>
@@ -153,7 +153,7 @@ export const ActivityDashboard = memo(function ActivityDashboard({ userRole, fil
               scale={{ color: { range: ["#7eb0d5", "#b3cde3", "#ccebc5"] } }}
               tooltip={{ title: "date", items: [{ field: "count", name: "count" }] }}
             />
-          ) : <Typography.Text type="secondary">Нет данных. Нажмите «Собрать данные».</Typography.Text>
+          ) : <Typography.Text type="secondary">Нет данных. Данные собираются автоматически через Dagster.</Typography.Text>
         )}
       </Card>
 
