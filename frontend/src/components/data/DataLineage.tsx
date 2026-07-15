@@ -83,10 +83,12 @@ function buildFlowGraph(data: LineageData, stats: any, metadata: any[]) {
 
     // Edges from collector to tables
     info.writes_to.forEach((table) => {
+      if (!data.tables[table]) return; // skip if target table doesn't exist
       edges.push({
         id: `e-${name}-${table}`,
         source: `collector-${name}`,
         target: `table-${table}`,
+        type: "default",
         animated: true,
         style: { stroke: "#3A8DFF", strokeWidth: 2 },
         markerEnd: { type: MarkerType.ArrowClosed, color: "#3A8DFF" },
@@ -125,6 +127,7 @@ function buildFlowGraph(data: LineageData, stats: any, metadata: any[]) {
           id: `e-${table}-${name}`,
           source: `table-${table}`,
           target: `endpoint-${name}`,
+          type: "default",
           style: { stroke: "#42D9C8", strokeWidth: 1.5 },
           markerEnd: { type: MarkerType.ArrowClosed, color: "#42D9C8" },
         });
