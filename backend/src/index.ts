@@ -34,6 +34,7 @@ import { metricWeightsRoutes } from "./api/v1/metric-weights.js";
 import { executiveReportRoutes } from "./api/v1/executive-report.js";
 import { dataLineageRoutes } from "./api/v1/data-lineage.js";
 import { dataCollectionRoutes } from "./api/v1/data-collection.js";
+import { clickhouseSyncRoutes } from "./api/v1/clickhouse-sync.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { requireAuth } from "./utils/auth.js";
 
@@ -151,6 +152,7 @@ await app.register(filterPresetRoutes);
 await app.register(metricWeightsRoutes);
 await app.register(dataLineageRoutes);
 await app.register(dataCollectionRoutes);
+await app.register(clickhouseSyncRoutes);
 await app.register(executiveReportRoutes);
 
 const shutdown = async (signal: string) => {
