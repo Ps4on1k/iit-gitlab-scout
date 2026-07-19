@@ -8,6 +8,7 @@ import {
   getHeatmapData,
   getMetrics,
 } from "../../db/contributor-repository.js";
+import { normalizeName, emailLocalPart } from "../../utils/contributor-match.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
 import { getCached, setCache, cacheKey } from "../../utils/cache.js";
 import { getPool } from "../../db/pool.js";
@@ -243,8 +244,43 @@ export async function contributorAnalyticsRoutes(app: FastifyInstance) {
 
     const grouped: Record<string, any> = {};
     for (const r of result.rows) {
-      const displayName = emailToName[r.author_email] || r.author_name || r.author_email;
-      const primaryEmail = nameToPrimaryEmail[displayName] || r.author_email;
+      // Resolve email through directory, fall back to name
+      let displayName: string = emailToName[r.author_email] || "";
+      let primaryEmail: string = r.author_email;
+
+      // If no match by email, try matching by author_name with transliteration
+      if (!displayName && r.author_name) {
+        const normName = normalizeName(r.author_name);
+        // Try exact match
+        if (nameToPrimaryEmail[r.author_name]) {
+          displayName = r.author_name;
+          primaryEmail = nameToPrimaryEmail[r.author_name];
+        } else {
+          // Try transliterated match
+          for (const [dirName, dirEmail] of Object.entries(nameToPrimaryEmail)) {
+            if (normalizeName(dirName) === normName) {
+              displayName = dirName;
+              primaryEmail = dirEmail;
+              break;
+            }
+          }
+          // Try email local part match
+          if (!displayName) {
+            for (const [dirName, dirEmail] of Object.entries(nameToPrimaryEmail)) {
+              if (emailLocalPart(dirEmail) === emailLocalPart(r.author_email || "")) {
+                displayName = dirName;
+                primaryEmail = dirEmail;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // Final fallback
+      if (!displayName) displayName = r.author_name || r.author_email || "Unknown";
+      if (!primaryEmail) primaryEmail = "";
+
       if (grouped[displayName]) {
         grouped[displayName].total_merged_mrs += Number(r.total_merged_mrs);
         grouped[displayName].total_pipelines += Number(r.total_pipelines);

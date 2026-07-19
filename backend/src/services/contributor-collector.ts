@@ -7,12 +7,6 @@ import {
   refreshContributors,
 } from "../db/contributor-repository.js";
 
-interface GitLabCommitStats {
-  additions?: number;
-  deletions?: number;
-  total?: number;
-}
-
 export interface CollectResult {
   project_id: number;
   project_path: string;
@@ -47,18 +41,8 @@ export async function collectProject(
       continue;
     }
 
-    let stats: GitLabCommitStats = {};
-    try {
-      const fullCommit = await client.request<any>(
-        `/projects/${projectData.id}/repository/commits/${commit.id}`
-      );
-      stats = fullCommit.stats || {};
-    } catch {
-      // stats unavailable, use zeros
-    }
-
-    const additions = stats.additions || 0;
-    const deletions = stats.deletions || 0;
+    const additions = commit.stats?.additions || 0;
+    const deletions = commit.stats?.deletions || 0;
 
     await upsertCommit({
       project_id: projectId,

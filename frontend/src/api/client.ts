@@ -223,7 +223,7 @@ export async function fetchDependencies(projectIds?: number[], tags?: string, so
   return fetchJson(`/v1/dependencies${qs}`);
 }
 
-export async function fetchContributorDirectory(): Promise<ApiResponse<{ id: number; display_name: string; emails: string[] }[]>> {
+export async function fetchContributorDirectory(): Promise<ApiResponse<{ id: number; display_name: string; emails: string[]; is_valid: boolean }[]>> {
   return fetchJson("/v1/contributor-directory");
 }
 
@@ -231,8 +231,12 @@ export async function createContributorDirectoryEntry(data: { display_name: stri
   return fetchJson("/v1/contributor-directory", { method: "POST", body: JSON.stringify(data) });
 }
 
-export async function updateContributorDirectoryEntry(id: number, data: { display_name?: string; emails?: string[] }): Promise<ApiResponse<any>> {
+export async function updateContributorDirectoryEntry(id: number, data: { display_name?: string; emails?: string[]; is_valid?: boolean }): Promise<ApiResponse<any>> {
   return fetchJson(`/v1/contributor-directory/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function toggleContributorValid(id: number, isValid: boolean): Promise<ApiResponse<any>> {
+  return fetchJson(`/v1/contributor-directory/${id}`, { method: "PUT", body: JSON.stringify({ is_valid: isValid }) });
 }
 
 export async function deleteContributorDirectoryEntry(id: number): Promise<ApiResponse<{ deleted: boolean }>> {
@@ -510,4 +514,15 @@ export async function deleteLineageMetadata(entityType: string, entityName: stri
 
 export async function triggerDagsterCollect(): Promise<ApiResponse<any>> {
   return fetchJson("/v1/dagster/trigger", { method: "POST", body: "{}" });
+}
+
+export async function fetchRedFlags(
+  projectIds?: number[], dateFrom?: string, dateTo?: string
+): Promise<ApiResponse<import("../types/analytics").RedFlagEntry>> {
+  const params = new URLSearchParams();
+  if (projectIds && projectIds.length > 0) params.set("project_ids", projectIds.join(","));
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
+  const qs = params.toString();
+  return cachedGet(`/v1/red-flags${qs ? "?" + qs : ""}`, `red-flags:${qs}`);
 }

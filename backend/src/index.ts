@@ -37,6 +37,7 @@ import { dataCollectionRoutes } from "./api/v1/data-collection.js";
 import { clickhouseSyncRoutes } from "./api/v1/clickhouse-sync.js";
 import { dagsterTriggerRoutes } from "./api/v1/dagster-trigger.js";
 import { ssoRoutes } from "./api/v1/sso.js";
+import { redFlagsRoutes } from "./api/v1/red-flags.js";
 import { startScheduler, stopScheduler } from "./services/scheduler.js";
 import { requireAuth } from "./utils/auth.js";
 
@@ -158,6 +159,7 @@ await app.register(clickhouseSyncRoutes);
 await app.register(executiveReportRoutes);
 await app.register(dagsterTriggerRoutes);
 await app.register(ssoRoutes);
+await app.register(redFlagsRoutes);
 
 const shutdown = async (signal: string) => {
   app.log.info(`${signal} received, shutting down...`);

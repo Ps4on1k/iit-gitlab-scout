@@ -29,7 +29,7 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
 
     const dateFrom = date_from || new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10);
     const dateTo = date_to || new Date().toISOString().slice(0, 10);
-    const env = environment || "production";
+    const env = environment || "__all__";
 
     const envCondition = env === "__all__"
       ? ""

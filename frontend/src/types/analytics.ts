@@ -84,3 +84,44 @@ export interface DependencySummary {
   outdated: number;
   by_source: Record<string, number>;
 }
+
+export interface ProjectRedFlags {
+  stale_branches_pct: number;
+  pipeline_failure_rate: number;
+  mr_without_review_pct: number;
+  long_living_mrs: number;
+  deploy_frequency_monthly: number;
+  has_deployments: boolean;
+  total_flags: number;
+}
+
+export interface ContributorRedFlag {
+  author_email: string;
+  author_name: string;
+  total_commits: number;
+  night_commits: number;
+  night_ratio: number;
+  night_commits_by_hour: Record<string, number>;
+  missing_yellow_zone_days: number;
+  total_active_days: number;
+  yellow_zone_ratio: number;
+  bus_factor_pct: number;
+  large_mrs: number;
+  direct_commits: number;
+  disappeared: boolean;
+  churn_pct: number;
+  deploy_success_rate: number;
+  pipeline_coverage_rate: number;
+  flag_score: number;
+}
+
+export interface RedFlagEntry {
+  project: ProjectRedFlags;
+  contributors: ContributorRedFlag[];
+  summary: {
+    project_flags: number;
+    contributor_flags: number;
+    critical_count: number;
+    warning_count: number;
+  };
+}

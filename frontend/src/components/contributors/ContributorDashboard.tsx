@@ -7,6 +7,7 @@ import { ContributorTable } from "./ContributorTable";
 import { HeatmapChart } from "./HeatmapChart";
 import { CommitTimelineChart } from "./CommitTimelineChart";
 import { getTagColor } from "../../utils/tagColors";
+import { matchesContributorFilter } from "../../utils/contributorFilter";
 
 import {
   fetchContributorsList,
@@ -87,14 +88,7 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
   // Contributor filter — match by email or by name
   const filteredContributors = useMemo(() => {
     if (filters.contributors.length === 0) return allContributors;
-    return allContributors.filter((c) => {
-      return filters.contributors.some((f) =>
-        c.author_email === f ||
-        c.author_name === f ||
-        c.author_email.toLowerCase().includes(f.toLowerCase()) ||
-        (c.author_name && c.author_name.toLowerCase().includes(f.toLowerCase()))
-      );
-    });
+    return allContributors.filter((c) => matchesContributorFilter(c, filters.contributors));
   }, [allContributors, filters.contributors]);
 
   // Merge deploy reliability score into contributors and filter frequency by date range
@@ -163,9 +157,9 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       filteredByContributor = {};
       for (const [name, daily] of Object.entries(by_contributor)) {
         const email = extractEmail(name);
-        const keyLower = name.toLowerCase();
+        const keyLower = (name || "").toLowerCase();
         const matches = filters.contributors.some((f) => {
-          const fLower = f.toLowerCase();
+          const fLower = (f || "").toLowerCase();
           return email === f || keyLower.includes(fLower);
         });
         if (matches) filteredByContributor[name] = daily;
@@ -182,9 +176,9 @@ export const ContributorDashboard = memo(function ContributorDashboard({ userRol
       if (filters.contributors.length > 0) {
         contribsToInclude = Object.keys(projContribMap).filter((name) => {
           const email = extractEmail(name);
-          const keyLower = name.toLowerCase();
+          const keyLower = (name || "").toLowerCase();
           return filters.contributors.some((f) => {
-            const fLower = f.toLowerCase();
+            const fLower = (f || "").toLowerCase();
             return email === f || keyLower.includes(fLower);
           });
         });

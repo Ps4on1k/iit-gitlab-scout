@@ -39,101 +39,97 @@ export async function benchmarkRoutes(app: FastifyInstance) {
         continue;
       }
 
-      const doraResult = await pool.query(
-        `SELECT
-           COUNT(*)::int as total,
-           COUNT(*) FILTER (WHERE status = 'success')::int as success,
-           COUNT(*) FILTER (WHERE status = 'failed' OR pipeline_status = 'failed')::int as failed,
-           COUNT(*) FILTER (WHERE status = 'canceled')::int as canceled
-         FROM project_deployments
-         WHERE project_id = ANY($1) AND created_at >= $2`,
-        [projectIds, dateFrom]
-      );
+      const [doraResult, leadTimeResult, mttrResult, commitsResult, pipelineResult, mrResult, branchResult, topContribResult] = await Promise.all([
+        pool.query(
+          `SELECT
+             COUNT(*)::int as total,
+             COUNT(*) FILTER (WHERE status = 'success')::int as success,
+             COUNT(*) FILTER (WHERE status = 'failed' OR pipeline_status = 'failed')::int as failed,
+             COUNT(*) FILTER (WHERE status = 'canceled')::int as canceled
+           FROM project_deployments
+           WHERE project_id = ANY($1) AND created_at >= $2`,
+          [projectIds, dateFrom]
+        ),
+        pool.query(
+          `SELECT AVG(EXTRACT(EPOCH FROM (d.created_at - (d.raw_json->'deployable'->'commit'->>'committed_date')::timestamptz)))::int as avg_lead_sec
+           FROM project_deployments d
+           WHERE d.project_id = ANY($1) AND d.status = 'success' AND d.created_at >= $2
+             AND d.raw_json->'deployable'->'commit'->>'committed_date' IS NOT NULL`,
+          [projectIds, dateFrom]
+        ),
+        pool.query(
+          `WITH ordered AS (
+             SELECT created_at, status, pipeline_status,
+                    LAG(created_at) OVER (ORDER BY created_at) as prev_created,
+                    LAG(status) OVER (ORDER BY created_at) as prev_status
+             FROM project_deployments
+             WHERE project_id = ANY($1) AND created_at >= $2
+           )
+           SELECT AVG(EXTRACT(EPOCH FROM (created_at - prev_created)) / 60)::int as avg_mttr_min
+           FROM ordered
+           WHERE prev_status = 'failed' AND status = 'success'
+             AND EXTRACT(EPOCH FROM (created_at - prev_created)) / 60 BETWEEN 0 AND 1440`,
+          [projectIds, dateFrom]
+        ),
+        pool.query(
+          `SELECT
+             COUNT(*)::int as total,
+             COUNT(DISTINCT author_email)::int as contributors,
+             COUNT(DISTINCT TO_CHAR(committed_date, 'YYYY-MM-DD'))::int as active_days
+           FROM commits
+           WHERE project_id = ANY($1) AND committed_date >= $2`,
+          [projectIds, dateFrom]
+        ),
+        pool.query(
+          `SELECT
+             COUNT(*)::int as total,
+             COUNT(*) FILTER (WHERE status = 'success')::int as success
+           FROM project_pipelines
+           WHERE project_id = ANY($1) AND created_at >= $2`,
+          [projectIds, dateFrom]
+        ),
+        pool.query(
+          `SELECT
+             COUNT(*)::int as total,
+             COUNT(*) FILTER (WHERE state = 'merged')::int as merged,
+             COUNT(*) FILTER (WHERE state = 'opened')::int as opened
+           FROM project_merge_requests
+           WHERE project_id = ANY($1) AND created_at >= $2`,
+          [projectIds, dateFrom]
+        ),
+        pool.query(
+          `SELECT
+             COUNT(*)::int as total,
+             COUNT(*) FILTER (WHERE merged) as merged,
+             COUNT(*) FILTER (WHERE NOT merged AND last_commit_date >= $2) as active,
+             COUNT(*) FILTER (WHERE NOT merged AND (last_commit_date < $2 OR last_commit_date IS NULL)) as stale
+           FROM project_branches
+           WHERE project_id = ANY($1)`,
+          [projectIds, date90]
+        ),
+        pool.query(
+          `SELECT author_email, MAX(author_name) as name, COUNT(*)::int as commits, SUM(additions + deletions)::int as changes
+           FROM commits
+           WHERE project_id = ANY($1) AND committed_date >= $2
+           GROUP BY author_email ORDER BY changes DESC LIMIT 3`,
+          [projectIds, dateFrom]
+        ),
+      ]);
+
       const dora = doraResult.rows[0];
       const doraFailRate = dora.total > 0 ? Math.round((dora.failed / dora.total) * 10000) / 100 : 0;
       const deployDays = Math.max(1, Math.ceil((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1);
       const deployFreq = Math.round((dora.total / deployDays) * 100) / 100;
-
-      const leadTimeResult = await pool.query(
-        `SELECT AVG(EXTRACT(EPOCH FROM (d.created_at - (d.raw_json->'deployable'->'commit'->>'committed_date')::timestamptz)))::int as avg_lead_sec
-         FROM project_deployments d
-         WHERE d.project_id = ANY($1) AND d.status = 'success' AND d.created_at >= $2
-           AND d.raw_json->'deployable'->'commit'->>'committed_date' IS NOT NULL`,
-        [projectIds, dateFrom]
-      );
       const avgLeadTime = leadTimeResult.rows[0]?.avg_lead_sec || 0;
-
-      const mttrResult = await pool.query(
-        `WITH ordered AS (
-           SELECT created_at, status, pipeline_status,
-                  LAG(created_at) OVER (ORDER BY created_at) as prev_created,
-                  LAG(status) OVER (ORDER BY created_at) as prev_status
-           FROM project_deployments
-           WHERE project_id = ANY($1) AND created_at >= $2
-         )
-         SELECT AVG(EXTRACT(EPOCH FROM (created_at - prev_created)) / 60)::int as avg_mttr_min
-         FROM ordered
-         WHERE prev_status = 'failed' AND status = 'success'
-           AND EXTRACT(EPOCH FROM (created_at - prev_created)) / 60 BETWEEN 0 AND 1440`,
-        [projectIds, dateFrom]
-      );
       const avgMttr = mttrResult.rows[0]?.avg_mttr_min || 0;
-
-      const commitsResult = await pool.query(
-        `SELECT
-           COUNT(*)::int as total,
-           COUNT(DISTINCT author_email)::int as contributors,
-           COUNT(DISTINCT TO_CHAR(committed_date, 'YYYY-MM-DD'))::int as active_days
-         FROM commits
-         WHERE project_id = ANY($1) AND committed_date >= $2`,
-        [projectIds, dateFrom]
-      );
       const commitsPerDay = Math.round((commitsResult.rows[0].total / deployDays) * 100) / 100;
-
-      const pipelineResult = await pool.query(
-        `SELECT
-           COUNT(*)::int as total,
-           COUNT(*) FILTER (WHERE status = 'success')::int as success
-         FROM project_pipelines
-         WHERE project_id = ANY($1) AND created_at >= $2`,
-        [projectIds, dateFrom]
-      );
       const pipelineSuccessRate = pipelineResult.rows[0].total > 0
         ? Math.round((pipelineResult.rows[0].success / pipelineResult.rows[0].total) * 100) : 0;
-
-      const mrResult = await pool.query(
-        `SELECT
-           COUNT(*)::int as total,
-           COUNT(*) FILTER (WHERE state = 'merged')::int as merged,
-           COUNT(*) FILTER (WHERE state = 'opened')::int as opened
-         FROM project_merge_requests
-         WHERE project_id = ANY($1) AND created_at >= $2`,
-        [projectIds, dateFrom]
-      );
       const mergeRate = mrResult.rows[0].total > 0
         ? Math.round((mrResult.rows[0].merged / mrResult.rows[0].total) * 100) : 0;
-
-      const branchResult = await pool.query(
-        `SELECT
-           COUNT(*)::int as total,
-           COUNT(*) FILTER (WHERE merged) as merged,
-           COUNT(*) FILTER (WHERE NOT merged AND last_commit_date >= $2) as active,
-           COUNT(*) FILTER (WHERE NOT merged AND (last_commit_date < $2 OR last_commit_date IS NULL)) as stale
-         FROM project_branches
-         WHERE project_id = ANY($1)`,
-        [projectIds, date90]
-      );
       const br = branchResult.rows[0];
       const nonMerged = (br.total - br.merged) || 1;
       const branchHealth = Math.round((br.active / nonMerged) * 100);
-
-      const topContribResult = await pool.query(
-        `SELECT author_email, MAX(author_name) as name, COUNT(*)::int as commits, SUM(additions + deletions)::int as changes
-         FROM commits
-         WHERE project_id = ANY($1) AND committed_date >= $2
-         GROUP BY author_email ORDER BY changes DESC LIMIT 3`,
-        [projectIds, dateFrom]
-      );
 
       groups.push({
         tag,

@@ -120,21 +120,45 @@ project/
 | Таблица | Назначение |
 |---------|-----------|
 | projects | Проекты GitLab (path, tags, token_encrypted) |
-| app_users | Пользователи (role, allowed_tags) |
-| contributor_profiles | Агрегированная статистика контрибьюторов |
-| commits | Уникальные коммиты (SHA, author, additions/deletions) |
-| project_branches | Ветки проектов |
-| project_activity | Активность (коммиты/MR/пайплайны из events API) |
-| project_pipelines | CI/CD пайплайны |
-| project_merge_requests | Merge Requests |
+| app_users | Пользователи (role, allowed_tags, external_provider) |
+| commits | Коммиты (SHA, author, additions/deletions, committed_date) |
+| contributor_profiles | Агрегированная статистика контрибьюторов (frequency JSONB) |
 | contributor_directory | Справочник контрибьюторов (display_name → emails[]) |
+| project_branches | Ветки проектов (last_commit_date, merged, protected) |
+| project_merge_requests | Merge Requests (reviewers[], approvals, changes_count) |
+| project_pipelines | CI/CD пайплайны (duration, status, ref) |
+| project_deployments | Деплои (raw_json для DORA lead time) |
+| project_issues | Issues проектов |
+| project_activity | Дневная активность (коммиты + MR + пайплайны) |
+| project_languages | Языки программирования |
+| project_dependencies_audit | Аудит зависимостей (is_outdated) |
+| dependency_catalog | Справочник dependency файлов (80 записей) |
+| personal_tokens | Токены GitLab (AES-256-GCM) |
 | scheduler_settings | Настройки планировщика |
+| scheduler_errors | Ошибки сбора данных |
 | audit_log | Аудит-лог действий |
+| filter_presets | Сохранённые фильтры |
+| metric_weights | Веса метрик для scoring |
+| lineage_metadata | Метаданные lineage графа |
 
-### 5.3 Индексы
+### 5.3 Materialized Views (dbt)
+| Витрина | Назначение |
+|---------|-----------|
+| mart_dashboard | KPI по проектам (коммиты, MR, деплои, пайплайны) |
+| mart_dora | DORA-метрики (deploy frequency, failure rate, lead time, MTTR) |
+| mart_activity | Дневная активность (коммиты + MR + пайплайны) |
+| mart_contributors | Статистика по авторам (commits, changes, active_days) |
+| mart_benchmark | Сравнение проектов по тегам |
+| mart_executive_report | Сводный отчёт (всё в одном) |
+
+### 5.4 Индексы
 - GIN индекс на `projects.tags` для поиска по массиву
 - UNIQUE на `(project_id, name)` в `project_branches`
 - UNIQUE на `(project_id, gitlab_id)` в `project_pipelines`
+- UNIQUE на `(project_id, gitlab_iid)` в `project_merge_requests`
+- UNIQUE на `(project_id, gitlab_deployment_id)` в `project_deployments`
+- UNIQUE на `(project_id, author_email)` в `contributor_profiles`
+- INDEX на `commits(project_id, committed_date)` для датных фильтров
 
 ---
 
@@ -169,14 +193,53 @@ requireAdmin — проверяет JWT + роль admin
 - YAML-импорт/экспорт
 
 ### 7.2 Сбор данных
-- Коммиты: из GitLab events API → `commits` таблица (уникальные)
-- Ветки: из GitLab branches API → `project_branches`
-- Коллектор веток синхронизирует коммиты в `commits` → `contributor_profiles`
-- Пайплайны: из GitLab pipelines API → `project_pipelines`
+- Коммиты: из GitLab API (with_stats=true) → `commits` таблица (уникальные, upsert)
+- MR: из GitLab API + per-MR approvals → `project_merge_requests` (reviewers, changes_count)
+- Ветки: из GitLab API (with_stats=true) → `project_branches` (last_commit_date из commit объекта)
+- Пайплайны: из GitLab API → `project_pipelines` + duration backfill (LEAD window + ref avg)
+- Деплои: из GitLab API → `project_deployments` + raw_json (для DORA lead time)
 
 ---
 
-## 8. CI/CD
+## 8. Красные флаги
+
+### 8.1 API Endpoint
+`GET /api/v1/red-flags` — расширенный endpoint с метриками проекта и контрибьюторов.
+
+### 8.2 Метрики проекта (P1–P6)
+
+| # | Метрика | Источник | Порог красный | Порог жёлтый |
+|---|---------|----------|---------------|--------------|
+| P1 | Застаревшие ветки | `project_branches` | >30% | >15% |
+| P2 | Падение пайплайнов | `project_pipelines` | >40% failed | >20% failed |
+| P3 | MR без ревью | `project_merge_requests` | >50% без reviewers | >20% |
+| P4 | Долгоживущие MR | `project_merge_requests` | >10 MR >14д | >3 MR >14д |
+| P5 | Низкая частота деплоев | `project_deployments` | <1/мес | <2/мес |
+| P6 | Нет деплоев | `project_deployments` | 0 за период | — |
+
+### 8.3 Метрики контрибьютора (C1–C7)
+
+| # | Метрика | Источник | Порог красный | Порог жёлтый |
+|---|---------|----------|---------------|--------------|
+| C1 | Ночные коммиты | `commits` | >25% | >10% |
+| C2 | Пропуск жёлтой зоны | `commits` | >50% дней | >25% дней |
+| C3 | Bus factor | `commits` | >70% проекта | >50% проекта |
+| C4 | Крупные MR | `project_merge_requests` | >3 MR >500 строк | >1 MR |
+| C5 | Direct commits в main | `commits` | >5 коммитов | >2 коммита |
+| C6 | Инвеща | `commits` | Исчез в первые 50% | Исчез в первые 75% |
+| C7 | High churn | `commits` | >40% дней net=0 | >25% дней net=0 |
+
+### 8.4 Система оценки
+- Красный порог = 3 балла
+- Жёлтый порог = 1 балл
+- Зелёный = 0 баллов
+- Контрибьюторы сортируются по убыванию суммы баллов
+- Оценка >= 6: критично (требует внимания)
+- Оценка >= 2: предупреждение (стоит проверить)
+
+---
+
+## 9. CI/CD
 
 ### 8.1 Docker Compose
 - postgres (PostgreSQL 16)
@@ -194,21 +257,23 @@ requireAdmin — проверяет JWT + роль admin
 
 ---
 
-## 9. Фронтенд
+## 10. Фронтенд
 
-### 9.1 Структура навигации
+### 10.1 Структура навигации
 - **Обзор**: сводная дашборда
-- **Аналитика** (подвкладки): Контрибьюторы | Активность | Ветки | CI/CD
+- **Аналитика** (подвкладки): Контрибьюторы | Надёжность | Активность | Ветки | CI/CD | DORA | Красные флаги
 - **Языки**: стек технологий
-- **Настройки** (admin): Проекты, Пользователи, Контрибьюторы, Периодичность, Аудит-лог
+- **Зависимости**: аудит зависимостей
+- **Бенчмарк**: сравнение проектов (admin/manager)
+- **Настройки** (admin): Проекты, Пользователи, Токены, Аудит-лог
 
-### 9.2 Фильтры
+### 10.2 Фильтры
 - `GlobalFilterBar` — общий для всех вкладок аналитики
 - Фильтры: проекты, теги, даты, контрибьюторы
 - `key` проп — принудительный ремаунт при смене фильтров
 - `clearCache()` — очистка кэша при смене фильтров
 
-### 9.3 Тёмная тема
+### 10.3 Тёмная тема
 - Toggle в хедере, `localStorage` для сохранения
 - Ant Design `darkAlgorithm` + кастомные токены
 - CSS-переменные для кастомных элементов
@@ -216,7 +281,7 @@ requireAdmin — проверяет JWT + роль admin
 
 ---
 
-## 10. Требования к новым проектам
+## 11. Требования к новым проектам
 
 1. **Backend**: TypeScript, Fastify, параметризованные SQL-запросы
 2. **Frontend**: React + TypeScript + Ant Design

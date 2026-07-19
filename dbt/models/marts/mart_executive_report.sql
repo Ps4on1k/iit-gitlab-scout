@@ -90,7 +90,7 @@ select
   coalesce(ds.deploy_success, 0) as deploy_success,
   coalesce(ds.deploy_failed, 0) as deploy_failed,
   ds.failure_rate,
-  case when 91 > 0 then round((coalesce(ds.deploy_total, 0)::numeric / 91), 2) else 0 end as deploy_frequency,
+  case when 90 > 0 then round((coalesce(ds.deploy_total, 0)::numeric / 90), 2) else 0 end as deploy_frequency,
   lt.avg_lead_time_sec,
   mt.avg_mttr_min
 from project_commits pc

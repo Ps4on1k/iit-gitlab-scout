@@ -155,11 +155,12 @@ export class GitLabClient {
     until?: string
   ): Promise<GitLabCommit[]> {
     const params = new URLSearchParams();
+    params.set("with_stats", "true");
     if (since) params.set("since", since);
     if (until) params.set("until", until);
     const qs = params.toString();
     return this.requestPaginated<GitLabCommit>(
-      `/projects/${projectId}/repository/commits?per_page=100${qs ? "&" + qs : ""}`
+      `/projects/${projectId}/repository/commits?per_page=100&${qs}`
     );
   }
 

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { requireAuth, type JwtPayload } from "../../utils/auth.js";
 import { getPool } from "../../db/pool.js";
 import { getFilteredProjectIds } from "../../utils/project-filter.js";
+import { normalizeName, normalizeEmail, emailLocalPart } from "../../utils/contributor-match.js";
 
 export async function contributorResolveRoutes(app: FastifyInstance) {
   app.get<{
@@ -14,13 +15,14 @@ export async function contributorResolveRoutes(app: FastifyInstance) {
     const pool = getPool();
     const allowedIds = await getFilteredProjectIds(user.userId);
     const input = email.trim();
+    const normInput = normalizeName(input);
+    const localInput = emailLocalPart(input);
 
     // 1. Exact email in contributor_directory
     const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
     for (const row of dirResult.rows) {
       if (row.emails.includes(input)) {
-        const firstEmail = row.emails[0];
-        return { ok: true, data: { email: firstEmail, name: row.display_name } };
+        return { ok: true, data: { email: row.emails[0], name: row.display_name } };
       }
     }
 
@@ -33,11 +35,17 @@ export async function contributorResolveRoutes(app: FastifyInstance) {
       return { ok: true, data: { email: cpExact.rows[0].author_email, name: cpExact.rows[0].author_name || input } };
     }
 
-    // 3. Name from directory (e.g. "Андрей Забойкин" matches display_name)
+    // 3. Name match with transliteration (exact or substring)
     for (const row of dirResult.rows) {
-      if (row.display_name === input || row.display_name.toLowerCase().includes(input.toLowerCase())) {
-        const firstEmail = row.emails[0];
-        return { ok: true, data: { email: firstEmail, name: row.display_name } };
+      const normDir = normalizeName(row.display_name);
+      if (normDir === normInput || normDir.includes(normInput) || normInput.includes(normDir)) {
+        return { ok: true, data: { email: row.emails[0] || "", name: row.display_name } };
+      }
+      // Also check email local parts
+      for (const em of row.emails) {
+        if (emailLocalPart(em) === localInput) {
+          return { ok: true, data: { email: em, name: row.display_name } };
+        }
       }
     }
 

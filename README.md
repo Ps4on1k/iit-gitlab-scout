@@ -1,4 +1,4 @@
-# GitLab Scout
+# GitLab Scout v3.4.0
 
 Веб-приложение для сбора и визуализации статистики из GitLab-репозиториев.
 
@@ -7,35 +7,41 @@
 | Вкладка | Описание |
 |---------|----------|
 | **Обзор** | Главный дашборд: KPI, контрибьюторы, MR, деплои, активность |
-| **Аналитика** | Контрибьюторы, DORA-метрики, heatmap, deploy reliability |
+| **Аналитика > Контрибьюторы** | Статистика контрибьюторов, heatmap, эффективность |
+| **Аналитика > Надёжность** | Deploy reliability —成功率 пайплайнов по контрибьюторам |
+| **Аналитика > Активность** | Дневная/недельная активность, MR по проектам |
+| **Аналитика > Ветки** | Анализ веток: active/stale/merged, защита |
+| **Аналитика > CI/CD** | Пайплайны: статистика, длительность, распределение |
+| **Аналитика > DORA** | DORA-метрики: deploy frequency, lead time, failure rate, MTTR |
+| **Аналитика > Красные флаги** | Аномалии в проекте и контрибьюторах (ночные коммиты, bus factor, churn) |
 | **Языки** | Сбор языков из GitLab API, визуализация соотношения |
 | **Зависимости** | Аудит зависимостей, проверка актуальности версий |
-| **Бенчмарк** | Сравнение проектов по тегам |
-| **Данные** | Потоки данных (lineage), сбор данных (мониторинг + trigger), справочники |
+| **Бенчмарк** | Сравнение проектов по тегам (DORA, коммиты, MR, пайплайны) |
+| **Данные** | Потоки данных (lineage), сбор данных (мониторинг), справочники |
 | **Настройки** | Проекты, пользователи, токены, веса метрик, аудит-лог |
 
 ## Архитектура
 
 ```
-┌─────────────┐     ┌──────────┐     ┌────────────┐
-│  GitLab API │────▶│ Dagster  │────▶│ PostgreSQL │
-└─────────────┘     │ (11 assets)│     └──────┬─────┘
-                    └──────────┘            │
-                         │            ┌────▼─────┐
-                         │            │   dbt    │
-                         │            │ (staging │
-                         │            │  + marts)│
-                         │            └────┬─────┘
-                         │                 │
-                    ┌────▼─────┐     ┌─────▼──────┐
-                    │ ClickHouse│     │  Backend   │
-                    │ (OLAP)    │     │  (Fastify) │
-                    └──────────┘     └─────┬──────┘
-                                           │
-                                    ┌──────▼──────┐
-                                    │  Frontend   │
-                                    │ (React+Ant) │
-                                    └─────────────┘
+┌─────────────┐     ┌──────────────┐     ┌────────────┐
+│  GitLab API │────▶│    Dagster   │────▶│ PostgreSQL │
+│  (v4, Rate  │     │  14 ассетов  │     │   (16+)    │
+│   Limited)  │     │  2 schedules │     └──────┬─────┘
+└─────────────┘     └──────────────┘            │
+                                                │
+                              ┌─────────────────┼─────────────────┐
+                              │                 │                 │
+                        ┌─────▼──────┐   ┌─────▼──────┐   ┌─────▼──────┐
+                        │    dbt     │   │   Backend  │   │  Frontend  │
+                        │ staging +  │   │  (Fastify) │   │ (React +   │
+                        │ marts (6)  │   │  34 routes │   │ Ant Design)│
+                        └────────────┘   └────────────┘   └────────────┘
+                                                │
+                                         ┌──────▼──────┐
+                                         │    Caddy    │
+                                         │  (Reverse   │
+                                         │   Proxy)    │
+                                         └─────────────┘
 ```
 
 ## Быстрый старт
@@ -48,11 +54,8 @@ cd iit-gitlab-scout
 cp .env.example .env
 # Отредактировать .env — заполнить JWT_SECRET, ENCRYPTION_KEY, GITLAB_PERSONAL_TOKEN
 
-# Запуск
+# Запуск основных сервисов
 docker compose up -d
-
-# Миграции (если нужно)
-docker compose exec backend npm run migrate
 
 # Запуск Dagster (сбор данных)
 docker compose --profile dagster up -d
@@ -63,60 +66,90 @@ docker compose --profile dagster up -d
 | Сервис | Описание | Порт |
 |--------|----------|------|
 | Caddy | Reverse proxy (единственный внешний вход) | 8080 (HTTP), 8443 (HTTPS) |
-| Backend | Fastify API | internal:3000 |
-| Frontend | React SPA | internal:80 |
-| PostgreSQL | Основная БД | internal:5432 |
-| ClickHouse | OLAP аналитика | internal:8123, 9000 |
-| Dagster | Оркестрация сбора | internal:3000 (UI через OAuth2 Proxy) |
+| Backend | Fastify API (34 эндпоинта) | internal:3000 |
+| Frontend | React SPA (14 страниц) | internal:80 |
+| PostgreSQL | Основная БД + витрины | internal:5432 |
+| Dagster | Оркестрация сбора данных | 3001 (UI) |
 
 ## Сбор данных
 
-Данные собираются автоматически через **Dagster** — 11 ассетов:
+Данные собираются автоматически через **Dagster** — 14 ассетов по 2 расписаниям:
+
+### Основной сбор (каждые 6 часов)
 
 | Ассет | Описание |
 |-------|----------|
-| `gitlab_commits` | Коммиты из GitLab API |
-| `gitlab_merge_requests` | Merge request'ы |
-| `gitlab_pipelines` | Пайплайны CI/CD |
-| `gitlab_branches` | Ветки проектов |
-| `gitlab_languages` | Языки программирования |
-| `gitlab_contributors` | Агрегация контрибьюторов |
-| `gitlab_activity` | Дневная активность |
-| `gitlab_dependencies` | Аудит зависимостей |
-| `dbt_staging` | Стандартизация данных (views) |
-| `dbt_marts` | Агрегация данных (materialized views) |
-| `lineage_update` | Обновление метаданных lineage |
+| `gitlab_commits` | Коммиты с stats (additions/deletions) |
+| `gitlab_merge_requests` | MR с reviewers (per-MR approvals) |
+| `gitlab_pipelines` | Пайплайны + duration backfill |
+| `gitlab_branches` | Ветки с last_commit_date |
+| `gitlab_issues` | Issues проектов |
+| `gitlab_deployments` | Деплои с raw_json (для DORA lead time) |
+| `gitlab_contributors` | Агрегация контрибьюторов из коммитов |
+| `gitlab_activity` | Дневная активность (коммиты + MR + пайплайны) |
 
-**Ручной запуск**: кнопка «Собрать статистику» в «Данные → Сбор данных»  
-**Расписание**: каждые 6 часов (cron в Dagster)  
-**Мониторинг**: Dagster UI через `/dagster/*` (с OAuth2 Proxy)
+### Еженедельный сбор (воскресенье 02:00 UTC)
+
+| Ассет | Описание |
+|-------|----------|
+| `gitlab_dependencies` | Сбор зависимостей из repository tree |
+| `gitlab_dependency_audit` | Проверка актуальности через npm/pypi/go APIs |
+| `gitlab_languages` | Языки программирования |
+| `clickhouse_sync` | Синхронизация в ClickHouse (опционально) |
+
+### Инкрементальный сбор
+
+Каждый ассет определяет последнюю дату сбора из БД и запрашивает только новые данные:
+- Commits: `?since=<last_date>`
+- MR: `?updated_after=<last_date>`
+- Pipelines: `?updated_after=<last_date>`
+- Deployments: `?updated_after=<last_date>`
+- Branches, Languages, Dependencies: полный сбор (DELETE + INSERT)
+
+### Rate limiting
+
+- GitLab API: 1 запрос/сек + random jitter (0–1с)
+- 429 ответ: retry с `Retry-After` header
+- Повторные запросы: exponential backoff (3 попытки)
 
 Подробнее: [docs/DATA_COLLECTION.md](docs/DATA_COLLECTION.md)
 
+## Красные флаги
+
+Раздел «Аналитика > Красные флаги» показывает проблемные места:
+
+### Метрики проекта
+- Застаревшие ветки (>90 дней без коммитов)
+- Падение пайплайнов (% failed)
+- MR без ревью (без reviewers)
+- Долгоживущие MR (>14 дней)
+- Низкая частота деплоев
+
+### Метрики контрибьютора
+- Ночные коммиты (20:00–08:00 MSK)
+- Пропуск жёлтой зоны (16:00–19:00 MSK)
+- Bus factor (>70% коммитов от одного)
+- Churn (>40% дней с нулевым net changes)
+- Direct commits в main (обход code review)
+- Инвеща (контрибьютор исчез)
+
+### Система оценки
+Красный = 3 балла, жёлтый = 1 балл. Контрибьюторы сортируются по убыванию.
+
 ## SSO / Active Directory
 
-Приложение поддерживает гибридный режим авторизации:
-- **Логин/пароль** — локальные аккаунты (для администраторов)
-- **OIDC SSO** — корпоративная авторизация через Azure AD, Keycloak и др.
+Гибридный режим: локальные пароли + OIDC SSO.
 
-### Настройка SSO
-
-В `.env`:
 ```bash
+# .env
 SSO_PROVIDER=oidc
-OIDC_ISSUER_URL=https://your-idp.example.com
-OIDC_CLIENT_ID=your-client-id
-OIDC_CLIENT_SECRET=your-client-secret
+OIDC_ISSUER_URL=https://keycloak.example.com/realms/master
+OIDC_CLIENT_ID=gitlab-scout
+OIDC_CLIENT_SECRET=...
 OIDC_CALLBACK_URL=https://app.example.com/api/v1/auth/sso/callback
-SSO_DEFAULT_ROLE=user
 ```
 
-## Учётные записи
-
-| Логин | Пароль | Роль |
-|-------|--------|------|
-| `admin` | (из .env: ADMIN_PASSWORD) | Полный доступ |
-| `user` | (из .env: USER_PASSWORD) | Только просмотр |
+Дагстер защищён через OAuth2 Proxy (Keycloak → Caddy → Dagster).
 
 ## Переменные окружения
 
@@ -128,56 +161,36 @@ SSO_DEFAULT_ROLE=user
 | `GITLAB_BASE_URL` | Base URL GitLab API | `https://gitlab.com/api/v4` |
 | `GITLAB_PERSONAL_TOKEN` | Токен GitLab по умолчанию | — |
 | `PORT` | Порт backend | `3000` |
-| `RATE_LIMIT_RPS` | Лимит запросов/сек к GitLab | `10` (кэп 2) |
-| `DATA_READ_MODE` | Режим чтения: postgresql/clickhouse/hybrid | `postgresql` |
+| `RATE_LIMIT_RPS` | Лимит запросов/сек к GitLab | `2` |
 | `SSO_PROVIDER` | Режим авторизации: local/oidc | `local` |
-| `OIDC_ISSUER_URL` | URL OIDC провайдера | — |
-| `OIDC_CLIENT_ID` | OIDC Client ID | — |
-| `OIDC_CLIENT_SECRET` | OIDC Client Secret | — |
-
-## Деплой
-
-### Docker Compose (рекомендуется)
-
-```bash
-docker compose up -d                          # Основные сервисы
-docker compose --profile dagster up -d        # + Dagster
-docker compose exec backend npm run migrate   # Миграции
-```
-
-### Обновление
-
-```bash
-git pull
-docker compose up -d --build
-docker compose --profile dagster up -d --build
-```
+| `ADMIN_PASSWORD` | Пароль admin (генерируется если пусто) | random |
+| `USER_PASSWORD` | Пароль user (генерируется если пусто) | random |
 
 ## Структура проекта
 
 ```
 ├── backend/                     # Fastify + TypeScript
-│   ├── src/api/v1/              # API endpoints (auth, dashboard, lineage...)
-│   ├── src/services/            # Сборщики данных, планировщик
-│   ├── src/utils/               # Auth, cache, rate limiting, RBAC
-│   ├── migrations/              # SQL миграции (001-046)
-│   └── tests/                   # Vitest (55 tests)
+│   ├── src/api/v1/              # 34 API endpoints
+│   ├── src/services/            # GitLab client, collectors
+│   ├── src/utils/               # Auth, cache, RBAC, crypto
+│   └── migrations/              # 47 SQL миграций
 ├── frontend/                    # React + Ant Design + Vite
-│   ├── src/components/          # Dashboard, Analytics, Data, Settings
+│   ├── src/components/          # 14 dashboard-компонентов
 │   ├── src/api/                 # API клиент
 │   └── src/types/               # TypeScript типы
 ├── dagster/                     # Dagster оркестрация
-│   ├── dagster_project/assets/  # 11 ассетов (collectors + dbt + lineage)
-│   ├── dagster_project/utils/   # GitLab client, PG connection
-│   └── requirements.txt         # Python зависимости (dagster, dbt-postgres)
+│   ├── dagster_project/assets/  # 14 ассетов
+│   ├── dagster_project/utils/   # GitLab client, PG, rate limiting
+│   └── requirements.txt         # Python зависимости
 ├── dbt/                         # dbt проект
 │   ├── models/staging/          # 6 staging views
-│   ├── models/marts/            # 6 materialized views (с project_id)
-│   └── profiles.yml             # PostgreSQL подключение
-├── docker-compose.yml           # 6 сервисов + profiles (dagster, analytics)
+│   └── models/marts/            # 6 materialized views
+├── docker-compose.yml           # 5 сервисов
 ├── Caddyfile                    # Reverse proxy
 └── docs/
-    └── DATA_COLLECTION.md       # Документация по сбору данных
+    ├── DATA_COLLECTION.md       # Документация по сбору данных
+    ├── ARCHITECTURE.md          # Архитектура и паттерны
+    └── TECHNICAL.md             # Техническая документация
 ```
 
 ## Тесты

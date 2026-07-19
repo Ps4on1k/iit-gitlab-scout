@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
-import { Table, Button, Modal, Form, Input, Space, Typography, Popconfirm, message, Tag, Collapse, Upload } from "antd";
-import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, SearchOutlined } from "@ant-design/icons";
-import { fetchContributorDirectory, createContributorDirectoryEntry, updateContributorDirectoryEntry, deleteContributorDirectoryEntry, importContributorDirectory, exportContributorDirectory, fetchFlatContributors } from "../../api/client";
+import { Table, Button, Modal, Form, Input, Space, Typography, Popconfirm, message, Tag, Collapse, Upload, Switch, Tooltip } from "antd";
+import { PlusOutlined, EditOutlined, DeleteOutlined, UploadOutlined, DownloadOutlined, SearchOutlined, CheckCircleOutlined } from "@ant-design/icons";
+import { fetchContributorDirectory, createContributorDirectoryEntry, updateContributorDirectoryEntry, deleteContributorDirectoryEntry, importContributorDirectory, exportContributorDirectory, fetchFlatContributors, toggleContributorValid } from "../../api/client";
 
 const { Text } = Typography;
 const { TextArea } = Input;
 
 export function ContributorDirectoryPanel() {
-  const [entries, setEntries] = useState<{ id: number; display_name: string; emails: string[] }[]>([]);
+  const [entries, setEntries] = useState<{ id: number; display_name: string; emails: string[]; is_valid: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [yamlModalOpen, setYamlModalOpen] = useState(false);
@@ -42,9 +42,9 @@ export function ContributorDirectoryPanel() {
     setModalOpen(true);
   };
 
-  const openEdit = (entry: { id: number; display_name: string; emails: string[] }) => {
+  const openEdit = (entry: { id: number; display_name: string; emails: string[]; is_valid: boolean }) => {
     setEditingId(entry.id);
-    form.setFieldsValue({ display_name: entry.display_name, emails: entry.emails.join("\n") });
+    form.setFieldsValue({ display_name: entry.display_name, emails: entry.emails.join("\n"), is_valid: entry.is_valid });
     setModalOpen(true);
   };
 
@@ -99,7 +99,14 @@ export function ContributorDirectoryPanel() {
   };
 
   const columns = [
-    { title: "Имя", dataIndex: "display_name", key: "name", render: (v: string) => <Text strong>{v}</Text> },
+    { title: "Имя", dataIndex: "display_name", key: "name",
+      render: (v: string, record: any) => (
+        <Space>
+          {record.is_valid && <Tag color="green" style={{ margin: 0 }}>✓</Tag>}
+          <Text strong>{v}</Text>
+        </Space>
+      ),
+    },
     { title: "Email", dataIndex: "emails", key: "emails",
       render: (emails: string[]) => (
         <Space direction="vertical" size={0}>
@@ -199,6 +206,9 @@ export function ContributorDirectoryPanel() {
           </Form.Item>
           <Form.Item name="emails" label="Email'ы (по одному на строку)" rules={[{ required: true }]}>
             <TextArea rows={4} placeholder={"ivan@company.com\nivanov@gmail.com"} style={{ fontFamily: "monospace" }} />
+          </Form.Item>
+          <Form.Item name="is_valid" label="Проверен" valuePropName="checked">
+            <Switch checkedChildren={<CheckCircleOutlined />} unCheckedChildren="Нет" />
           </Form.Item>
         </Form>
       </Modal>

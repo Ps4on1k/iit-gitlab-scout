@@ -16,11 +16,8 @@ interface GitLabBranch {
     author_name: string;
     author_email: string;
     message: string;
+    stats?: { additions: number; deletions: number; total: number };
   };
-}
-
-interface GitLabCommitDetail {
-  stats?: { additions: number; deletions: number; total: number };
 }
 
 export async function collectBranches(projectId: number): Promise<{ total: number; active: number; stale: number; merged: number; protected: number; unprotected: number }> {
@@ -30,7 +27,7 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
   const client = new GitLabClient({ token, baseUrl });
 
   const branches = await client.requestPaginated<GitLabBranch>(
-    `/projects/${encodeURIComponent(projectPath)}/repository/branches?per_page=100`
+    `/projects/${encodeURIComponent(projectPath)}/repository/branches?per_page=100&with_stats=true`
   );
 
   // Delete existing branches for this project before re-inserting
@@ -55,17 +52,8 @@ export async function collectBranches(projectId: number): Promise<{ total: numbe
     if (branch.protected) protectedCount++;
     else unprotected++;
 
-    let additions = 0;
-    let deletions = 0;
-    if (branch.commit?.id) {
-      try {
-        const detail = await client.request<GitLabCommitDetail>(
-          `/projects/${encodeURIComponent(projectPath)}/repository/commits/${branch.commit.id}`
-        );
-        additions = detail.stats?.additions || 0;
-        deletions = detail.stats?.deletions || 0;
-      } catch { /* stats unavailable */ }
-    }
+    const additions = branch.commit?.stats?.additions || 0;
+    const deletions = branch.commit?.stats?.deletions || 0;
 
     await pool.query(
       `INSERT INTO project_branches (project_id, name, "default", merged, protected, last_commit_date, last_commit_author, last_commit_author_email, last_commit_message, first_commit_date, can_push, last_commit_additions, last_commit_deletions)

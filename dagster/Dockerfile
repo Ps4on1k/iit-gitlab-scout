@@ -13,4 +13,4 @@ COPY dagster_project/ dagster_project/
 
 EXPOSE 3000
 
-CMD ["dagster", "dev", "-h", "0.0.0.0", "-p", "3000", "-m", "dagster_project"]
+CMD ["sh", "-c", "pip install --no-cache-dir clickhouse-connect>=0.7 2>/dev/null; dagster dev -h 0.0.0.0 -p 3000 -m dagster_project"]

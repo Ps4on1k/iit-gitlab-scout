@@ -15,6 +15,7 @@ export interface GitLabCommit {
   authored_date: string;
   committed_date: string;
   message: string;
+  stats?: { additions: number; deletions: number; total: number };
 }
 
 export interface GitLabCommitDiff {

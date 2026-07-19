@@ -227,4 +227,112 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
 
     return { ok: true, data: { contributors, total: contributors.length } };
   });
+
+  // Sync users from GitLab API into contributor_directory
+  app.post("/api/v1/contributor-directory/sync-from-gitlab", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const pool = getPool();
+    const { resolveProjectToken } = await import("../../utils/project-token.js");
+    const { GitLabClient } = await import("../../services/gitlab-client.js");
+
+    // Get any project to get GitLab credentials
+    const projResult = await pool.query("SELECT id, base_url, token_encrypted FROM projects LIMIT 1");
+    if (projResult.rows.length === 0) {
+      return reply.status(400).send({ ok: false, error: "No projects configured" });
+    }
+    const proj = projResult.rows[0];
+
+    let token: string;
+    let baseUrl: string;
+    try {
+      const resolved = await resolveProjectToken(proj.id);
+      token = resolved.token;
+      baseUrl = resolved.baseUrl;
+    } catch (err) {
+      return reply.status(500).send({ ok: false, error: "Failed to resolve GitLab token" });
+    }
+
+    if (!token) {
+      return reply.status(400).send({ ok: false, error: "No valid GitLab token" });
+    }
+
+    const client = new GitLabClient({ token, baseUrl });
+
+    // Load existing directory
+    const dirResult = await pool.query("SELECT id, display_name, emails FROM contributor_directory");
+    const existingByName: Record<string, { id: number; emails: string[] }> = {};
+    const existingByEmail: Record<string, number> = {};
+    for (const row of dirResult.rows) {
+      existingByName[row.display_name] = { id: row.id, emails: row.emails || [] };
+      for (const email of row.emails || []) {
+        existingByEmail[email] = row.id;
+      }
+    }
+
+    let synced = 0;
+    let created = 0;
+    let updated = 0;
+
+    // Fetch all users from GitLab (paginated)
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const users = await client.requestPaginated<any>(
+        `/users?per_page=100&page=${page}`
+      );
+
+      if (users.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const user of users) {
+        const username = user.username || "";
+        const name = user.name || username;
+        const email = user.commit_email || user.email || user.public_email || "";
+
+        if (!name && !email) continue;
+
+        const emails = email ? [email] : [];
+
+        if (existingByEmail[email]) {
+          // Email already in directory, skip
+          synced++;
+          continue;
+        }
+
+        // Check if name already exists
+        if (existingByName[name]) {
+          // Add email to existing entry if not present
+          if (email && !existingByName[name].emails.includes(email)) {
+            const newEmails = [...existingByName[name].emails, email];
+            await pool.query("UPDATE contributor_directory SET emails = $1 WHERE id = $2", [newEmails, existingByName[name].id]);
+            existingByName[name].emails = newEmails;
+            existingByEmail[email] = existingByName[name].id;
+            updated++;
+          }
+          continue;
+        }
+
+        // Create new entry
+        if (emails.length > 0 || name) {
+          const displayName = name || email;
+          const result = await pool.query(
+            "INSERT INTO contributor_directory (display_name, emails) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING id",
+            [displayName, emails]
+          );
+          if (result.rows.length > 0) {
+            existingByName[displayName] = { id: result.rows[0].id, emails };
+            for (const e of emails) existingByEmail[e] = result.rows[0].id;
+            created++;
+          }
+        }
+        synced++;
+      }
+
+      page++;
+      if (users.length < 100) hasMore = false;
+    }
+
+    return { ok: true, data: { synced, created, updated } };
+  });
 }

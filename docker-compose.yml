@@ -75,30 +75,11 @@ services:
         condition: service_healthy
     profiles: ["dbt"]
 
-  # ClickHouse — OLAP engine for fast analytics queries
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.3-alpine
-    expose:
-      - "8123"
-      - "9000"
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
-      - ./clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-gitlab_scout}
-      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-admin}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-changeme}
-    ulimits:
-      nofile:
-        soft: 262144
-        hard: 262144
-    profiles: ["analytics"]
-
   # Dagster — workflow orchestrator
   dagster:
     build: ./dagster
-    expose:
-      - "3000"
+    ports:
+      - "3001:3000"
     env_file:
       - .env
     environment:
@@ -143,4 +124,3 @@ volumes:
   caddy_data:
   caddy_config:
   caddy_logs:
-  clickhouse_data:

@@ -16,11 +16,7 @@ interface GitLabMR {
   merged_by: { username?: string } | null;
   user_notes_count: number;
   changes_count?: string;
-}
-
-interface GitLabApproval {
-  approvals_left: number;
-  approved_by: { user: { username: string; name?: string } }[];
+  reviewers?: { username: string; name?: string }[];
 }
 
 export async function collectMergeRequests(projectId: number): Promise<{ total: number; merged: number; opened: number; closed: number }> {
@@ -42,17 +38,8 @@ export async function collectMergeRequests(projectId: number): Promise<{ total: 
     else if (mr.state === "opened") opened++;
     else closed++;
 
-    let approvals = 0;
-    let reviewerNames: string[] = [];
-    try {
-      const approval = await client.request<GitLabApproval>(
-        `/projects/${encodeURIComponent(projectPath)}/merge_requests/${mr.iid}/approvals`
-      );
-      if (approval) {
-        approvals = approval.approved_by?.length || 0;
-        reviewerNames = approval.approved_by?.map((a: { user: { username: string; name?: string } }) => a.user.name || a.user.username) || [];
-      }
-    } catch {}
+    const reviewerNames = (mr.reviewers || []).map((r) => r.name || r.username);
+    const approvals = reviewerNames.length;
 
     const changesCount = mr.changes_count ? parseInt(mr.changes_count, 10) || 0 : 0;
 

@@ -3,3 +3,4 @@ dagster-webserver==1.9.12
 psycopg2-binary>=2.9
 cryptography>=41.0
 dbt-postgres==1.7.*
+clickhouse-connect>=0.7

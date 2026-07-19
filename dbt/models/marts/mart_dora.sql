@@ -48,7 +48,7 @@ select
   ds.failed,
   ds.canceled,
   case when ds.total > 0 then round((ds.failed::numeric / ds.total) * 100, 2) else 0 end as failure_rate,
-  case when 91 > 0 then round((ds.total::numeric / 91), 2) else 0 end as deploy_frequency,
+  case when 90 > 0 then round((ds.total::numeric / 90), 2) else 0 end as deploy_frequency,
   lt.avg_lead_time_sec,
   mt.avg_mttr_min
 from deploy_stats ds

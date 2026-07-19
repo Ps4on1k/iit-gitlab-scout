@@ -4,6 +4,7 @@ import { ReloadOutlined, RocketOutlined } from "@ant-design/icons";
 import { fetchProjects, fetchDeployReliability, fetchMetricWeights, type DeployReliabilityEntry } from "../../api/client";
 import type { ProjectConfig } from "../../types";
 import type { GlobalFilters } from "../GlobalFilterBar";
+import { matchesContributorFilter } from "../../utils/contributorFilter";
 
 function computeScore(d: DeployReliabilityEntry, weights?: Record<string, number>): number {
   const quality = d.deploy_success_rate;
@@ -55,13 +56,7 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
     let data = [...deployData];
     // Filter by contributors on frontend
     if (filters.contributors.length > 0) {
-      data = data.filter((d) =>
-        filters.contributors.some((f) =>
-          d.email === f || d.name === f ||
-          d.email.toLowerCase().includes(f.toLowerCase()) ||
-          d.name.toLowerCase().includes(f.toLowerCase())
-        )
-      );
+      data = data.filter((d) => matchesContributorFilter(d, filters.contributors));
     }
     return data
       .map((d) => ({ ...d, _score: computeScore(d, deployWeights) }))
@@ -125,11 +120,15 @@ export const DeployReliabilityDashboard = memo(function DeployReliabilityDashboa
                 {
                   title: "Контрибьютор",
                   dataIndex: "name",
-                  sorter: (a: any, b: any) => a.name.localeCompare(b.name),
+                  sorter: (a: any, b: any) => (a.name || "").localeCompare(b.name || ""),
                   render: (name: string, record: any) => (
-                    <span style={{ cursor: "pointer", color: "#3A8DFF", fontWeight: 600 }} onClick={() => onContributorClick?.(record.email || name)}>
-                      {name}
-                    </span>
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{name || record.email || "—"}</div>
+                      <div style={{ fontSize: 11, color: "#3A8DFF", cursor: "pointer" }}
+                        onClick={() => onContributorClick?.(record.email || name || "")}>
+                        {record.email || ""}
+                      </div>
+                    </div>
                   ),
                 },
                 {

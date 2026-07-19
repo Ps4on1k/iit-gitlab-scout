@@ -22,6 +22,7 @@ const PipelineDashboard = lazy(() => import("./components/pipelines/PipelineDash
 const DoraDashboard = lazy(() => import("./components/dora/DoraDashboard").then(m => ({ default: m.DoraDashboard })));
 const BenchmarkDashboard = lazy(() => import("./components/benchmark/BenchmarkDashboard").then(m => ({ default: m.BenchmarkDashboard })));
 const DeployReliabilityDashboard = lazy(() => import("./components/contributors/DeployReliabilityDashboard").then(m => ({ default: m.DeployReliabilityDashboard })));
+const RedFlagsDashboard = lazy(() => import("./components/red-flags/RedFlagsDashboard").then(m => ({ default: m.RedFlagsDashboard })));
 const DependencyDashboard = lazy(() => import("./components/dependencies/DependencyDashboard").then(m => ({ default: m.DependencyDashboard })));
 const SettingsPanel = lazy(() => import("./components/SettingsPanel").then(m => ({ default: m.SettingsPanel })));
 const DataLineage = lazy(() => import("./components/data/DataLineage").then(m => ({ default: m.DataLineage })));
@@ -55,7 +56,7 @@ const defaultFilters: GlobalFilters = {
 };
 
 type TabKey = "dashboard" | "analytics" | "stack" | "dependencies" | "benchmark" | "settings" | "data-lineage" | "data-collection" | "data-references";
-type AnalyticsTab = "contributors" | "deploy-reliability" | "activity" | "branches" | "pipelines" | "dora";
+type AnalyticsTab = "contributors" | "deploy-reliability" | "activity" | "branches" | "pipelines" | "dora" | "red-flags";
 
 function getInitialDarkMode(): boolean {
   try { const s = localStorage.getItem("darkMode"); if (s !== null) return s === "true"; } catch {} return true;
@@ -92,7 +93,7 @@ function writeUrlState(tab: TabKey, analyticsTab: AnalyticsTab, filters: GlobalF
 }
 
 const TAB_LABELS: Record<TabKey, string> = { dashboard: "Обзор", analytics: "Аналитика", stack: "Языки", dependencies: "Зависимости", benchmark: "Бенчмарк", settings: "Настройки", "data-lineage": "Потоки данных", "data-collection": "Сбор данных", "data-references": "Справочники" };
-const ANALYTICS_LABELS: Record<AnalyticsTab, string> = { contributors: "Контрибьюторы", "deploy-reliability": "Надёжность", activity: "Активность", branches: "Ветки", pipelines: "CI/CD", dora: "DORA" };
+const ANALYTICS_LABELS: Record<AnalyticsTab, string> = { contributors: "Контрибьюторы", "deploy-reliability": "Надёжность", activity: "Активность", branches: "Ветки", pipelines: "CI/CD", dora: "DORA", "red-flags": "Красные флаги" };
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -128,8 +129,8 @@ export default function App() {
     if (!emailOrName) return;
     const res = await resolveContributor(emailOrName);
     const resolved = res.ok ? res.data!.email : emailOrName;
+    if (!resolved) return;
     setFilters((prev) => ({ ...prev, contributors: prev.contributors.includes(resolved) ? prev.contributors : [...prev.contributors, resolved] }));
-    setTab("analytics"); setAnalyticsTab("contributors");
   }, []);
   const navigateTo = (newTab: TabKey, newAnalyticsTab?: AnalyticsTab) => { setTab(newTab); if (newAnalyticsTab) setAnalyticsTab(newAnalyticsTab); };
 
@@ -154,7 +155,7 @@ export default function App() {
         <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#1e293b", height: 48, zIndex: 100, position: "sticky", top: 0 }}>
           <Button type="text" icon={<MenuOutlined style={{ color: darkMode ? "#e2e8f0" : "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.3.0</span>
+            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.4.0</span>
             <SyncIndicator />
           </div>
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#94a3b8" }}>
@@ -189,7 +190,7 @@ export default function App() {
                   <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : (darkMode ? "#94a3b8" : "#4b5563"), background: tab === item.key ? (darkMode ? "rgba(58,141,255,0.1)" : "rgba(58,141,255,0.08)") : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
                 ))}
                 <div style={{ padding: "12px 20px 4px", fontSize: 11, color: darkMode ? "#64748b" : "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Аналитика</div>
-                {[{ key: "contributors", label: "Контрибьюторы" }, { key: "deploy-reliability", label: "Надёжность" }, { key: "activity", label: "Активность" }, { key: "branches", label: "Ветки" }, { key: "pipelines", label: "CI/CD" }, { key: "dora", label: "DORA" }].map((item) => (
+                {[{ key: "contributors", label: "Контрибьюторы" }, { key: "deploy-reliability", label: "Надёжность" }, { key: "activity", label: "Активность" }, { key: "branches", label: "Ветки" }, { key: "pipelines", label: "CI/CD" }, { key: "dora", label: "DORA" }, { key: "red-flags", label: "Красные флаги" }].map((item) => (
                   <div key={item.key} onClick={() => navigateTo("analytics", item.key as AnalyticsTab)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px 10px 36px", cursor: "pointer", color: tab === "analytics" && analyticsTab === item.key ? "#3A8DFF" : (darkMode ? "#94a3b8" : "#4b5563"), background: tab === "analytics" && analyticsTab === item.key ? (darkMode ? "rgba(58,141,255,0.1)" : "rgba(58,141,255,0.08)") : "transparent", transition: "all 0.15s", fontSize: 13, fontWeight: tab === "analytics" && analyticsTab === item.key ? 600 : 400 }}>{item.label}</div>
                 ))}
                 <div style={{ padding: "12px 20px 4px", fontSize: 11, color: darkMode ? "#64748b" : "#9ca3af", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 600 }}>Разделы</div>
@@ -236,6 +237,7 @@ export default function App() {
                 {tab === "analytics" && analyticsTab === "branches" && <BranchDashboard key={`branches-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
                 {tab === "analytics" && analyticsTab === "pipelines" && <PipelineDashboard key={`pipelines-${filterKey}-${analyticsTab}`} userRole={user.role} filters={filters} />}
                 {tab === "analytics" && analyticsTab === "dora" && <DoraDashboard key={`dora-${filterKey}`} filters={filters} onParamChange={setTabParam} tabParams={tabParams} />}
+                {tab === "analytics" && analyticsTab === "red-flags" && <RedFlagsDashboard key={`red-flags-${filterKey}`} userRole={user.role} filters={filters} onContributorClick={handleContributorClick} />}
                 {tab === "stack" && <StackDashboard userRole={user.role} />}
                 {tab === "dependencies" && <DependencyDashboard />}
                 {tab === "benchmark" && (user.role === "admin" || user.role === "manager") && <BenchmarkDashboard filters={filters} />}
