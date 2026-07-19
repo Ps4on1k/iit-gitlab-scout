@@ -14,11 +14,12 @@ from dagster_project.resources.gitlab import GitLabResource
 # Every 6 hours: core collection
 CORE_ASSETS = [
     gitlab_commits, gitlab_merge_requests, gitlab_pipelines,
-    gitlab_branches, gitlab_languages, gitlab_contributors,
+    gitlab_branches, gitlab_contributors,
     gitlab_activity, gitlab_issues, gitlab_deployments,
 ]
 
-# Weekly: dependency audit + clickhouse sync
+# Weekly: dependency audit + clickhouse sync + languages
+# gitlab_dependency_audit depends on gitlab_dependencies (explicit)
 WEEKLY_ASSETS = [
     gitlab_dependencies, gitlab_dependency_audit,
     gitlab_languages, clickhouse_sync,

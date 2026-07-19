@@ -424,7 +424,7 @@ def gitlab_languages(context: AssetExecutionContext) -> None:
         cursor.close()
 
         total = 0
-        for proj_id, path, token_encrypted, base_url in projects:
+        for proj_idx, (proj_id, path, token_encrypted, base_url) in enumerate(projects):
             try:
                 token = get_token(token_encrypted, client["token"], conn, base_url)
                 if not token:
@@ -455,7 +455,7 @@ def gitlab_languages(context: AssetExecutionContext) -> None:
                             ["project_id", "language", "bytes", "percentage"], rows)
                         total += len(rows)
 
-                context.log.info(f"Collected languages from {path}")
+                context.log.info(f"[{proj_idx+1}/{len(projects)}] Collected languages from {path}")
             except Exception as e:
                 context.log.warning(f"Failed to collect languages from {path}: {e}")
 
@@ -611,13 +611,15 @@ def gitlab_dependencies(context: AssetExecutionContext) -> None:
         "Package.swift": "swift",
     }
 
+    MAX_DEP_FILES_PER_PROJECT = 20  # Limit files per project to avoid hanging
+
     try:
         cursor = conn.cursor()
         projects = get_projects(cursor)
         cursor.close()
 
         total = 0
-        for proj_id, path, token_encrypted, base_url in projects:
+        for proj_idx, (proj_id, path, token_encrypted, base_url) in enumerate(projects):
             try:
                 token = get_token(token_encrypted, client["token"], conn, base_url)
                 if not token:
@@ -627,23 +629,16 @@ def gitlab_dependencies(context: AssetExecutionContext) -> None:
                 files = gitlab_request_paginated(
                     f"/projects/{encoded_path}/repository/tree",
                     token, base_url,
-                    {"recursive": "true", "per_page": "100"}
+                    {"recursive": "true", "per_page": "100"},
+                    max_pages=5
                 )
 
-                if files and len(files) > 0:
-                    sample = files[0]
-                    context.log.debug(f"Tree sample for {path}: keys={list(sample.keys())}, name={sample.get('name')}, path={sample.get('path')}")
-
-                # GitLab API may return 'path' (newer) or only 'name' (older)
-                # For files in subdirectories, we need the full path
                 SKIP_DIRS = {"node_modules", ".git", "vendor", "dist", "build", "__pycache__"}
                 dep_files = []
                 for f in files:
                     if f.get("type") != "blob":
                         continue
-                    # Try 'path' first, fall back to 'name'
                     file_path = f.get("path") or f.get("name", "")
-                    # Skip files in excluded directories
                     parts = file_path.split("/")
                     if any(p in SKIP_DIRS for p in parts[:-1]):
                         continue
@@ -654,6 +649,11 @@ def gitlab_dependencies(context: AssetExecutionContext) -> None:
 
                 if dep_files:
                     context.log.info(f"Found {len(dep_files)} dependency files in {path}: {[f.get('_full_path') for f in dep_files[:5]]}")
+
+                # Limit files per project to avoid hanging on huge repos
+                if len(dep_files) > MAX_DEP_FILES_PER_PROJECT:
+                    context.log.warning(f"Too many dep files ({len(dep_files)}) in {path}, limiting to {MAX_DEP_FILES_PER_PROJECT}")
+                    dep_files = dep_files[:MAX_DEP_FILES_PER_PROJECT]
 
                 rows = []
                 for f in dep_files:
@@ -690,7 +690,7 @@ def gitlab_dependencies(context: AssetExecutionContext) -> None:
                         ["project_id", "name", "current_version", "is_outdated", "source"], rows)
                     total += len(rows)
 
-                context.log.info(f"Collected {len(rows)} dependencies from {path}")
+                context.log.info(f"[{proj_idx+1}/{len(projects)}] Collected {len(rows)} dependencies from {path}")
             except Exception as e:
                 context.log.warning(f"Failed to collect dependencies from {path}: {e}")
 
