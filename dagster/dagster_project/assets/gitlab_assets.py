@@ -1303,47 +1303,22 @@ def _check_latest_version(name: str, source: str, url_template: str) -> str | No
 
 # === Contributor aggregation ===
 
-CYR_TO_LAT = {
-    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'yo',
-    'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
-    'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
-    'ф': 'f', 'х': 'kh', 'ц': 'ts', 'ч': 'ch', 'ш': 'sh', 'щ': 'shch',
-    'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
-    'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo',
-    'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
-    'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
-    'Ф': 'F', 'Х': 'Kh', 'Ц': 'Ts', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Shch',
-    'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'Yu', 'Я': 'Ya',
-}
-
-
-def _transliterate(text):
-    return "".join(CYR_TO_LAT.get(ch, ch) for ch in text)
-
-
-def _normalize_name(name):
-    import re
-    name = _transliterate(name.lower().strip())
-    name = " ".join(name.split())
-    name = re.sub(r"\s*\d+$", "", name)
-    name = re.sub(r"\s*\(.*?\)", "", name)
-    return name
-
-
-def _normalize_email(email):
-    import re
-    return re.sub(r"^[+\d]+@", "", email.lower().strip())
-
-
-def _email_local_part(email):
-    import re
-    return re.sub(r"[._\-]", "", email.split("@")[0].lower())
+from dagster_project.utils.contributor_match import (
+    transliterate_to_latin, normalize_name, email_local_part,
+    is_similar_name, is_bot_or_ci, soundex,
+)
 
 
 def _is_bot_or_ci(name, email):
-    patterns = ["jenkins", "gitlab-ci", "pipeline", "bot", "ci@", "noreply", "deploy", "runner", "automated", "system", "admin@"]
-    nl, el = name.lower(), email.lower()
-    return any(p in nl or p in el for p in patterns)
+    return is_bot_or_ci(name, email)
+
+
+def _normalize_name(name):
+    return normalize_name(name)
+
+
+def _email_local_part(email):
+    return email_local_part(email)
 
 
 @asset(compute_kind="sync")
@@ -1394,9 +1369,11 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
                     break
             if not found_group:
                 norm_name = _normalize_name(name)
+                name_sdx = soundex(name)
                 for ek in groups:
                     for e in groups[ek]:
-                        if norm_name and norm_name == _normalize_name(all_authors.get(e, "")):
+                        existing_name = all_authors.get(e, "")
+                        if norm_name and is_similar_name(name, existing_name):
                             found_group = ek
                             break
                     if found_group:
@@ -1438,19 +1415,17 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
         context.log.info(f"Detected {len(groups)} contributor groups")
 
         # Also populate emails for existing directory entries that have empty emails
-        # Match by name similarity
+        # Match by name similarity with soundex
         email_populated = 0
         for dir_name, dir_data in existing.items():
             if dir_data["emails"] and len(dir_data["emails"]) > 0:
                 continue  # Already has emails
-            # Find matching emails from all_authors by name
-            norm_dir_name = _normalize_name(dir_name)
+            # Find matching emails from all_authors by name similarity
             matching_emails = []
             for email, name in all_authors.items():
                 if _is_bot_or_ci(name, email):
                     continue
-                norm_name = _normalize_name(name)
-                if norm_name and norm_dir_name and norm_name == norm_dir_name:
+                if is_similar_name(dir_name, name):
                     matching_emails.append(email)
             if matching_emails:
                 cur = conn.cursor()
