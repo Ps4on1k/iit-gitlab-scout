@@ -1,8 +1,8 @@
 exports.up = async function(pgm) {
-  // Column and index already exist (created manually), skip migration
-  // This migration is a no-op
+  // Change default from true to false
+  await pgm.sql(`ALTER TABLE contributor_directory ALTER COLUMN is_valid SET DEFAULT false`);
 };
 
 exports.down = async function(pgm) {
-  // No-op - column was created manually
+  await pgm.sql(`ALTER TABLE contributor_directory ALTER COLUMN is_valid SET DEFAULT true`);
 };

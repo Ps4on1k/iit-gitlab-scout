@@ -1327,10 +1327,14 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
     conn = get_pg_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT id, display_name, emails FROM contributor_directory")
+        # Load existing directory — skip verified (is_valid=true) entries
+        cursor.execute("SELECT id, display_name, emails, is_valid FROM contributor_directory")
         existing = {}
+        verified_ids = set()
         for row in cursor.fetchall():
-            existing[row[1]] = {"id": row[0], "display_name": row[1], "emails": row[2] or []}
+            existing[row[1]] = {"id": row[0], "display_name": row[1], "emails": row[2] or [], "is_valid": row[3]}
+            if row[3]:  # is_valid = true → skip
+                verified_ids.add(row[0])
 
         cursor.execute("""
             SELECT author_email, author_name FROM (
@@ -1380,6 +1384,8 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
                         break
             if not found_group:
                 for dd in existing.values():
+                    if dd["is_valid"]:
+                        continue  # Skip verified entries
                     if email in dd["emails"]:
                         found_group = dd["display_name"]
                         break
@@ -1418,6 +1424,8 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
         # Match by name similarity with soundex
         email_populated = 0
         for dir_name, dir_data in existing.items():
+            if dir_data["is_valid"]:
+                continue  # Skip verified entries — user manages this manually
             if dir_data["emails"] and len(dir_data["emails"]) > 0:
                 continue  # Already has emails
             # Find matching emails from all_authors by name similarity
@@ -1453,6 +1461,8 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
             raw_dn = max(nc, key=nc.get) if nc else gk
             dn = to_cyrillic_display(raw_dn)
             if dn in existing:
+                if existing[dn]["is_valid"]:
+                    continue  # Don't modify verified entries
                 existing_emails = set(existing[dn]["emails"])
                 new_emails = emails - existing_emails
                 if new_emails:
