@@ -107,34 +107,6 @@ def normalize_name(name):
     return name.strip()
 
 
-def _has_cyrillic(text):
-    """Check if text contains Cyrillic characters."""
-    return bool(re.search(r'[а-яА-ЯёЁ]', text))
-
-
-def _has_latin(text):
-    """Check if text contains Latin characters (letters only)."""
-    return bool(re.search(r'[a-zA-Z]', text))
-
-
-def to_cyrillic_display(name):
-    """Convert name to Cyrillic display name if it's in Latin.
-    - Already Cyrillic → keep as-is
-    - Latin name (like 'Pavel Lobach') → transliterate to Russian ('Павел Лобач')
-    - Username (like 'pavel.lobach') → transliterate to Russian
-    """
-    if not name:
-        return name
-    name = name.strip()
-    if not name:
-        return name
-    if _has_cyrillic(name):
-        return name  # Already Cyrillic, keep as-is
-    if _has_latin(name):
-        return transliterate_to_cyrillic(name)  # Latin → Cyrillic
-    return name  # Neither (numbers, symbols) — keep as-is
-
-
 def normalize_email(email):
     """Normalize email for comparison."""
     return re.sub(r"^[+\d]+@", "", email.lower().strip())

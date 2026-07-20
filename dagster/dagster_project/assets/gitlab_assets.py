@@ -1305,7 +1305,7 @@ def _check_latest_version(name: str, source: str, url_template: str) -> str | No
 
 from dagster_project.utils.contributor_match import (
     transliterate_to_latin, normalize_name, email_local_part,
-    is_similar_name, is_bot_or_ci, soundex, to_cyrillic_display,
+    is_similar_name, is_bot_or_ci, soundex,
 )
 
 
@@ -1436,10 +1436,8 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
                 if is_similar_name(dir_name, name) or is_similar_name(to_cyrillic_display(dir_name), name):
                     matching_emails.append(email)
             if matching_emails:
-                # Also update display_name to Cyrillic if it's in Latin
-                new_display = to_cyrillic_display(dir_name)
                 cur = conn.cursor()
-                cur.execute("UPDATE contributor_directory SET emails = %s, display_name = %s WHERE id = %s", (matching_emails, new_display, dir_data["id"]))
+                cur.execute("UPDATE contributor_directory SET emails = %s WHERE id = %s", (matching_emails, dir_data["id"]))
                 conn.commit()
                 cur.close()
                 email_populated += 1
@@ -1457,9 +1455,8 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
                 if n and not _is_bot_or_ci(n, e):
                     nn = _normalize_name(n)
                     nc[nn] = nc.get(nn, 0) + 1
-            # Pick most common normalized name, then convert to Cyrillic display
             raw_dn = max(nc, key=nc.get) if nc else gk
-            dn = to_cyrillic_display(raw_dn)
+            dn = raw_dn
             if dn in existing:
                 if existing[dn]["is_valid"]:
                     continue  # Don't modify verified entries
