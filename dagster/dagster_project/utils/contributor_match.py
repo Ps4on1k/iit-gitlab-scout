@@ -126,7 +126,9 @@ def name_parts(name):
 
 
 def is_similar_name(name1, name2):
-    """Check if two names are similar using multiple heuristics."""
+    """Check if two names are similar using multiple heuristics.
+    Only matches full names (first+last), not partial name matches.
+    """
     if not name1 or not name2:
         return False
 
@@ -137,20 +139,25 @@ def is_similar_name(name1, name2):
     if n1 == n2:
         return True
 
-    # Soundex match
-    if soundex(n1) == soundex(n2) and soundex(n1) != "":
-        return True
-
-    # First name + last name match
     first1, last1 = name_parts(n1)
     first2, last2 = name_parts(n2)
-    if first1 and first2 and first1 == first2 and last1 and last2 and last1 == last2:
-        return True
 
-    # One name contains the other (handles abbreviations)
-    if len(n1) >= 3 and len(n2) >= 3:
-        if n1 in n2 or n2 in n1:
+    # Both must have at least a first name to compare
+    if not first1 or not first2:
+        return False
+
+    # Soundex on first+last separately — both must match
+    if last1 and last2:
+        if soundex(first1) == soundex(first2) and soundex(last1) == soundex(last2):
             return True
+    # Soundex on first name only — only if both are single-part names (no last name)
+    elif not last1 and not last2:
+        if soundex(first1) == soundex(first2):
+            return True
+
+    # Exact first + last name match
+    if first1 == first2 and last1 and last2 and last1 == last2:
+        return True
 
     # Email local parts match
     if email_local_part(name1) == email_local_part(name2) and email_local_part(name1):
