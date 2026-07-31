@@ -124,7 +124,7 @@ export async function pipelineAnalyticsRoutes(app: FastifyInstance) {
       data: {
         summary: summaryResult.rows[0],
         byDay: byDayResult.rows.map((r: any) => ({ date: r.day, total: r.total, success: r.success, failed: r.failed })),
-        byProject: byProjectResult.rows.map((r: any) => ({ label: r.label, tag: r.tag, total: r.total, success: r.success, failed: r.failed, avgDuration: Number(r.avg_duration) || 0 })),
+        byProject: byProjectResult.rows.map((r: any) => ({ label: r.label, tags: r.tags || r.tag, total: r.total, success: r.success, failed: r.failed, avgDuration: Number(r.avg_duration) || 0 })),
         byRef: byRefResult.rows.map((r: any) => ({ ref: r.ref, total: r.total, success: r.success, failed: r.failed })),
         durationDistribution: durationDistResult.rows[0],
       },

@@ -41,7 +41,9 @@ export async function collectMergeRequests(projectId: number): Promise<{ total: 
     const reviewerNames = (mr.reviewers || []).map((r) => r.name || r.username);
     const approvals = reviewerNames.length;
 
-    const changesCount = mr.changes_count ? parseInt(mr.changes_count, 10) || 0 : 0;
+    // Parse changes_count, handling values like "42", "1000+", or "10000"
+    const rawChanges = mr.changes_count ? String(mr.changes_count).replace(/\+$/, '') : '';
+    const changesCount = rawChanges ? (parseInt(rawChanges, 10) || 0) : 0;
 
     mrRows.push([
       projectId, mr.iid, mr.title, mr.state,

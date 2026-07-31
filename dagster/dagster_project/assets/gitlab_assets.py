@@ -70,7 +70,7 @@ def gitlab_commits(context: AssetExecutionContext) -> None:
                 encoded_path = urllib.parse.quote(path, safe='')
                 commits = gitlab_request_paginated(
                     f"/projects/{encoded_path}/repository/commits",
-                    token, base_url, params, max_pages=10
+                    token, base_url, params, max_pages=1000
                 )
 
                 rows = []
@@ -81,7 +81,7 @@ def gitlab_commits(context: AssetExecutionContext) -> None:
                         c.get("committed_date"), c.get("stats", {}).get("additions", 0),
                         c.get("stats", {}).get("deletions", 0),
                         c.get("stats", {}).get("additions", 0) + c.get("stats", {}).get("deletions", 0),
-                        ""
+                        "all"
                     ))
 
                 if rows:
@@ -133,7 +133,7 @@ def gitlab_merge_requests(context: AssetExecutionContext) -> None:
 
                 mrs = gitlab_request_paginated(
                     f"/projects/{urllib.parse.quote(path, safe='')}/merge_requests",
-                    token, base_url, params, max_pages=10
+                    token, base_url, params, max_pages=1000
                 )
 
                 rows = []
@@ -238,7 +238,7 @@ def gitlab_pipelines(context: AssetExecutionContext) -> None:
 
                 pipelines = gitlab_request_paginated(
                     f"/projects/{urllib.parse.quote(path, safe='')}/pipelines",
-                    token, base_url, params, max_pages=10
+                    token, base_url, params, max_pages=1000
                 )
 
                 rows = []
@@ -295,18 +295,18 @@ def gitlab_pipelines(context: AssetExecutionContext) -> None:
                 backfill1 = cur.rowcount
                 conn.commit()
 
-                # Method 2: Average duration per ref
+                # Method 2: Average duration per ref (per project)
                 cur.execute("""
                     WITH ref_avg AS (
-                        SELECT ref, AVG(duration)::int as avg_dur
+                        SELECT project_id, ref, AVG(duration)::int as avg_dur
                         FROM project_pipelines
                         WHERE duration IS NOT NULL AND status IN ('success', 'failed')
-                        GROUP BY ref
+                        GROUP BY project_id, ref
                     )
                     UPDATE project_pipelines pp
                     SET duration = ra.avg_dur
                     FROM ref_avg ra
-                    WHERE pp.ref = ra.ref AND pp.duration IS NULL AND pp.status IN ('success', 'failed')
+                    WHERE pp.project_id = ra.project_id AND pp.ref = ra.ref AND pp.duration IS NULL AND pp.status IN ('success', 'failed')
                 """)
                 backfill2 = cur.rowcount
                 conn.commit()
@@ -630,7 +630,7 @@ def gitlab_dependencies(context: AssetExecutionContext) -> None:
                     f"/projects/{encoded_path}/repository/tree",
                     token, base_url,
                     {"recursive": "true", "per_page": "100"},
-                    max_pages=5
+                    max_pages=50
                 )
 
                 SKIP_DIRS = {"node_modules", ".git", "vendor", "dist", "build", "__pycache__"}
@@ -924,7 +924,7 @@ def gitlab_deployments(context: AssetExecutionContext) -> None:
                 encoded_path = urllib.parse.quote(path, safe='')
                 deployments = gitlab_request_paginated(
                     f"/projects/{encoded_path}/deployments",
-                    token, base_url, params, max_pages=10
+                    token, base_url, params, max_pages=1000
                 )
 
                 rows = []

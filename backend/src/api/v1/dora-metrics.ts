@@ -92,22 +92,32 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
       if (d.status === "success") dailyDeploys[day].success++;
       if (d.status === "failed" || d.pipeline_status === "failed") dailyDeploys[day].failed++;
     }
-    const days = Object.keys(dailyDeploys).length || 1;
-    const deployFrequency = Math.round((total / days) * 100) / 100;
+    const periodDays = Math.max(1, Math.ceil((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1);
+    const deployFrequency = Math.round((total / periodDays) * 100) / 100;
 
+    // MTTR: for each failed deployment, find the first subsequent success
     let mttrMinutes = 0;
-    let failedStartedAt: Date | null = null;
-    for (const d of deploys) {
+    let mttrCount = 0;
+    const sortedDeploys = [...deploys].sort((a: any, b: any) => 
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    for (let i = 0; i < sortedDeploys.length; i++) {
+      const d = sortedDeploys[i];
       if (d.status === "failed" || d.pipeline_status === "failed") {
-        failedStartedAt = new Date(d.created_at);
-      } else if (d.status === "success" && failedStartedAt) {
-        const restore = (new Date(d.created_at).getTime() - failedStartedAt.getTime()) / 60000;
-        if (restore > 0 && restore < 24 * 60) mttrMinutes += restore;
-        failedStartedAt = null;
+        for (let j = i + 1; j < sortedDeploys.length; j++) {
+          const next = sortedDeploys[j];
+          if (next.status === "success") {
+            const restoreMin = (new Date(next.created_at).getTime() - new Date(d.created_at).getTime()) / 60000;
+            if (restoreMin > 0 && restoreMin < 24 * 60) {
+              mttrMinutes += restoreMin;
+              mttrCount++;
+            }
+            break;
+          }
+        }
       }
     }
-    const mttrCount = deploys.filter((d: any) => d.status === "failed").length || 1;
-    const avgMttr = Math.round(mttrMinutes / mttrCount) || 0;
+    const avgMttr = (mttrCount > 0 ? Math.round(mttrMinutes / mttrCount) : 0) || 0;
 
     const trend = Object.entries(dailyDeploys).map(([date, v]) => ({
       date, ...v,
@@ -175,21 +185,27 @@ export async function doraMetricsRoutes(app: FastifyInstance) {
       return { date: day, deploys: dm.deploys, success: dm.success, failed: dm.failed, failureRate: failRate, avgLeadTimeSec: avgLt, avgMttrMin: avgMttr };
     });
 
-    const weeklyMap: Record<string, { deploys: number; success: number; failed: number; leadTimes: number[]; mttrMinutes: number[] }> = {};
+    // Weekly trend: aggregate from daily with LT/MTTR
+    const weeklyMap: Record<string, { deploys: number; success: number; failed: number; leadTimes: number[]; mttrMins: number[] }> = {};
     for (const entry of dailyTrend) {
       const d = new Date(entry.date);
+      const dayOfWeek = d.getDay();
+      const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Monday as first day
       const weekStart = new Date(d);
-      weekStart.setDate(d.getDate() - d.getDay());
+      weekStart.setDate(d.getDate() - diff);
       const wk = weekStart.toISOString().slice(0, 10);
-      if (!weeklyMap[wk]) weeklyMap[wk] = { deploys: 0, success: 0, failed: 0, leadTimes: [], mttrMinutes: [] };
+      if (!weeklyMap[wk]) weeklyMap[wk] = { deploys: 0, success: 0, failed: 0, leadTimes: [], mttrMins: [] };
       weeklyMap[wk].deploys += entry.deploys;
       weeklyMap[wk].success += entry.success;
       weeklyMap[wk].failed += entry.failed;
+      if (entry.avgLeadTimeSec !== null) weeklyMap[wk].leadTimes.push(entry.avgLeadTimeSec);
+      if (entry.avgMttrMin !== null) weeklyMap[wk].mttrMins.push(entry.avgMttrMin);
     }
     const weeklyTrend = Object.entries(weeklyMap).sort(([a], [b]) => a.localeCompare(b)).map(([week, v]) => {
       const avgLt = v.leadTimes.length > 0 ? Math.round(v.leadTimes.reduce((a, b) => a + b, 0) / v.leadTimes.length) : null;
+      const avgMttr = v.mttrMins.length > 0 ? Math.round(v.mttrMins.reduce((a, b) => a + b, 0) / v.mttrMins.length) : null;
       const failRate = v.deploys > 0 ? Math.round((v.failed / v.deploys) * 100) : null;
-      return { date: week, deploys: v.deploys, success: v.success, failed: v.failed, failureRate: failRate, avgLeadTimeSec: avgLt, avgMttrMin: null };
+      return { date: week, deploys: v.deploys, success: v.success, failed: v.failed, failureRate: failRate, avgLeadTimeSec: avgLt, avgMttrMin: avgMttr };
     });
 
     return {

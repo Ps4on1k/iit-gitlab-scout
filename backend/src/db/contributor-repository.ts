@@ -80,14 +80,16 @@ export async function refreshContributors(projectId: number): Promise<void> {
          jsonb_object_agg(date_str, cnt),
          '{}'::jsonb
        ) as frequency
-     FROM (
-       SELECT project_id, author_email, author_name, additions, deletions, total_changes, committed_date,
-              TO_CHAR(committed_date, 'YYYY-MM-DD') as date_str,
-              COUNT(*) as cnt
-       FROM commits
-       WHERE project_id = $1
-       GROUP BY project_id, author_email, author_name, additions, deletions, total_changes, committed_date
-     ) sub
+      FROM (
+        SELECT project_id, author_email,
+               TO_CHAR(committed_date, 'YYYY-MM-DD') as date_str,
+               COUNT(*) as cnt,
+               SUM(additions) as addition_sum,
+               SUM(deletions) as deletion_sum
+        FROM commits
+        WHERE project_id = $1
+        GROUP BY project_id, author_email, TO_CHAR(committed_date, 'YYYY-MM-DD')
+      ) sub
      GROUP BY project_id, author_email
      ON CONFLICT (project_id, author_email) DO UPDATE SET
        author_name = EXCLUDED.author_name,
@@ -141,6 +143,9 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     if (filters.project_ids && filters.project_ids.length > 0) {
       commitConditions.push(`c.project_id = ANY($${cIdx++})`);
       commitParams.push(filters.project_ids);
+    } else if (filters.project_id) {
+      commitConditions.push(`c.project_id = $${cIdx++}`);
+      commitParams.push(filters.project_id);
     }
     if (filters.date_from) {
       commitConditions.push(`c.committed_date >= $${cIdx++}`);

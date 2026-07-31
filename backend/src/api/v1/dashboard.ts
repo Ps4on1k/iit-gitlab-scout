@@ -13,6 +13,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     const pool = getPool();
     const allowedIds = await getFilteredProjectIds(user.userId);
     const periodDays = Math.max(1, Math.min(365, parseInt(request.query.period || "30") || 30));
+    const dateFromTs = new Date(Date.now() - periodDays * 86400000).toISOString();
 
     const cacheK = cacheKey("dashboard", user.userId, periodDays, allowedIds?.join(","));
     const cached = getCached<any>(cacheK);
@@ -37,6 +38,8 @@ export async function dashboardRoutes(app: FastifyInstance) {
     };
 
     // 1) Read summary from mart_dashboard (per-project, aggregate on the fly)
+    // For period > 90 days, merge mart with raw data; otherwise use raw data for accuracy
+    const useRawTables = periodDays > 90;
     const [martResult, activeProjectsResult, inactiveProjectsResult, activityResult, mrRaw] = await Promise.all([
       pool.query(
         `SELECT
@@ -92,6 +95,22 @@ export async function dashboardRoutes(app: FastifyInstance) {
          GROUP BY p.label, p.tags
          ORDER BY total DESC LIMIT 10`,
         hasProjectFilter ? [...projectParams, dateFrom] : [dateFrom]
+      ),
+    ]);
+
+    // Fetch merged branches and closed MRs counts separately
+    const [mergedBranchesResult, mrClosedResult] = await Promise.all([
+      pool.query(
+        `SELECT COUNT(*)::int as cnt FROM project_merge_requests
+         WHERE state = 'merged' AND created_at >= $1
+         ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}`,
+        hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int as cnt FROM project_merge_requests
+         WHERE state = 'closed' AND created_at >= $1
+         ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}`,
+        hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
       ),
     ]);
 
@@ -204,12 +223,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
           branches: m.branches,
           activeBranches: m.active_branches,
           staleBranches: m.stale_branches,
-          mergedBranches: 0,
+          mergedBranches: mergedBranchesResult.rows[0]?.cnt || 0,
           commits: m.commits,
           activeDays: activityResult.rows.length,
           mrOpened: m.mr_opened,
           mrMerged: m.mr_merged,
-          mrClosed: 0,
+          mrClosed: mrClosedResult.rows[0]?.cnt || 0,
           deploysTotal: m.deploy_total,
           deploysSuccess: m.deploy_success,
           deploysFailed: m.deploy_failed,

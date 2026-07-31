@@ -76,9 +76,9 @@ export async function redFlagsRoutes(app: FastifyInstance) {
         COUNT(*)::int as total,
         COUNT(*) FILTER (WHERE status = 'failed')::int as failed
       FROM project_pipelines
-      WHERE created_at >= $1
-      ${projectFilter ? "AND project_id = ANY($2)" : ""}`,
-      projectFilter ? [dateFrom, projParam] : [dateFrom]
+      WHERE created_at >= $1 AND created_at <= $2
+      ${projectFilter ? "AND project_id = ANY($3)" : ""}`,
+      projectFilter ? [dateFrom, dateTo + "T23:59:59Z", projParam] : [dateFrom, dateTo + "T23:59:59Z"]
     );
     const p2Row = p2.rows[0];
     const pipelineFailureRate = p2Row.total > 0 ? Math.round((p2Row.failed / p2Row.total) * 10000) / 100 : 0;
@@ -89,9 +89,9 @@ export async function redFlagsRoutes(app: FastifyInstance) {
         COUNT(*)::int as total,
         COUNT(*) FILTER (WHERE reviewers IS NULL OR array_length(reviewers, 1) = 0)::int as no_review
       FROM project_merge_requests
-      WHERE state = 'merged' AND created_at >= $1
-      ${projectFilter ? "AND project_id = ANY($2)" : ""}`,
-      projectFilter ? [dateFrom, projParam] : [dateFrom]
+      WHERE state = 'merged' AND created_at >= $1 AND created_at <= $2
+      ${projectFilter ? "AND project_id = ANY($3)" : ""}`,
+      projectFilter ? [dateFrom, dateTo + "T23:59:59Z", projParam] : [dateFrom, dateTo + "T23:59:59Z"]
     );
     const p3Row = p3.rows[0];
     const mrWithoutReviewPct = p3Row.total > 0 ? Math.round((p3Row.no_review / p3Row.total) * 10000) / 100 : 0;
@@ -110,9 +110,9 @@ export async function redFlagsRoutes(app: FastifyInstance) {
     const p5 = await pool.query(
       `SELECT COUNT(*)::int as total
       FROM project_deployments
-      WHERE created_at >= $1
-      ${projectFilter ? "AND project_id = ANY($2)" : ""}`,
-      projectFilter ? [dateFrom, projParam] : [dateFrom]
+      WHERE created_at >= $1 AND created_at <= $2
+      ${projectFilter ? "AND project_id = ANY($3)" : ""}`,
+      projectFilter ? [dateFrom, dateTo + "T23:59:59Z", projParam] : [dateFrom, dateTo + "T23:59:59Z"]
     );
     const deployFrequency = Math.round((p5.rows[0].total / Math.max(1, periodDays / 30)) * 100) / 100;
 
@@ -185,16 +185,18 @@ export async function redFlagsRoutes(app: FastifyInstance) {
       commitParams
     );
 
-    // C3: Bus factor
+    // C3: Bus factor (per-project, then max per contributor)
     const busResult = await pool.query(
       `WITH stats AS (
-        SELECT author_email, COUNT(*) as commits
+        SELECT project_id, author_email, COUNT(*) as commits
         FROM commits ${commitWhere}
-        GROUP BY author_email
+        GROUP BY project_id, author_email
       ),
-      total AS (SELECT SUM(commits) as t FROM stats)
-      SELECT s.author_email, ROUND(s.commits::numeric / t.t * 100, 1) as pct
-      FROM stats s, total t WHERE s.commits::numeric / t.t > 0.50`,
+      totals AS (SELECT project_id, SUM(commits) as total FROM stats GROUP BY project_id)
+      SELECT s.author_email, MAX(ROUND(s.commits::numeric / t.total * 100, 1)) as pct
+      FROM stats s JOIN totals t ON t.project_id = s.project_id
+      GROUP BY s.author_email
+      HAVING MAX(s.commits::numeric / t.total) > 0.50`,
       commitParams
     );
 
@@ -291,16 +293,17 @@ export async function redFlagsRoutes(app: FastifyInstance) {
     const deployReliabilityResult = await pool.query(
       `WITH mr_pipelines AS (
         SELECT
-          mr.author_name,
+          mr.author_email,
+          MAX(mr.author_name) as author_name,
           COUNT(DISTINCT mr.gitlab_iid) as total_merged_mrs,
           COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status = 'success') as successful_pipelines,
           COUNT(DISTINCT p.gitlab_id) FILTER (WHERE p.status IN ('success', 'failed')) as completed_pipelines
         FROM project_merge_requests mr
         LEFT JOIN project_pipelines p ON p.project_id = mr.project_id AND p.ref = mr.source_branch
         ${mrWhere}
-        GROUP BY mr.author_name
+        GROUP BY mr.author_email
       )
-      SELECT author_name,
+      SELECT author_email, author_name,
         CASE WHEN completed_pipelines > 0
           THEN ROUND((successful_pipelines::numeric / completed_pipelines) * 100, 1)
           ELSE 0
@@ -313,10 +316,10 @@ export async function redFlagsRoutes(app: FastifyInstance) {
       mrParams
     );
 
-    // Build deploy reliability map: author_name → deploy data
-    const deployByMrName = new Map<string, { deploy_success_rate: number; pipeline_coverage_rate: number }>();
+    // Build deploy reliability map: author_email → deploy data (email is unique per person)
+    const deployByEmail = new Map<string, { deploy_success_rate: number; pipeline_coverage_rate: number }>();
     for (const row of deployReliabilityResult.rows) {
-      deployByMrName.set(row.author_name, {
+      deployByEmail.set(row.author_email, {
         deploy_success_rate: Number(row.deploy_success_rate),
         pipeline_coverage_rate: Number(row.pipeline_coverage_rate),
       });
@@ -327,7 +330,7 @@ export async function redFlagsRoutes(app: FastifyInstance) {
       const yellow = yellowMap.get(row.author_email) || { total_days: 0, missing_days: 0 };
       const nightRatio = row.total_commits > 0 ? Math.round((row.night_commits / row.total_commits) * 10000) / 100 : 0;
       const yellowRatio = yellow.total_days > 0 ? Math.round((yellow.missing_days / yellow.total_days) * 10000) / 100 : 0;
-      const deployReliability = deployByMrName.get(row.author_name) || { deploy_success_rate: 0, pipeline_coverage_rate: 0 };
+      const deployReliability = deployByEmail.get(row.author_email) || { deploy_success_rate: 0, pipeline_coverage_rate: 0 };
 
       // Calculate flag score (3=red, 1=yellow, 0=ok)
       let score = 0;

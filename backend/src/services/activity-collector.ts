@@ -1,18 +1,5 @@
 import { getPool } from "../db/pool.js";
 import { resolveProjectToken } from "../utils/project-token.js";
-import { GitLabClient } from "./gitlab-client.js";
-
-interface GitLabEvent {
-  action_name?: string;
-  created_at: string;
-  push_data?: { commit_count: number };
-  target_type?: string;
-}
-
-interface GitLabPipeline {
-  created_at: string;
-  status: string;
-}
 
 export interface ActivityDay {
   date: string;
@@ -23,80 +10,60 @@ export interface ActivityDay {
 
 export async function collectActivity(projectId: number, since?: string, until?: string): Promise<ActivityDay[]> {
   const pool = getPool();
-  const { token, baseUrl, path: projectPath } = await resolveProjectToken(projectId);
-
-  const client = new GitLabClient({ token, baseUrl });
+  await resolveProjectToken(projectId); // Ensure project exists
 
   const sinceDate = since || "2020-01-01";
   const untilDate = until || new Date().toISOString().slice(0, 10);
 
-  // Collect push events (commits)
-  const commitsByDay: Record<string, number> = {};
-  try {
-    const events = await client.requestPaginated<GitLabEvent>(
-      `/projects/${encodeURIComponent(projectPath)}/events?action=pushed&after=${sinceDate}&before=${untilDate}&per_page=100`
-    );
-    for (const event of events) {
-      if (event.push_data?.commit_count) {
-        const day = event.created_at.slice(0, 10);
-        commitsByDay[day] = (commitsByDay[day] || 0) + event.push_data.commit_count;
-      }
-    }
-  } catch {
-    // events unavailable
-  }
+  // Aggregate from tables (same approach as Dagster gitlab_activity)
+  const activityResult = await pool.query<{
+    date: string;
+    commits: string;
+    merge_requests: string;
+    pipelines: string;
+  }>(
+    `WITH commit_activity AS (
+       SELECT committed_date::date as date, COUNT(*)::int as commits
+       FROM commits
+       WHERE project_id = $1 AND committed_date >= $2 AND committed_date <= $3
+       GROUP BY committed_date::date
+     ),
+     mr_activity AS (
+       SELECT created_at::date as date, COUNT(*)::int as merge_requests
+       FROM project_merge_requests
+       WHERE project_id = $1 AND created_at >= $2 AND created_at <= $3
+       GROUP BY created_at::date
+     ),
+     pipeline_activity AS (
+       SELECT created_at::date as date, COUNT(*)::int as pipelines
+       FROM project_pipelines
+       WHERE project_id = $1 AND created_at >= $2 AND created_at <= $3
+       GROUP BY created_at::date
+     )
+     SELECT
+       COALESCE(c.date, mr.date, p.date) as date,
+       COALESCE(c.commits, 0)::int as commits,
+       COALESCE(mr.merge_requests, 0)::int as merge_requests,
+       COALESCE(p.pipelines, 0)::int as pipelines
+     FROM commit_activity c
+     FULL OUTER JOIN mr_activity mr ON c.date = mr.date
+     FULL OUTER JOIN pipeline_activity p ON COALESCE(c.date, mr.date) = p.date
+     ORDER BY date`,
+    [projectId, sinceDate, untilDate + "T23:59:59Z"]
+  );
 
-  // Collect merge requests
-  const mrsByDay: Record<string, number> = {};
-  try {
-    const mrs = await client.requestPaginated<any>(
-      `/projects/${encodeURIComponent(projectPath)}/merge_requests?state=all&updated_after=${sinceDate}T00:00:00Z&updated_before=${untilDate}T23:59:59Z&per_page=100`
-    );
-    for (const mr of mrs) {
-      const day = (mr.merged_at || mr.created_at || "").slice(0, 10);
-      if (day && day >= sinceDate && day <= untilDate) {
-        mrsByDay[day] = (mrsByDay[day] || 0) + 1;
-      }
-    }
-  } catch {
-    // merge_requests unavailable
-  }
-
-  // Collect pipelines
-  const pipelinesByDay: Record<string, number> = {};
-  try {
-    const pipelines = await client.requestPaginated<GitLabPipeline>(
-      `/projects/${encodeURIComponent(projectPath)}/pipelines?updated_after=${sinceDate}T00:00:00Z&updated_before=${untilDate}T23:59:59Z&per_page=100`
-    );
-    for (const p of pipelines) {
-      const day = (p.created_at || "").slice(0, 10);
-      if (day && day >= sinceDate && day <= untilDate) {
-        pipelinesByDay[day] = (pipelinesByDay[day] || 0) + 1;
-      }
-    }
-  } catch {
-    // pipelines unavailable
-  }
-
-  // Merge all dates
-  const allDays = new Set<string>([
-    ...Object.keys(commitsByDay),
-    ...Object.keys(mrsByDay),
-    ...Object.keys(pipelinesByDay),
-  ]);
-
-  const results: ActivityDay[] = [];
-  for (const day of Array.from(allDays).sort()) {
-    results.push({
-      date: day,
-      commits: commitsByDay[day] || 0,
-      merge_requests: mrsByDay[day] || 0,
-      pipelines: pipelinesByDay[day] || 0,
-    });
-  }
+  const results: ActivityDay[] = activityResult.rows.map((row) => ({
+    date: row.date,
+    commits: Number(row.commits),
+    merge_requests: Number(row.merge_requests),
+    pipelines: Number(row.pipelines),
+  }));
 
   // Save to DB
-  await pool.query("DELETE FROM project_activity WHERE project_id = $1 AND date >= $2 AND date <= $3", [projectId, sinceDate, untilDate]);
+  await pool.query(
+    "DELETE FROM project_activity WHERE project_id = $1 AND date >= $2 AND date <= $3",
+    [projectId, sinceDate, untilDate]
+  );
   if (results.length > 0) {
     const { batchInsert } = await import("../utils/batch.js");
     const columns = ["project_id", "date", "commits", "merge_requests", "pipelines"];
