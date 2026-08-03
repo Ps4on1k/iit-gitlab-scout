@@ -18,9 +18,40 @@ export function clearToken() {
 }
 
 let onUnauthorized: (() => void) | null = null;
+let isRefreshing = false;
+let waiters: Array<(token: string | null) => void> = [];
 
 export function setOnUnauthorized(handler: () => void) {
   onUnauthorized = handler;
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (isRefreshing) {
+    return new Promise((resolve) => waiters.push(resolve));
+  }
+  isRefreshing = true;
+  try {
+    const res = await fetch(`${BASE_URL}/v1/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+    });
+    const data = (await res.json()) as ApiResponse<{ token: string }>;
+    isRefreshing = false;
+    waiters.forEach((fn) => fn(data.ok && data.data ? data.data.token : null));
+    waiters = [];
+    if (data.ok && data.data?.token) {
+      setToken(data.data.token);
+      return data.data.token;
+    }
+    clearToken();
+    return null;
+  } catch {
+    isRefreshing = false;
+    waiters = [];
+    clearToken();
+    return null;
+  }
 }
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResponse<T>> {
@@ -31,11 +62,21 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<ApiResp
     ...(options?.headers as Record<string, string> || {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${BASE_URL}${url}`, { ...options, headers, cache: "no-store" });
+  const res = await fetch(`${BASE_URL}${url}`, { ...options, headers, credentials: "include", cache: "no-store" });
   if (res.status === 401 && token) {
-    clearToken();
-    onUnauthorized?.();
-    return { ok: false, error: "Сессия истекла. Войдите снова." };
+    // Access token expired — try refresh
+    const newToken = await refreshAccessToken();
+    if (!newToken) {
+      onUnauthorized?.();
+      return { ok: false, error: "Сессия истекла. Войдите снова." };
+    }
+    headers["Authorization"] = `Bearer ${newToken}`;
+    const res2 = await fetch(`${BASE_URL}${url}`, { ...options, headers, credentials: "include", cache: "no-store" });
+    if (!res2.ok) {
+      const body = await res2.json().catch(() => ({}));
+      return { ok: false, error: (body as any).error || `HTTP ${res2.status}` };
+    }
+    return res2.json() as Promise<ApiResponse<T>>;
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
