@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import crypto from "crypto";
 import { getPool } from "../../db/pool.js";
 import { verifyPassword, hashPassword } from "../../utils/password.js";
-import { signToken, requireAuth } from "../../utils/auth.js";
+import { signToken, requireAuth, createRefreshToken, verifyRefreshToken, revokeRefreshToken, revokeAllUserTokens } from "../../utils/auth.js";
 import { validate, loginSchema } from "../../utils/validation.js";
 import { logAuditAction } from "../../utils/audit.js";
 import type { JwtPayload } from "../../utils/auth.js";
@@ -144,6 +144,18 @@ export async function authRoutes(app: FastifyInstance) {
       tokenVersion: user.token_version || 1,
     });
 
+    // Create refresh token (HttpOnly cookie)
+    const userAgent = request.headers["user-agent"] || "";
+    const { token: refreshToken } = await createRefreshToken(user.id, ip, userAgent);
+    const isProd = process.env.NODE_ENV === "production";
+    reply.setCookie("refresh_token", refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "strict" : "lax",
+      path: "/api/v1/auth",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
     return {
       ok: true,
       data: {
@@ -155,6 +167,81 @@ export async function authRoutes(app: FastifyInstance) {
         },
       },
     };
+  });
+
+  app.post("/api/v1/auth/refresh", async (request, reply) => {
+    const refreshToken = request.cookies?.refresh_token;
+    if (!refreshToken) {
+      return reply.status(401).send({ ok: false, error: "Refresh token required" });
+    }
+
+    const ip = request.ip || "unknown";
+    const userAgent = request.headers["user-agent"] || "";
+    const verified = await verifyRefreshToken(refreshToken);
+    if (!verified) {
+      return reply.status(401).send({ ok: false, error: "Invalid refresh token" });
+    }
+
+    const pool = getPool();
+    const userResult = await pool.query(
+      "SELECT id, username, role, is_active, token_version FROM app_users WHERE id = $1",
+      [verified.userId]
+    );
+    const user = userResult.rows[0];
+    if (!user || !user.is_active) {
+      return reply.status(401).send({ ok: false, error: "User not found or inactive" });
+    }
+
+    // Rotate refresh token
+    await revokeRefreshToken(verified.jti);
+    const { token: newRefreshToken } = await createRefreshToken(verified.userId, ip, userAgent);
+    const isProd = process.env.NODE_ENV === "production";
+    reply.setCookie("refresh_token", newRefreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: isProd ? "strict" : "lax",
+      path: "/api/v1/auth",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const accessToken = signToken({
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+      tokenVersion: user.token_version || 1,
+    });
+
+    return {
+      ok: true,
+      data: {
+        token: accessToken,
+        user: { id: user.id, username: user.username, role: user.role },
+      },
+    };
+  });
+
+  app.post("/api/v1/auth/logout", { preHandler: [requireAuth] }, async (request, reply) => {
+    const refreshToken = request.cookies?.refresh_token;
+    if (refreshToken) {
+      const verified = await verifyRefreshToken(refreshToken);
+      if (verified) await revokeRefreshToken(verified.jti);
+    }
+
+    reply.clearCookie("refresh_token", { path: "/api/v1/auth" });
+    return { ok: true, data: { message: "Logged out" } };
+  });
+
+  app.post("/api/v1/auth/logout-all", { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = (request as any).user as JwtPayload;
+    const pool = getPool();
+
+    // Increment token_version to revoke all access tokens
+    await pool.query("UPDATE app_users SET token_version = token_version + 1 WHERE id = $1", [user.userId]);
+    // Revoke all refresh tokens
+    await revokeAllUserTokens(user.userId);
+    reply.clearCookie("refresh_token", { path: "/api/v1/auth" });
+    logAuditAction(user.userId, "logout_all", `User logged out all sessions`);
+    return { ok: true, data: { message: "All sessions revoked" } };
   });
 
   app.get("/api/v1/auth/me", { preHandler: [requireAuth] }, async (request) => {

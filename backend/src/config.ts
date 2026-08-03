@@ -13,6 +13,8 @@ const envSchema = z.object({
   CACHE_TTL: z.coerce.number().int().positive().default(300),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(16, "JWT_SECRET must be at least 16 chars"),
+  JWT_ACCESS_EXPIRY: z.string().default("15m"),
+  JWT_REFRESH_EXPIRY_DAYS: z.coerce.number().int().positive().default(7),
   ENCRYPTION_KEY: z.string().length(64, "ENCRYPTION_KEY must be 64 hex chars (32 bytes)"),
   CORS_ORIGINS: z.string().optional(),
   DATA_READ_MODE: z.enum(["postgresql", "clickhouse", "hybrid"]).default("postgresql"),

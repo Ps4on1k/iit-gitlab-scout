@@ -1,5 +1,6 @@
 import type { FastifyRequest, FastifyReply } from "fastify";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
+import crypto from "crypto";
 import { getEnv } from "../config.js";
 import { getPool } from "../db/pool.js";
 import { logAuditAction } from "./audit.js";
@@ -13,8 +14,9 @@ export interface JwtPayload {
   tokenVersion: number;
 }
 
+// ─── Access Token (15 min) ───
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, getEnv().JWT_SECRET, { expiresIn: "24h" });
+  return jwt.sign(payload, getEnv().JWT_SECRET, { expiresIn: getEnv().JWT_ACCESS_EXPIRY } as SignOptions);
 }
 
 export function signTokenWithVersion(userId: number, username: string, role: Role, tokenVersion: number): string {
@@ -25,6 +27,52 @@ export function verifyToken(token: string): JwtPayload {
   return jwt.verify(token, getEnv().JWT_SECRET) as JwtPayload;
 }
 
+// ─── Refresh Token (7 days, stored as hash in DB, set as HttpOnly cookie) ───
+export interface RefreshTokenPayload {
+  userId: number;
+  jti: string; // unique token ID
+}
+
+export async function createRefreshToken(userId: number, ipAddress?: string, userAgent?: string): Promise<{ token: string; jti: string }> {
+  const env = getEnv();
+  const jti = crypto.randomUUID();
+  const token = crypto.randomBytes(64).toString("base64url");
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + env.JWT_REFRESH_EXPIRY_DAYS * 86400000);
+
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, ip_address, user_agent)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [userId, tokenHash, expiresAt, ipAddress || null, userAgent || null]
+  );
+
+  return { token, jti };
+}
+
+export async function verifyRefreshToken(token: string): Promise<{ userId: number; jti: string } | null> {
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  const pool = getPool();
+  const result = await pool.query(
+    `SELECT user_id, id FROM refresh_tokens
+     WHERE token_hash = $1 AND expires_at > now() AND revoked_at IS NULL`,
+    [tokenHash]
+  );
+  if (result.rows.length === 0) return null;
+  return { userId: result.rows[0].user_id, jti: result.rows[0].id };
+}
+
+export async function revokeRefreshToken(jti: string): Promise<void> {
+  const pool = getPool();
+  await pool.query("UPDATE refresh_tokens SET revoked_at = now() WHERE id = $1", [jti]);
+}
+
+export async function revokeAllUserTokens(userId: number): Promise<void> {
+  const pool = getPool();
+  await pool.query("UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL", [userId]);
+}
+
+// ─── Auth Guards ───
 export async function requireAuth(
   request: FastifyRequest,
   reply: FastifyReply

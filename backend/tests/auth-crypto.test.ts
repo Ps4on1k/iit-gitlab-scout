@@ -8,6 +8,8 @@ vi.mock("../src/config.js", () => ({
     CACHE_TTL: 300,
     DATABASE_URL: "postgresql://test:test@localhost:5432/test",
     JWT_SECRET: "test-secret-1234567890",
+    JWT_ACCESS_EXPIRY: "15m",
+    JWT_REFRESH_EXPIRY_DAYS: 7,
     ENCRYPTION_KEY: "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff",
   }),
 }));

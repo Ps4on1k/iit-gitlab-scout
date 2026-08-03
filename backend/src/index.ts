@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import { getEnv } from "./config.js";
 import { closePool } from "./db/pool.js";
@@ -48,6 +49,7 @@ const corsOrigins = env.CORS_ORIGINS
   ? env.CORS_ORIGINS.split(",").map((s) => s.trim())
   : false;
 await app.register(cors, { origin: corsOrigins, credentials: true });
+await app.register(cookie);
 await app.register(helmet, {
   crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: {
