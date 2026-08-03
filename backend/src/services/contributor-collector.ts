@@ -1,6 +1,7 @@
 import { getPool } from "../db/pool.js";
 import { resolveProjectToken } from "../utils/project-token.js";
 import { GitLabClient } from "./gitlab-client.js";
+import { resolveByEmail, invalidateContributorCache } from "./contributor-resolver.js";
 import {
   upsertCommit,
   getExistingSha,
@@ -35,6 +36,20 @@ export async function collectProject(
   let newCount = 0;
   let skippedCount = 0;
 
+  // ARCH-02: resolve email → gitlab_user_id via GitLab API when possible
+  const emailToUserId = new Map<string, number>();
+  const uniqueEmails = [...new Set(commits.map(c => c.author_email).filter(Boolean))];
+
+  // Batch resolve all unique emails at once (cached by resolver)
+  for (const email of uniqueEmails) {
+    try {
+      const user = await client.getUserByEmail(email);
+      if (user) emailToUserId.set(email, user.id);
+    } catch {
+      // resolution failed — keep null
+    }
+  }
+
   for (const commit of commits) {
     if (existing.has(commit.id)) {
       skippedCount++;
@@ -43,6 +58,7 @@ export async function collectProject(
 
     const additions = commit.stats?.additions || 0;
     const deletions = commit.stats?.deletions || 0;
+    const userId = commit.author_email ? emailToUserId.get(commit.author_email) || null : null;
 
     await upsertCommit({
       project_id: projectId,
@@ -55,6 +71,7 @@ export async function collectProject(
       total_changes: additions + deletions,
       branch: "all",
       raw_json: commit,
+      gitlab_user_id: userId,
     });
 
     newCount++;

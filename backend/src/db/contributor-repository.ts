@@ -1,5 +1,4 @@
 import { getPool } from "./pool.js";
-
 export interface DbCommit {
   id: number;
   project_id: number;
@@ -12,6 +11,7 @@ export interface DbCommit {
   total_changes: number;
   branch: string;
   raw_json: any;
+  gitlab_user_id?: number | null;
 }
 
 export interface DbContributor {
@@ -40,13 +40,14 @@ export interface ContributorFilters {
 export async function upsertCommit(commit: Omit<DbCommit, "id">): Promise<void> {
   const pool = getPool();
   await pool.query(
-    `INSERT INTO commits (project_id, commit_sha, author_name, author_email, committed_date, additions, deletions, total_changes, branch, raw_json)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-     ON CONFLICT (project_id, commit_sha) DO NOTHING`,
+    `INSERT INTO commits (project_id, commit_sha, author_name, author_email, committed_date, additions, deletions, total_changes, branch, raw_json, gitlab_user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+     ON CONFLICT (project_id, commit_sha) DO UPDATE SET
+       gitlab_user_id = COALESCE(commits.gitlab_user_id, EXCLUDED.gitlab_user_id)`,
     [
       commit.project_id, commit.commit_sha, commit.author_name, commit.author_email,
       commit.committed_date, commit.additions, commit.deletions, commit.total_changes,
-      commit.branch, JSON.stringify(commit.raw_json),
+      commit.branch, JSON.stringify(commit.raw_json), commit.gitlab_user_id ?? null,
     ]
   );
 }
@@ -63,34 +64,51 @@ export async function getExistingSha(projectId: number, shas: string[]): Promise
 
 export async function refreshContributors(projectId: number): Promise<void> {
   const pool = getPool();
-  await pool.query(`DELETE FROM contributor_profiles WHERE project_id = $1`, [projectId]);
+
+  // Resolve contributor profiles by gitlab_user_id (via commits table) with fallback to email
+  // This ensures:
+  //   1. user_id stays consistent even if email changes over time
+  //   2. Multiple emails for same user get aggregated under one canonical identity
+  await pool.query(`
+    DELETE FROM contributor_profiles WHERE project_id = $1
+  `, [projectId]);
+
   await pool.query(
-    `INSERT INTO contributor_profiles (project_id, author_email, author_name, total_commits, total_additions, total_deletions, total_changes, first_commit_date, last_commit_date, frequency)
+    `INSERT INTO contributor_profiles (project_id, author_email, author_name, total_commits,
+                                        total_additions, total_deletions, total_changes,
+                                        first_commit_date, last_commit_date, frequency, gitlab_user_id)
      SELECT
-       project_id,
-       author_email,
-       MAX(author_name) as author_name,
-       SUM(cnt) as total_commits,
-       SUM(additions) as total_additions,
-       SUM(deletions) as total_deletions,
-       SUM(total_changes) as total_changes,
-       MIN(committed_date) as first_commit_date,
-       MAX(committed_date) as last_commit_date,
-       COALESCE(
-         jsonb_object_agg(date_str, cnt),
-         '{}'::jsonb
-       ) as frequency
-      FROM (
-        SELECT project_id, author_email,
-               TO_CHAR(committed_date, 'YYYY-MM-DD') as date_str,
-               COUNT(*) as cnt,
-               SUM(additions) as addition_sum,
-               SUM(deletions) as deletion_sum
-        FROM commits
-        WHERE project_id = $1
-        GROUP BY project_id, author_email, TO_CHAR(committed_date, 'YYYY-MM-DD')
-      ) sub
-     GROUP BY project_id, author_email
+       c.project_id,
+       COALESCE(cd.primary_email, c.author_email) as author_email,
+       COALESCE(cd.display_name, MAX(c.author_name)) as author_name,
+       SUM(c.cnt) as total_commits,
+       SUM(c.additions) as total_additions,
+       SUM(c.deletions) as total_deletions,
+       SUM(c.additions + c.deletions) as total_changes,
+       MIN(c.first_commit) as first_commit_date,
+       MAX(c.last_commit) as last_commit_date,
+       COALESCE(jsonb_object_agg(day, cnt), '{}'::jsonb) as frequency,
+       c.gitlab_user_id
+     FROM (
+       SELECT project_id, author_email, gitlab_user_id,
+              TO_CHAR(committed_date, 'YYYY-MM-DD') as day,
+              COUNT(*) as cnt,
+              SUM(additions) as additions,
+              SUM(deletions) as deletions,
+              MIN(committed_date) as first_commit,
+              MAX(committed_date) as last_commit
+       FROM commits
+       WHERE project_id = $1
+       GROUP BY project_id, author_email, gitlab_user_id, TO_CHAR(committed_date, 'YYYY-MM-DD')
+     ) c
+     LEFT JOIN (
+       SELECT DISTINCT ON (gitlab_user_id)
+         gitlab_user_id, display_name,
+         (emails[1]) as primary_email
+       FROM contributor_directory
+       WHERE gitlab_user_id IS NOT NULL
+     ) cd ON cd.gitlab_user_id = c.gitlab_user_id
+     GROUP BY c.project_id, c.gitlab_user_id, c.author_email, cd.primary_email, cd.display_name
      ON CONFLICT (project_id, author_email) DO UPDATE SET
        author_name = EXCLUDED.author_name,
        total_commits = EXCLUDED.total_commits,
@@ -99,9 +117,15 @@ export async function refreshContributors(projectId: number): Promise<void> {
        total_changes = EXCLUDED.total_changes,
        first_commit_date = EXCLUDED.first_commit_date,
        last_commit_date = EXCLUDED.last_commit_date,
-       frequency = EXCLUDED.frequency`,
+       frequency = EXCLUDED.frequency,
+       gitlab_user_id = EXCLUDED.gitlab_user_id`,
     [projectId]
   );
+
+  // Invalidate resolver cache to pick up new user mappings
+  // NOTE: resolved via services/contributor-resolver.ts — imported dynamically to avoid circular dep
+  const { invalidateContributorCache } = await import("../services/contributor-resolver.js");
+  invalidateContributorCache();
 }
 
 export async function getContributors(filters: ContributorFilters): Promise<DbContributor[]> {

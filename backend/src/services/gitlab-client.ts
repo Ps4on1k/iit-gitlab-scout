@@ -149,6 +149,30 @@ export class GitLabClient {
     );
   }
 
+  async getUserByUsername(username: string): Promise<{ id: number; username: string; name: string; emails?: string[] } | null> {
+    try {
+      const result = await this.request<{ id: number; username: string; name: string; emails?: string[] }[]>(
+        `/users?username=${encodeURIComponent(username)}`
+      );
+      return result.length > 0 ? result[0] : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<{ id: number; username: string; name: string; email: string } | null> {
+    try {
+      const result = await this.request<{ id: number; username: string; name: string; email: string }[]>(
+        `/users?search=${encodeURIComponent(email)}`
+      );
+      // Filter to exact email match to avoid false positives from similar addresses
+      const exact = result.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      return exact || null;
+    } catch {
+      return null;
+    }
+  }
+
   async getCommits(
     projectId: number,
     since?: string,
