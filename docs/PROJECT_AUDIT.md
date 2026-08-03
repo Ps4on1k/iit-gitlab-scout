@@ -147,11 +147,11 @@ contributor_directory не отслеживает изменение email од�
 
 ### CRITICAL (≤ 1 неделя)
 
-| ID | Задача | Причина |
-|----|--------|---------|
-| ARCH-01 | Выбрать Primary Collector. Рекомендуется: Dagster for scheduled, Backend for on-demand manual only. Обновить Backend scheduler чтобы он не конфликтовал с Dagster timing window | Дублирование logic создаёт непредсказуемое поведение UI |
-| SEC-01 | JWT refresh token rotation + HttpOnly cookie | Утечка access token в localStorage — XSS risk |
-| DB-01 | ClickHouse: добавить ReplacingMergeTree вместо MergeTree для Sync tables | Избегание дубликатов при sync |
+| ID | Задача | Причина | Статус |
+|----|--------|---------|--------|
+| ARCH-01 | Dagster — единственный scheduler; Backend scheduler — manual-only (default disabled) | Дублирование logic создаёт непредсказуемое поведение UI | ✅ Выполнено (migration 048) |
+| SEC-01 | JWT refresh token rotation + HttpOnly cookie; logout-all revokes sessions | Утечка access token в localStorage — XSS risk | ✅ Выполнено (6e2d1c4) |
+| DB-01 | ClickHouse: ReplacingMergeTree для Sync tables | Избегание дубликатов при sync | ✅ Выполнено (migration 001) |
 
 ### HIGH (≤ 1 месяц)
 
@@ -161,7 +161,7 @@ contributor_directory не отслеживает изменение email од�
 | CODE-01 | Type strict: убрать `any` из API handlers (40+ мест), добавить Zod схемы для всех response | нет compile-time safety |
 | TEST-01 | Unit tests для Dagster assets | Тестов нет на реальные Merge Request events
 | UX-01 | URL state persistence — сохранение фильтров в URL query params | Шеринг дашбордов между пользователями невозможен |
-| DB-02 | `refreshContributors` — UPSERT per row, не DELETE/INSERT | При 1M+ commits — хеллскейп |
+| DB-02 | `refreshContributors` — UPSERT per row, не DELETE/INSERT | При 1M+ commits — хеллскейп | ✅ Выполнено (7179f68) |
 | SEC-02 | Rate limiting на Redis (multi-replica aware) + CSRF tokens для mutation endpoints | Production readiness |
 
 ### MEDIUM (2-3 месяца)
