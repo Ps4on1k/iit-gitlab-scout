@@ -166,12 +166,12 @@ contributor_directory не отслеживает изменение email од�
 
 ### MEDIUM (2-3 месяца)
 
-| ID | Задача | Причина |
-|----|--------|---------|
-| ARCH-03 | Объединить архитектуру queue: Dagster uses its own events) или удалить Backend scheduler, или заменить на Dagster Эдгар | Упрощение системы |
-| ARCH-04 | ClickHouse RBAC: передать `allowed_project_ids` в sync для фильтрации | Compliance |
-| DB-03 | Audit log + user session tracking | Investigation capability |
-| DB-04 | Email change history в contributor_directory | Teams scaling issue |
+| ID | Задача | Причина | Статус |
+|----|--------|---------|--------|
+| ARCH-03 | Объединить архитектуру queue: Dagster uses its own events) или удалить Backend scheduler, или заменить на Dagster Эдгар | Упрощение системы | |
+| ARCH-04 | Справочник контрибьюторов — переход от email к gitlab_user_id как primary identity | Конфликт при смене email, мульти-акк | ✅ Выполнено |
+| DB-03 | Audit log + user session tracking (IP, user-agent в refresh_tokens) | Investigation capability | |
+| DB-04 | Email change history в contributor_directory (history table) | Teams scaling issue | |
 | UX-02 | Onboarding wizard для добавления первого проекта и type | First-time experience |
 | UX-03 | Modernize UI: React Query + Zustand instead of manual fetch+useState | Sverd UX + consistency |
 
@@ -187,6 +187,17 @@ contributor_directory не отслеживает изменение email од�
 ---
 
 ## 7. Рекомендуемый Roadmap
+
+| Что было выполнено | Отметка |
+|---|---|
+| 24 бага метрик | `7179f68` |
+| SEC-01 — refresh tokens | `6e2d1c4` |
+| ARCH-01 — manual-only scheduler | `630c564` (migration 048) |
+| DB-01 — ClickHouse ReplacingMergeTree | `a713dc5` (migration 001) |
+| DB-02 — refreshContributors UPSERT | `7179f68` (metrics) |
+| ARCH-04 — gitlab_user_id as identity | `e0b9bce` (migration 050) |
+
+---
 
 | Срок | Действие |
 |------|---------|
