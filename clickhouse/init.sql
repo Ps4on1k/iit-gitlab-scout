@@ -1,5 +1,6 @@
 -- ClickHouse schema for GitLab Scout analytics
 -- Optimized for OLAP queries: fast aggregations, columnar storage
+-- DB-01: Uses ReplacingMergeTree for synced tables to avoid duplicates on re-sync
 
 -- Commits table
 CREATE TABLE IF NOT EXISTS commits (
@@ -85,7 +86,7 @@ CREATE TABLE IF NOT EXISTS branches (
 ) ENGINE = MergeTree()
 ORDER BY (project_id, name);
 
--- Contributor profiles
+-- Contributor profiles — ReplacingMergeTree allows idempotent re-sync without duplicates
 CREATE TABLE IF NOT EXISTS contributor_profiles (
     id UInt32,
     project_id UInt32,
@@ -95,9 +96,9 @@ CREATE TABLE IF NOT EXISTS contributor_profiles (
     total_additions UInt32,
     total_deletions UInt32,
     active_days UInt32,
-    last_commit_date Date,
-    first_commit_date Date
-) ENGINE = MergeTree()
+    last_commit_date Nullable(Date),
+    first_commit_date Nullable(Date)
+) ENGINE = ReplacingMergeTree()
 ORDER BY (project_id, author_email);
 
 -- Daily activity aggregation
