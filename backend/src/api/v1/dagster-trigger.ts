@@ -1,51 +1,76 @@
 import type { FastifyInstance } from "fastify";
-import { requireAdmin } from "../../utils/auth.js";
 
-const LAUNCH_BODY = JSON.stringify({
-  query: "mutation { launchPipelineExecution(executionParams: { selector: { pipelineName: \"__ASSET_JOB\", repositoryName: \"__repository__\", repositoryLocationName: \"dagster_project\" }, runConfigData: \"{}\" }) { __typename ... on LaunchPipelineRunSuccess { run { id status } } ... on PythonError { message } } }",
-});
+const DAGSTER_URL = "http://dagster:3001";
+const REPO_LOCATION = "dagster_project";
+const REPO = "dagster_project.repo";
 
 export async function dagsterTriggerRoutes(app: FastifyInstance) {
-  app.post("/api/v1/dagster/trigger", { preHandler: [requireAdmin] }, async (_request, reply) => {
-    const dagsterUrl = process.env.DAGSTER_URL || "http://dagster:3000";
+  app.post("/api/v1/dagster/trigger", async () => {
+    const runConfigData = {
+      operations: {
+        gitlab_commits: { config: {} },
+      },
+    };
+
+    const mutation = `
+      mutation LaunchRun($executionParams: ExecutionParams!, $runConfigData: RunConfigData) {
+        launchPipelineExecution(executionParams: $executionParams, runConfigData: $runConfigData) {
+          __typename
+          ... on LaunchRunSuccess {
+            run {
+              runId
+              status
+              assetSelection {
+                path
+              }
+            }
+          }
+          ... on UnexpectedPythonError {
+            message
+            stack
+          }
+          ... on PythonError {
+            message
+            stack
+          }
+        }
+      }
+    `;
 
     try {
-      const launchResp = await fetch(dagsterUrl + "/graphql", {
+      const response = await fetch(`${DAGSTER_URL}/graphql`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: LAUNCH_BODY,
-        signal: AbortSignal.timeout(10_000),
+        body: JSON.stringify({
+          query: mutation,
+          variables: {
+            executionParams: {
+              mode: "default",
+              executionMetadata: { tags: [{ key: "trigger", value: "api" }] },
+              runConfigData: JSON.stringify(runConfigData),
+              selector: {
+                repositoryLocationName: REPO_LOCATION,
+                repositoryName: REPO,
+                pipelineName: "__ASSET_JOB",
+                assetSelection: [{ path: ["gitlab_commits"] }],
+                assetCheckSelection: [],
+              },
+            },
+            runConfigData: JSON.stringify(runConfigData),
+          },
+        }),
       });
 
-      if (!launchResp.ok) {
-        return reply.status(502).send({ ok: false, error: "Dagster returned " + launchResp.status });
+      const data = (await response.json()) as any;
+      const launch = data?.data?.launchPipelineExecution;
+
+      if (launch?.__typename === "LaunchRunSuccess") {
+        return { ok: true, runId: launch.run.runId, status: launch.run.status };
       }
 
-      const launchResult = await launchResp.json() as any;
-      const result = launchResult?.data?.launchPipelineExecution;
-
-      if (result?.__typename === "PythonError") {
-        return { ok: false, error: result.message };
-      }
-
-      if (result?.__typename === "LaunchRunSuccess") {
-        return {
-          ok: true,
-          data: {
-            message: "Сбор данных запущен в Dagster",
-            runId: result.run.id,
-            status: result.run.status,
-            dagsterUrl: dagsterUrl,
-          },
-        };
-      }
-
-      return { ok: false, error: "Unexpected response from Dagster: " + JSON.stringify(result) };
-    } catch (err: any) {
-      if (err.name === "TimeoutError") {
-        return reply.status(504).send({ ok: false, error: "Dagster не отвечает (timeout)" });
-      }
-      return reply.status(500).send({ ok: false, error: "Ошибка подключения к Dagster: " + err.message });
+      return { ok: false, error: launch ? JSON.stringify(launch).slice(0, 200) : "No response" };
+    } catch (error: any) {
+      return { ok: false, error: error.message || "Failed to trigger Dagster" };
     }
   });
 }
