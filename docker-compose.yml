@@ -78,28 +78,38 @@ services:
   # Dagster — workflow orchestrator
   dagster:
     build: ./dagster
-    ports:
-      - "3001:3000"
+    restart: unless-stopped
     env_file:
       - .env
     environment:
       - DAGSTER_HOME=/data/dagster
       - POSTGRES_HOST=postgres
+      # CRITICAL: token read from DB (encrypted) — project personal tokens
+      - GITLAB_PERSONAL_TOKEN=${GITLAB_PERSONAL_TOKEN:-}
+      - GITLAB_BASE_URL=${GITLAB_BASE_URL:-https://gitlab.com/api/v4}
     volumes:
       - dagster_data:/data/dagster
       - ./dagster/dagster_project:/app/dagster_project
       - ./dagster/dagster_project/dagster.yaml:/data/dagster/dagster.yaml:ro
       - ./dbt:/usr/app/dbt
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/v1/ping || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
     depends_on:
       postgres:
         condition: service_healthy
-    profiles: ["dagster"]
+    profiles: []  # Always start with the rest
 
-  # OAuth2 Proxy — auth gateway for Dagster UI
+  # OAuth2 Proxy — optional, only when Dagster SSO is enabled
   oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.6.0
     environment:
-      OAUTH2_PROXY_PROVIDER: oidc
+      OAUTH2_PROXY_PROVIDER: ${OAUTH2_PROXY_PROVIDER:-disabled}
       OAUTH2_PROXY_OIDC_ISSUER_URL: ${OIDC_ISSUER_URL:-}
       OAUTH2_PROXY_CLIENT_ID: ${OIDC_CLIENT_ID:-}
       OAUTH2_PROXY_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:-}
@@ -112,11 +122,11 @@ services:
       OAUTH2_PROXY_COOKIE_SECURE: "false"
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "false"
       OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true"
+    profiles: ["sso"]  # explicitly not started without enabling
     expose:
       - "4180"
     depends_on:
       - dagster
-    profiles: ["dagster"]
 
 volumes:
   pgdata:
