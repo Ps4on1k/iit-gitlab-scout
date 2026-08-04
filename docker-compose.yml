@@ -79,6 +79,8 @@ services:
   dagster:
     build: ./dagster
     restart: unless-stopped
+    ports:
+      - "3001:3000"
     env_file:
       - .env
     environment:
@@ -92,8 +94,6 @@ services:
       - ./dagster/dagster_project:/app/dagster_project
       - ./dagster/dagster_project/dagster.yaml:/data/dagster/dagster.yaml:ro
       - ./dbt:/usr/app/dbt
-    expose:
-      - "3000"
     healthcheck:
       test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/v1/ping || exit 1"]
       interval: 10s
