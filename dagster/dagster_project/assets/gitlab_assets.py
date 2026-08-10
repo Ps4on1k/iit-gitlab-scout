@@ -466,13 +466,25 @@ def gitlab_languages(context: AssetExecutionContext) -> None:
 
 @asset(deps=["gitlab_commits"], compute_kind="aggregate")
 def gitlab_contributors(context: AssetExecutionContext) -> None:
-    """Aggregate contributor profiles from commits."""
+    """Aggregate contributor profiles from commits, resolving display_name from contributor_directory."""
     conn = get_pg_connection()
 
     try:
         cursor = conn.cursor()
+
+        # Single atomic query with CTEs (no TEMP table — safe within one connection)
+        # Resolves emails through contributor_directory so display_name is canonical
         cursor.execute("""
-            WITH date_counts AS (
+            WITH dir_map AS (
+                SELECT DISTINCT ON (LOWER(email))
+                    LOWER(email) as email_lower,
+                    display_name,
+                    gitlab_user_id
+                FROM contributor_directory,
+                     unnest(emails) as email
+                ORDER BY LOWER(email), is_valid DESC
+            ),
+            date_counts AS (
                 SELECT project_id, author_email,
                        TO_CHAR(committed_date, 'YYYY-MM-DD') as day,
                        COUNT(*) as cnt
@@ -489,21 +501,26 @@ def gitlab_contributors(context: AssetExecutionContext) -> None:
             INSERT INTO contributor_profiles
                 (project_id, author_email, author_name, total_commits,
                  total_additions, total_deletions, total_changes,
-                 first_commit_date, last_commit_date, frequency)
+                 first_commit_date, last_commit_date, frequency, gitlab_user_id)
             SELECT
-                c.project_id, c.author_email,
-                MAX(c.author_name) as author_name,
-                COUNT(*) as total_commits,
-                SUM(c.additions) as total_additions,
-                SUM(c.deletions) as total_deletions,
-                SUM(c.additions + c.deletions) as total_changes,
+                c.project_id,
+                c.author_email,
+                COALESCE(dm.display_name,
+                         MAX(c.author_name) FILTER (WHERE c.author_name NOT LIKE '%@%'),
+                         MAX(c.author_name)) as author_name,
+                COUNT(*)::int as total_commits,
+                SUM(c.additions)::int as total_additions,
+                SUM(c.deletions)::int as total_deletions,
+                SUM(c.additions + c.deletions)::int as total_changes,
                 MIN(c.committed_date) as first_commit_date,
                 MAX(c.committed_date) as last_commit_date,
-                COALESCE(f.frequency, '{}'::jsonb) as frequency
+                COALESCE(f.frequency, '{}'::jsonb) as frequency,
+                dm.gitlab_user_id
             FROM commits c
+            LEFT JOIN dir_map dm ON dm.email_lower = LOWER(c.author_email)
             LEFT JOIN freq_json f ON f.project_id = c.project_id AND f.author_email = c.author_email
             WHERE c.committed_date >= NOW() - INTERVAL '90 days'
-            GROUP BY c.project_id, c.author_email, f.frequency
+            GROUP BY c.project_id, c.author_email, dm.display_name, dm.gitlab_user_id, f.frequency
             ON CONFLICT (project_id, author_email) DO UPDATE SET
                 author_name = EXCLUDED.author_name,
                 total_commits = EXCLUDED.total_commits,
@@ -512,8 +529,10 @@ def gitlab_contributors(context: AssetExecutionContext) -> None:
                 total_changes = EXCLUDED.total_changes,
                 first_commit_date = EXCLUDED.first_commit_date,
                 last_commit_date = EXCLUDED.last_commit_date,
-                frequency = EXCLUDED.frequency
+                frequency = EXCLUDED.frequency,
+                gitlab_user_id = EXCLUDED.gitlab_user_id
         """)
+
         affected = cursor.rowcount
         conn.commit()
         cursor.close()
@@ -1362,40 +1381,71 @@ def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
         groups = {}
         email_to_group = {}
 
+        # Build map of normalized directory display_names to their canonical key
+        # Verified entries take precedence — we never re-assign emails AWAY from them
+        dir_norm_to_name = {}
+        for dn, dd in existing.items():
+            norm = _normalize_name(dn)
+            if norm and norm not in dir_norm_to_name:
+                dir_norm_to_name[norm] = dn
+
+        # Build inverse map: email (lowercased) -> verified display_name
+        # These emails are "locked" to a specific person, never re-assigned
+        verified_email_to_name = {}
+        for dn, dd in existing.items():
+            if dd["is_valid"]:
+                for e in (dd["emails"] or []):
+                    verified_email_to_name[e.lower()] = dn
+
         for email, name in all_authors.items():
             if _is_bot_or_ci(name, email):
                 continue
-            found_group = None
-            local = _email_local_part(email)
-            for ek in groups:
-                if local in [_email_local_part(e) for e in groups[ek]]:
-                    found_group = ek
-                    break
-            if not found_group:
+
+            email_lower = email.lower()
+
+            # PRIORITY 1: Verified directory entry — always wins
+            if email_lower in verified_email_to_name:
+                found_group = verified_email_to_name[email_lower]
+            else:
+                found_group = None
+                local = _email_local_part(email)
                 norm_name = _normalize_name(name)
-                name_sdx = soundex(name)
-                for ek in groups:
-                    for e in groups[ek]:
-                        existing_name = all_authors.get(e, "")
-                        if norm_name and is_similar_name(name, existing_name):
-                            found_group = ek
+
+                # PRIORITY 2: Exact normalized name match (transliteration-equivalent)
+                # e.g. "Иван Петров" == "ivan petrov" → same person
+                if norm_name and norm_name in dir_norm_to_name:
+                    dn = dir_norm_to_name[norm_name]
+                    if existing[dn]["is_valid"]:
+                        found_group = dn
+                    else:
+                        # Non-verified entry with same name — use as group key
+                        found_group = dn
+
+                # PRIORITY 3: Same normalized name within current groups
+                if not found_group and norm_name:
+                    for ek in groups:
+                        for e in groups[ek]:
+                            en_norm = _normalize_name(all_authors.get(e, ""))
+                            if en_norm and en_norm == norm_name:
+                                found_group = ek
+                                break
+                        if found_group:
                             break
-                    if found_group:
-                        break
-            if not found_group:
-                for dd in existing.values():
-                    if dd["is_valid"]:
-                        continue  # Skip verified entries
-                    if email in dd["emails"]:
-                        found_group = dd["display_name"]
-                        break
+
+                # NOTE: We intentionally REMOVED soundex, email-local-part, and
+                # substring matching. They caused false merges:
+                #   - "agorbikov" vs "agriffaut" (different people)
+                #   - "vladislav.chugunkin" vs "vladkens" (different people)
+                #   - Case variants of same email as separate people
+                # If unsure, keep separate. Admin merges via UI if truly same person.
+
             if found_group:
                 if found_group not in groups:
                     groups[found_group] = set()
                 groups[found_group].add(email)
                 email_to_group[email] = found_group
             else:
-                gn = _normalize_name(name) or local or email
+                gn = norm_name or local or email
                 groups[gn] = {email}
                 email_to_group[email] = gn
 

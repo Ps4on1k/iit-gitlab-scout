@@ -65,50 +65,60 @@ export async function getExistingSha(projectId: number, shas: string[]): Promise
 export async function refreshContributors(projectId: number): Promise<void> {
   const pool = getPool();
 
-  // Resolve contributor profiles by gitlab_user_id (via commits table) with fallback to email
-  // This ensures:
-  //   1. user_id stays consistent even if email changes over time
-  //   2. Multiple emails for same user get aggregated under one canonical identity
-  await pool.query(`
-    DELETE FROM contributor_profiles WHERE project_id = $1
-  `, [projectId]);
+  // ARCH-04: Rebuild contributor_profiles from commits, resolving each email
+  // through contributor_directory to get canonical display_name + gitlab_user_id.
+  // Groups by gitlab_user_id when available → one row per person regardless of email count.
 
+  await pool.query(`DELETE FROM contributor_profiles WHERE project_id = $1`, [projectId]);
+
+  // Single atomic query: CTE builds the email→directory map (no TEMP TABLE — pool may switch connections)
+  // Note: contributor_profiles PK is (project_id, author_email) — we keep that, but set
+  // display_name from directory so all emails of one person show the same name.
+  // True grouping by person happens in getContributors() via display_name.
   await pool.query(
-    `INSERT INTO contributor_profiles (project_id, author_email, author_name, total_commits,
+    `WITH dir_map AS (
+       SELECT DISTINCT ON (LOWER(email))
+         LOWER(email) as email_lower,
+         display_name,
+         gitlab_user_id
+       FROM contributor_directory, unnest(emails) as email
+       ORDER BY LOWER(email), is_valid DESC
+     ),
+     daily_freq AS (
+       SELECT author_email,
+              jsonb_object_agg(day, cnt) as frequency
+       FROM (
+         SELECT author_email,
+                TO_CHAR(committed_date, 'YYYY-MM-DD') as day,
+                COUNT(*) as cnt
+         FROM commits
+         WHERE project_id = $1
+         GROUP BY author_email, TO_CHAR(committed_date, 'YYYY-MM-DD')
+       ) d
+       GROUP BY author_email
+     )
+     INSERT INTO contributor_profiles (project_id, author_email, author_name, total_commits,
                                         total_additions, total_deletions, total_changes,
                                         first_commit_date, last_commit_date, frequency, gitlab_user_id)
      SELECT
        c.project_id,
-       COALESCE(cd.primary_email, c.author_email) as author_email,
-       COALESCE(cd.display_name, MAX(c.author_name)) as author_name,
-       SUM(c.cnt) as total_commits,
-       SUM(c.additions) as total_additions,
-       SUM(c.deletions) as total_deletions,
-       SUM(c.additions + c.deletions) as total_changes,
-       MIN(c.first_commit) as first_commit_date,
-       MAX(c.last_commit) as last_commit_date,
-       COALESCE(jsonb_object_agg(day, cnt), '{}'::jsonb) as frequency,
-       c.gitlab_user_id
-     FROM (
-       SELECT project_id, author_email, gitlab_user_id,
-              TO_CHAR(committed_date, 'YYYY-MM-DD') as day,
-              COUNT(*) as cnt,
-              SUM(additions) as additions,
-              SUM(deletions) as deletions,
-              MIN(committed_date) as first_commit,
-              MAX(committed_date) as last_commit
-       FROM commits
-       WHERE project_id = $1
-       GROUP BY project_id, author_email, gitlab_user_id, TO_CHAR(committed_date, 'YYYY-MM-DD')
-     ) c
-     LEFT JOIN (
-       SELECT DISTINCT ON (gitlab_user_id)
-         gitlab_user_id, display_name,
-         (emails[1]) as primary_email
-       FROM contributor_directory
-       WHERE gitlab_user_id IS NOT NULL
-     ) cd ON cd.gitlab_user_id = c.gitlab_user_id
-     GROUP BY c.project_id, c.gitlab_user_id, c.author_email, cd.primary_email, cd.display_name
+       c.author_email,
+       COALESCE(dm.display_name,
+                MAX(c.author_name) FILTER (WHERE c.author_name NOT LIKE '%@%'),
+                MAX(c.author_name)) as author_name,
+       COUNT(*)::int as total_commits,
+       SUM(c.additions)::int as total_additions,
+       SUM(c.deletions)::int as total_deletions,
+       SUM(c.additions + c.deletions)::int as total_changes,
+       MIN(c.committed_date) as first_commit_date,
+       MAX(c.committed_date) as last_commit_date,
+       COALESCE(f.frequency, '{}'::jsonb) as frequency,
+       dm.gitlab_user_id
+     FROM commits c
+     LEFT JOIN dir_map dm ON dm.email_lower = LOWER(c.author_email)
+     LEFT JOIN daily_freq f ON f.author_email = c.author_email
+     WHERE c.project_id = $1
+     GROUP BY c.project_id, c.author_email, dm.display_name, dm.gitlab_user_id, f.frequency
      ON CONFLICT (project_id, author_email) DO UPDATE SET
        author_name = EXCLUDED.author_name,
        total_commits = EXCLUDED.total_commits,
@@ -198,19 +208,48 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
       commitParams
     );
   } else {
+    // ARCH-04: GROUP BY display_name from contributor_directory (not just author_email).
+    // This merges commits from different emails of the same person.
     result = await pool.query(
-      `SELECT
-         author_email,
-         MAX(author_name) as author_name,
+      `WITH resolved AS (
+         SELECT
+           cp.project_id,
+           cp.author_email,
+           cp.author_name,
+           cp.total_commits,
+           cp.total_additions,
+           cp.total_deletions,
+           cp.total_changes,
+           cp.first_commit_date,
+           cp.last_commit_date,
+           cp.frequency,
+           cp.gitlab_user_id,
+           COALESCE(dm.display_name, cp.author_email) as display_name,
+           COALESCE(dm.primary_email, cp.author_email) as primary_email
+         FROM contributor_profiles cp
+         LEFT JOIN (
+           SELECT DISTINCT ON (lower(email))
+             lower(email) as email_lower,
+             display_name,
+             (emails[1]) as primary_email,
+             gitlab_user_id
+           FROM contributor_directory,
+                unnest(emails) as email
+           ORDER BY lower(email), is_valid DESC
+         ) dm ON dm.email_lower = lower(cp.author_email)
+         ${where.replace(/author_email/g, 'cp.author_email')}
+       )
+       SELECT
+         primary_email as author_email,
+         display_name as author_name,
          SUM(total_commits)::int as total_commits,
          SUM(total_additions)::int as total_additions,
          SUM(total_deletions)::int as total_deletions,
          SUM(total_changes)::int as total_changes,
          MIN(first_commit_date) as first_commit_date,
          MAX(last_commit_date) as last_commit_date
-       FROM contributor_profiles
-       ${where}
-       GROUP BY author_email
+       FROM resolved
+       GROUP BY display_name, primary_email
        ORDER BY total_changes DESC`,
       params
     );
@@ -223,7 +262,7 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
   for (const row of dirResult.rows) {
     for (const email of row.emails) {
       emailToName[email] = row.display_name;
-      // Also map email without domain (e.g., "maxim.rankov" from "maxim.rankov@am-intech.ru")
+      emailToName[email.toLowerCase()] = row.display_name;
       const localPart = email.split("@")[0];
       if (localPart && localPart !== email) {
         emailToName[localPart] = row.display_name;
@@ -234,7 +273,19 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     }
   }
 
-  // Group by directory display_name (or email if no mapping)
+  // Frequency: merge by original email from commits (not grouped by directory yet)
+  const emailFrequencies = new Map<string, Record<string, number>>();
+  if (filters.project_id) {
+    const freqResult = await pool.query(
+      `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = $1`,
+      [filters.project_id]
+    );
+    for (const fr of freqResult.rows) {
+      emailFrequencies.set(fr.author_email, fr.frequency as Record<string, number>);
+    }
+  }
+
+  // Group by display_name from query result (already resolved)
   const grouped = new Map<string, {
     author_email: string; author_name: string;
     total_commits: number; total_additions: number; total_deletions: number; total_changes: number;
@@ -243,32 +294,37 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     emails: string[];
   }>();
 
-  // Merge frequency from all project rows per email
   for (const row of result.rows) {
-    const freqQuery = filters.project_id
-      ? `SELECT frequency FROM contributor_profiles WHERE author_email = $1 AND project_id = $2`
-      : `SELECT frequency FROM contributor_profiles WHERE author_email = $1`;
-    const freqParams = filters.project_id ? [row.author_email, filters.project_id] : [row.author_email];
-    const freqResult = await pool.query(freqQuery, freqParams);
-    const merged: Record<string, number> = {};
-    for (const fr of freqResult.rows) {
-      for (const [k, v] of Object.entries(fr.frequency || {})) {
-        merged[k] = (merged[k] || 0) + Number(v);
+    // After our new SQL query, each row is already grouped by display_name
+    const displayName = row.author_name; // This is display_name from the resolved CTE
+    const primaryEmail = row.author_email; // This is primary_email from the resolved CTE
+
+    // Collect all emails for this person
+    const allEmails = new Set<string>([primaryEmail]);
+
+    // Merge frequency data from all profiles rows that match any email of this person
+    const mergedFreq: Record<string, number> = {};
+    for (const [email, freq] of emailFrequencies) {
+      const mappedName = emailToName[email] || emailToName[email.toLowerCase()];
+      if (mappedName === displayName || email === primaryEmail) {
+        allEmails.add(email);
+        for (const [day, cnt] of Object.entries(freq)) {
+          mergedFreq[day] = (mergedFreq[day] || 0) + Number(cnt);
+        }
       }
     }
 
-    const displayName = emailToName[row.author_email] || row.author_email;
-    const primaryEmail = nameToFirstEmail[displayName] || row.author_email;
     const existing = grouped.get(displayName);
-
     if (existing) {
       existing.total_commits += Number(row.total_commits);
       existing.total_additions += Number(row.total_additions);
       existing.total_deletions += Number(row.total_deletions);
       existing.total_changes += Number(row.total_changes);
-      if (!existing.emails.includes(row.author_email)) existing.emails.push(row.author_email);
-      for (const [k, v] of Object.entries(merged)) {
-        existing.frequency[k] = (existing.frequency[k] || 0) + v;
+      for (const e of allEmails) {
+        if (!existing.emails.includes(e)) existing.emails.push(e);
+      }
+      for (const [k, v] of Object.entries(mergedFreq)) {
+        existing.frequency[k] = (existing.frequency[k] || 0) + Number(v);
       }
     } else {
       grouped.set(displayName, {
@@ -280,8 +336,8 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
         total_changes: Number(row.total_changes),
         first_commit_date: row.first_commit_date,
         last_commit_date: row.last_commit_date,
-        frequency: merged,
-        emails: [row.author_email],
+        frequency: mergedFreq,
+        emails: Array.from(allEmails),
       });
     }
   }
@@ -399,34 +455,48 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+  // ARCH-04: Resolve emails via contributor_directory CTE in SQL for grouping
   const result = await pool.query(
-    `WITH canonical_names AS (
-       SELECT author_email, MAX(author_name) as author_name
-       FROM commits
-       GROUP BY author_email
+    `WITH dir_emails AS (
+       SELECT DISTINCT ON (LOWER(email))
+         LOWER(email) as email_lower,
+         display_name,
+         (emails[1]) as primary_email
+       FROM contributor_directory,
+            unnest(emails) as email
+       ORDER BY LOWER(email), is_valid DESC
+     ),
+     canonical_names AS (
+       SELECT c.author_email,
+              COALESCE(dm.display_name, MAX(c.author_name) FILTER (WHERE c.author_name NOT LIKE '%@%'), MAX(c.author_name)) as author_name
+       FROM commits c
+       LEFT JOIN dir_emails dm ON dm.email_lower = LOWER(c.author_email)
+       GROUP BY c.author_email, dm.display_name
      )
      SELECT CONCAT(p.path, ' || ', p.base_url) as project_key,
             p.path as project_path, p.label as project_label,
-            c.author_email, cn.author_name, TO_CHAR(c.committed_date, 'YYYY-MM-DD') as day, COUNT(*)::int as cnt
+            c.author_email, de.primary_email, cn.author_name as display_name,
+            TO_CHAR(c.committed_date, 'YYYY-MM-DD') as day, COUNT(*)::int as cnt
      FROM commits c
      JOIN projects p ON p.id = c.project_id
      JOIN canonical_names cn ON cn.author_email = c.author_email
+     LEFT JOIN dir_emails de ON de.email_lower = LOWER(c.author_email)
      ${where}
-     GROUP BY p.path, p.base_url, p.label, c.author_email, cn.author_name, day
+     GROUP BY p.path, p.base_url, p.label, c.author_email, de.primary_email, cn.author_name, cn.display_name, day
      ORDER BY day`,
     params
   );
 
-  // Load contributor directory for grouping
-  const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
+  // Build maps from the enriched result (already resolved via directory)
   const emailToName: Record<string, string> = {};
   const nameToFirstEmail: Record<string, string> = {};
-  for (const row of dirResult.rows) {
-    for (const email of row.emails) {
-      emailToName[email] = row.display_name;
-      if (!nameToFirstEmail[row.display_name]) {
-        nameToFirstEmail[row.display_name] = email;
-      }
+
+  for (const row of result.rows) {
+    const displayName = row.display_name || row.author_email;
+    const primaryEmail = row.primary_email || row.author_email;
+    emailToName[row.author_email] = displayName;
+    if (!nameToFirstEmail[displayName]) {
+      nameToFirstEmail[displayName] = primaryEmail;
     }
   }
 

@@ -13,16 +13,56 @@ const contributorDirectorySchema = z.object({
 });
 
 export async function contributorDirectoryRoutes(app: FastifyInstance) {
-  // List all directory entries
+  // List all directory entries (with email-conflict detection)
   app.get("/api/v1/contributor-directory", { preHandler: [requireAdmin] }, async () => {
     const pool = getPool();
-    const result = await pool.query(
-      "SELECT * FROM contributor_directory ORDER BY display_name"
-    );
+    const result = await pool.query(`
+      SELECT
+        cd.*,
+        EXISTS(
+          SELECT 1 FROM contributor_directory cd2, unnest(cd2.emails) e2
+          WHERE cd2.id != cd.id AND LOWER(e2) IN (SELECT LOWER(unnest(cd.emails)))
+        ) as has_email_conflicts
+      FROM contributor_directory cd
+      ORDER BY cd.display_name
+    `);
     return { ok: true, data: result.rows };
   });
 
-  // Create entry
+  // Validate emails — check for conflicts BEFORE creating/updating
+  app.post<{
+    Body: { display_name: string; emails: string[]; exclude_id?: number };
+  }>("/api/v1/contributor-directory/validate", { preHandler: [requireAdmin] }, async (request, reply) => {
+    const { display_name, emails, exclude_id } = request.body;
+    if (!display_name || !emails || !Array.isArray(emails)) {
+      return reply.status(400).send({ ok: false, error: "display_name and emails[] are required" });
+    }
+    const pool = getPool();
+    const conflicts: { email: string; assigned_to: string }[] = [];
+    for (const email of emails) {
+      const check = await pool.query(
+        `SELECT display_name FROM contributor_directory
+         WHERE EXISTS (SELECT 1 FROM unnest(emails) e WHERE LOWER(e) = LOWER($1))
+           AND id != COALESCE($2, -1)`,
+        [email, exclude_id || -1]
+      );
+      if (check.rows.length > 0) {
+        conflicts.push({ email, assigned_to: check.rows[0].display_name });
+      }
+    }
+    const normalized = emails.map((e) => e.toLowerCase());
+    const uniqueCount = new Set(normalized).size;
+    return {
+      ok: true,
+      data: {
+        valid: conflicts.length === 0 && uniqueCount === emails.length,
+        conflicts,
+        has_duplicates_in_input: uniqueCount !== normalized.length,
+      },
+    };
+  });
+
+  // Create entry — validates no email conflicts first
   app.post<{
     Body: { display_name: string; emails: string[] };
   }>("/api/v1/contributor-directory", { preHandler: [requireAdmin] }, async (request, reply) => {
@@ -33,6 +73,21 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     const { display_name, emails } = v.data;
 
     const pool = getPool();
+    // Check for email conflicts with other entries
+    for (const email of emails) {
+      const check = await pool.query(
+        `SELECT display_name FROM contributor_directory
+         WHERE EXISTS (SELECT 1 FROM unnest(emails) e WHERE LOWER(e) = LOWER($1))`,
+        [email]
+      );
+      if (check.rows.length > 0) {
+        return reply.status(409).send({
+          ok: false,
+          error: `Email "${email}" уже привязан к "${check.rows[0].display_name}". Уберите email из другой записи сначала.`,
+        });
+      }
+    }
+
     try {
       const result = await pool.query(
         "INSERT INTO contributor_directory (display_name, emails) VALUES ($1, $2) RETURNING *",
@@ -47,7 +102,7 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     }
   });
 
-  // Update entry
+  // Update entry — validates no email conflicts first
   app.put<{
     Params: { id: string };
     Body: { display_name?: string; emails?: string[] };
@@ -56,9 +111,27 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     const { display_name, emails } = request.body;
 
     const pool = getPool();
-    const existing = await pool.query("SELECT id FROM contributor_directory WHERE id = $1", [id]);
+    const existing = await pool.query("SELECT id, display_name FROM contributor_directory WHERE id = $1", [id]);
     if (existing.rows.length === 0) {
       return reply.status(404).send({ ok: false, error: "Entry not found" });
+    }
+
+    // Validate email conflicts if emails are being updated
+    if (emails !== undefined) {
+      for (const email of emails) {
+        const check = await pool.query(
+          `SELECT display_name FROM contributor_directory
+           WHERE EXISTS (SELECT 1 FROM unnest(emails) e WHERE LOWER(e) = LOWER($1))
+             AND id != $2`,
+          [email, Number(id)]
+        );
+        if (check.rows.length > 0) {
+          return reply.status(409).send({
+            ok: false,
+            error: `Email "${email}" уже привязан к "${check.rows[0].display_name}". Уберите email из другой записи сначала.`,
+          });
+        }
+      }
     }
 
     const updates: string[] = [];
@@ -73,7 +146,7 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     }
 
     updates.push(`updated_at = now()`);
-    values.push(id);
+    values.push(Number(id));
 
     const result = await pool.query(
       `UPDATE contributor_directory SET ${updates.join(", ")} WHERE id = $${idx} RETURNING *`,
@@ -168,25 +241,19 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
   app.get("/api/v1/contributor-directory/flat-export", { preHandler: [requireAdmin] }, async () => {
     const pool = getPool();
 
-    const commitsResult = await pool.query(
-      `SELECT DISTINCT author_email FROM commits`
-    );
-
+    const commitsResult = await pool.query(`SELECT DISTINCT author_email FROM commits`);
     const profilesResult = await pool.query(
       `SELECT DISTINCT author_email, MAX(author_name) as author_name FROM contributor_profiles GROUP BY author_email`
     );
-
     const branchesResult = await pool.query(
       `SELECT DISTINCT last_commit_author_email, last_commit_author
        FROM project_branches
        WHERE last_commit_author_email IS NOT NULL AND last_commit_author_email != ''`
     );
-
     const dirResult = await pool.query("SELECT display_name, emails FROM contributor_directory");
 
     const emailToName: Record<string, string> = {};
     const nameToEmails: Record<string, Set<string>> = {};
-
     for (const row of dirResult.rows) {
       const name = row.display_name;
       if (!nameToEmails[name]) nameToEmails[name] = new Set();
@@ -209,14 +276,12 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
 
     const nameToPrimaryEmail: Record<string, string> = {};
     const allNames = new Set<string>();
-
     for (const email of allEmails) {
       const name = emailToName[email] || profilesMap[email] || branchesMap[email] || email;
       allNames.add(name);
       if (!nameToPrimaryEmail[name]) nameToPrimaryEmail[name] = email;
       if (nameToEmails[name]) nameToEmails[name].add(email);
     }
-
     for (const name of allNames) {
       if (!nameToEmails[name]) nameToEmails[name] = new Set([nameToPrimaryEmail[name]]);
     }
@@ -234,7 +299,6 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     const { resolveProjectToken } = await import("../../utils/project-token.js");
     const { GitLabClient } = await import("../../services/gitlab-client.js");
 
-    // Get any project to get GitLab credentials
     const projResult = await pool.query("SELECT id, base_url, token_encrypted FROM projects LIMIT 1");
     if (projResult.rows.length === 0) {
       return reply.status(400).send({ ok: false, error: "No projects configured" });
@@ -257,8 +321,7 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
 
     const client = new GitLabClient({ token, baseUrl });
 
-    // Load existing directory
-    const dirResult = await pool.query("SELECT id, display_name, emails FROM contributor_directory");
+    const dirResult = await pool.query("SELECT id, display_name, emails, gitlab_user_id FROM contributor_directory");
     const existingByName: Record<string, { id: number; emails: string[] }> = {};
     const existingByEmail: Record<string, number> = {};
     for (const row of dirResult.rows) {
@@ -272,40 +335,32 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
     let created = 0;
     let updated = 0;
 
-    // Fetch all users from GitLab (paginated)
     let page = 1;
     let hasMore = true;
     while (hasMore) {
       const users = await client.requestPaginated<any>(
         `/users?per_page=100&page=${page}`
       );
-
-      if (users.length === 0) {
-        hasMore = false;
-        break;
-      }
+      if (users.length === 0) { hasMore = false; break; }
 
       for (const user of users) {
         const username = user.username || "";
         const name = user.name || username;
         const email = user.commit_email || user.email || user.public_email || "";
+        const gitlabUserId = user.id || null;
 
         if (!name && !email) continue;
-
         const emails = email ? [email] : [];
 
-        if (existingByEmail[email]) {
-          // Email already in directory, skip
-          synced++;
-          continue;
-        }
+        if (existingByEmail[email]) { synced++; continue; }
 
-        // Check if name already exists
         if (existingByName[name]) {
-          // Add email to existing entry if not present
           if (email && !existingByName[name].emails.includes(email)) {
             const newEmails = [...existingByName[name].emails, email];
-            await pool.query("UPDATE contributor_directory SET emails = $1 WHERE id = $2", [newEmails, existingByName[name].id]);
+            await pool.query(
+              "UPDATE contributor_directory SET emails = $1, gitlab_user_id = COALESCE(gitlab_user_id, $2) WHERE id = $3",
+              [newEmails, gitlabUserId, existingByName[name].id]
+            );
             existingByName[name].emails = newEmails;
             existingByEmail[email] = existingByName[name].id;
             updated++;
@@ -313,12 +368,12 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
           continue;
         }
 
-        // Create new entry
         if (emails.length > 0 || name) {
           const displayName = name || email;
           const result = await pool.query(
-            "INSERT INTO contributor_directory (display_name, emails) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING id",
-            [displayName, emails]
+            `INSERT INTO contributor_directory (display_name, emails, gitlab_user_id)
+             VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id`,
+            [displayName, emails, gitlabUserId]
           );
           if (result.rows.length > 0) {
             existingByName[displayName] = { id: result.rows[0].id, emails };
@@ -328,7 +383,6 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
         }
         synced++;
       }
-
       page++;
       if (users.length < 100) hasMore = false;
     }
