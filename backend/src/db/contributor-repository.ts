@@ -243,50 +243,70 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
       commitParams
     );
   } else {
-    // ARCH-04: GROUP BY display_name from contributor_directory (not just author_email).
-    // This merges commits from different emails of the same person.
+    // ARCH-04: Compute stats directly from commits table (full history), not from
+    // contributor_profiles which only covers ~90 days (Dagster window).
+    // Resolve emails through contributor_directory for canonical display_name.
+    const commitConditions: string[] = [];
+    const commitParams: any[] = [];
+    let cIdx = 1;
+    if (filters.project_ids && filters.project_ids.length > 0) {
+      commitConditions.push(`c.project_id = ANY($${cIdx++})`);
+      commitParams.push(filters.project_ids);
+    } else if (filters.project_id) {
+      commitConditions.push(`c.project_id = $${cIdx++}`);
+      commitParams.push(filters.project_id);
+    }
+    const commitWhere = commitConditions.length > 0 ? `WHERE ${commitConditions.join(" AND ")}` : "";
+
     result = await pool.query(
-      `WITH resolved AS (
+      `WITH dir_map AS (
+         SELECT DISTINCT ON (LOWER(email))
+           LOWER(email) as email_lower,
+           display_name,
+           (emails[1]) as primary_email
+         FROM contributor_directory,
+              unnest(emails) as email
+         ORDER BY LOWER(email), is_valid DESC
+       ),
+       resolved AS (
          SELECT
-           cp.project_id,
-           cp.author_email,
-           cp.author_name,
-           cp.total_commits,
-           cp.total_additions,
-           cp.total_deletions,
-           cp.total_changes,
-           cp.first_commit_date,
-           cp.last_commit_date,
-           cp.frequency,
-           cp.gitlab_user_id,
-           COALESCE(dm.display_name, cp.author_email) as display_name,
-           COALESCE(dm.primary_email, cp.author_email) as primary_email
-         FROM contributor_profiles cp
-         LEFT JOIN (
-           SELECT DISTINCT ON (lower(email))
-             lower(email) as email_lower,
-             display_name,
-             (emails[1]) as primary_email,
-             gitlab_user_id
-           FROM contributor_directory,
-                unnest(emails) as email
-           ORDER BY lower(email), is_valid DESC
-         ) dm ON dm.email_lower = lower(cp.author_email)
-         ${where.replace(/author_email/g, 'cp.author_email')}
+           COALESCE(dm.display_name, c.author_email) as display_name,
+           COALESCE(dm.primary_email, c.author_email) as primary_email,
+           c.author_email,
+           c.committed_date,
+           c.additions,
+           c.deletions
+         FROM commits c
+         LEFT JOIN dir_map dm ON dm.email_lower = LOWER(c.author_email)
+         ${commitWhere}
+       ),
+       daily_freq AS (
+         SELECT display_name, primary_email,
+                jsonb_object_agg(day, cnt) as frequency
+         FROM (
+           SELECT display_name, primary_email,
+                  TO_CHAR(committed_date, 'YYYY-MM-DD') as day,
+                  COUNT(*) as cnt
+           FROM resolved
+           GROUP BY display_name, primary_email, TO_CHAR(committed_date, 'YYYY-MM-DD')
+         ) d
+         GROUP BY display_name, primary_email
        )
        SELECT
-         primary_email as author_email,
-         display_name as author_name,
-         SUM(total_commits)::int as total_commits,
-         SUM(total_additions)::int as total_additions,
-         SUM(total_deletions)::int as total_deletions,
-         SUM(total_changes)::int as total_changes,
-         MIN(first_commit_date) as first_commit_date,
-         MAX(last_commit_date) as last_commit_date
-       FROM resolved
-       GROUP BY display_name, primary_email
+         r.primary_email as author_email,
+         r.display_name as author_name,
+         COUNT(*)::int as total_commits,
+         COALESCE(SUM(r.additions), 0)::int as total_additions,
+         COALESCE(SUM(r.deletions), 0)::int as total_deletions,
+         COALESCE(SUM(r.additions + r.deletions), 0)::int as total_changes,
+         MIN(r.committed_date) as first_commit_date,
+         MAX(r.committed_date) as last_commit_date,
+         COALESCE(df.frequency, '{}'::jsonb) as frequency
+       FROM resolved r
+       LEFT JOIN daily_freq df ON df.display_name = r.display_name AND df.primary_email = r.primary_email
+       GROUP BY r.display_name, r.primary_email, df.frequency
        ORDER BY total_changes DESC`,
-      params
+      commitParams
     );
   }
 
@@ -308,36 +328,6 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     }
   }
 
-  // Frequency: merge by original email from commits (not grouped by directory yet)
-  // For date-filtered queries, frequency is already included in the SQL result
-  const emailFrequencies = new Map<string, Record<string, number>>();
-  if (!hasDateFilter) {
-    let freqQuery = "";
-    let freqParams: any[] = [];
-    if (filters.project_ids && filters.project_ids.length > 0) {
-      freqQuery = `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = ANY($1)`;
-      freqParams = [filters.project_ids];
-    } else if (filters.project_id) {
-      freqQuery = `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = $1`;
-      freqParams = [filters.project_id];
-    } else {
-      // No project filter — load all profiles
-      freqQuery = `SELECT author_email, frequency FROM contributor_profiles`;
-      freqParams = [];
-    }
-    if (freqQuery) {
-      const freqResult = await pool.query(freqQuery, freqParams);
-      for (const fr of freqResult.rows) {
-        const existing = emailFrequencies.get(fr.author_email) || {};
-        const freq = fr.frequency as Record<string, number>;
-        for (const [day, cnt] of Object.entries(freq)) {
-          existing[day] = (existing[day] || 0) + Number(cnt);
-        }
-        emailFrequencies.set(fr.author_email, existing);
-      }
-    }
-  }
-
   // Group by display_name from query result (already resolved)
   const grouped = new Map<string, {
     author_email: string; author_name: string;
@@ -355,25 +345,12 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     // Collect all emails for this person
     const allEmails = new Set<string>([primaryEmail]);
 
-    // For date-filtered queries, frequency comes from SQL result directly
-    // For non-date queries, merge from emailFrequencies (contributor_profiles)
+    // Frequency comes from SQL result directly (both date and non-date paths)
     const mergedFreq: Record<string, number> = {};
-    if (hasDateFilter && row.frequency) {
-      // Frequency is already in the SQL result (jsonb from daily_freq CTE)
+    if (row.frequency) {
       const freq = typeof row.frequency === 'string' ? JSON.parse(row.frequency) : row.frequency;
       for (const [day, cnt] of Object.entries(freq)) {
         mergedFreq[day] = Number(cnt);
-      }
-    } else {
-      // Merge frequency data from contributor_profiles
-      for (const [email, freq] of emailFrequencies) {
-        const mappedName = emailToName[email] || emailToName[email.toLowerCase()];
-        if (mappedName === displayName || email === primaryEmail) {
-          allEmails.add(email);
-          for (const [day, cnt] of Object.entries(freq)) {
-            mergedFreq[day] = (mergedFreq[day] || 0) + Number(cnt);
-          }
-        }
       }
     }
 
