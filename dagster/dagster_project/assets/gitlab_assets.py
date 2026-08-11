@@ -465,6 +465,40 @@ def gitlab_languages(context: AssetExecutionContext) -> None:
 
 
 @asset(deps=["gitlab_commits"], compute_kind="aggregate")
+def backfill_gitlab_user_id(context: AssetExecutionContext) -> None:
+    """Backfill gitlab_user_id on commits that don't have it, using contributor_directory."""
+    conn = get_pg_connection()
+    try:
+        cursor = conn.cursor()
+
+        # Backfill commits.gitlab_user_id from contributor_directory email mapping
+        cursor.execute("""
+            WITH dir_map AS (
+                SELECT DISTINCT ON (LOWER(email))
+                    LOWER(email) as email_lower,
+                    gitlab_user_id
+                FROM contributor_directory,
+                     unnest(emails) as email
+                WHERE gitlab_user_id IS NOT NULL
+                ORDER BY LOWER(email), is_valid DESC
+            )
+            UPDATE commits c
+            SET gitlab_user_id = dm.gitlab_user_id
+            FROM dir_map dm
+            WHERE dm.email_lower = LOWER(c.author_email)
+              AND c.gitlab_user_id IS NULL
+              AND dm.gitlab_user_id IS NOT NULL
+        """)
+        affected = cursor.rowcount
+        conn.commit()
+        cursor.close()
+
+        context.log.info(f"Backfilled gitlab_user_id on {affected} commits from directory")
+    finally:
+        conn.close()
+
+
+@asset(deps=["backfill_gitlab_user_id"], compute_kind="aggregate")
 def gitlab_contributors(context: AssetExecutionContext) -> None:
     """Aggregate contributor profiles from commits, resolving display_name from contributor_directory."""
     conn = get_pg_connection()

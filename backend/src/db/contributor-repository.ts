@@ -191,20 +191,55 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     }
     const commitWhere = commitConditions.length > 0 ? `WHERE ${commitConditions.join(" AND ")}` : "";
 
+    // ARCH-04: Resolve emails through contributor_directory and include frequency data
     result = await pool.query(
-      `SELECT
-         c.author_email,
-         MAX(c.author_name) as author_name,
+      `WITH dir_map AS (
+         SELECT DISTINCT ON (LOWER(email))
+           LOWER(email) as email_lower,
+           display_name,
+           (emails[1]) as primary_email
+         FROM contributor_directory,
+              unnest(emails) as email
+         ORDER BY LOWER(email), is_valid DESC
+       ),
+       resolved AS (
+         SELECT
+           COALESCE(dm.display_name, c.author_email) as display_name,
+           COALESCE(dm.primary_email, c.author_email) as primary_email,
+           c.author_email,
+           c.committed_date,
+           c.additions,
+           c.deletions
+         FROM commits c
+         LEFT JOIN dir_map dm ON dm.email_lower = LOWER(c.author_email)
+         ${commitWhere}
+       ),
+       daily_freq AS (
+         SELECT display_name, primary_email,
+                jsonb_object_agg(day, cnt) as frequency
+         FROM (
+           SELECT display_name, primary_email,
+                  TO_CHAR(committed_date, 'YYYY-MM-DD') as day,
+                  COUNT(*) as cnt
+           FROM resolved
+           GROUP BY display_name, primary_email, TO_CHAR(committed_date, 'YYYY-MM-DD')
+         ) d
+         GROUP BY display_name, primary_email
+       )
+       SELECT
+         r.primary_email as author_email,
+         r.display_name as author_name,
          COUNT(*)::int as total_commits,
-         SUM(c.additions)::int as total_additions,
-         SUM(c.deletions)::int as total_deletions,
-         SUM(c.additions + c.deletions)::int as total_changes,
-         MIN(c.committed_date) as first_commit_date,
-         MAX(c.committed_date) as last_commit_date
-       FROM commits c
-       ${commitWhere}
-       GROUP BY c.author_email
-       ORDER BY total_changes DESC`,
+         COALESCE(SUM(r.additions), 0)::int as total_additions,
+         COALESCE(SUM(r.deletions), 0)::int as total_deletions,
+         COALESCE(SUM(r.additions + r.deletions), 0)::int as total_changes,
+         MIN(r.committed_date) as first_commit_date,
+         MAX(r.committed_date) as last_commit_date,
+         COALESCE(df.frequency, '{}'::jsonb) as frequency
+       FROM resolved r
+       LEFT JOIN daily_freq df ON df.display_name = r.display_name AND df.primary_email = r.primary_email
+       GROUP BY r.display_name, r.primary_email, df.frequency
+       ORDER BY total_commits DESC`,
       commitParams
     );
   } else {
@@ -274,14 +309,30 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
   }
 
   // Frequency: merge by original email from commits (not grouped by directory yet)
+  // For date-filtered queries, frequency is already included in the SQL result
   const emailFrequencies = new Map<string, Record<string, number>>();
-  if (filters.project_id) {
-    const freqResult = await pool.query(
-      `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = $1`,
-      [filters.project_id]
-    );
-    for (const fr of freqResult.rows) {
-      emailFrequencies.set(fr.author_email, fr.frequency as Record<string, number>);
+  if (!hasDateFilter) {
+    if (filters.project_ids && filters.project_ids.length > 0) {
+      const freqResult = await pool.query(
+        `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = ANY($1)`,
+        [filters.project_ids]
+      );
+      for (const fr of freqResult.rows) {
+        const existing = emailFrequencies.get(fr.author_email) || {};
+        const freq = fr.frequency as Record<string, number>;
+        for (const [day, cnt] of Object.entries(freq)) {
+          existing[day] = (existing[day] || 0) + Number(cnt);
+        }
+        emailFrequencies.set(fr.author_email, existing);
+      }
+    } else if (filters.project_id) {
+      const freqResult = await pool.query(
+        `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = $1`,
+        [filters.project_id]
+      );
+      for (const fr of freqResult.rows) {
+        emailFrequencies.set(fr.author_email, fr.frequency as Record<string, number>);
+      }
     }
   }
 
@@ -302,14 +353,24 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
     // Collect all emails for this person
     const allEmails = new Set<string>([primaryEmail]);
 
-    // Merge frequency data from all profiles rows that match any email of this person
+    // For date-filtered queries, frequency comes from SQL result directly
+    // For non-date queries, merge from emailFrequencies (contributor_profiles)
     const mergedFreq: Record<string, number> = {};
-    for (const [email, freq] of emailFrequencies) {
-      const mappedName = emailToName[email] || emailToName[email.toLowerCase()];
-      if (mappedName === displayName || email === primaryEmail) {
-        allEmails.add(email);
-        for (const [day, cnt] of Object.entries(freq)) {
-          mergedFreq[day] = (mergedFreq[day] || 0) + Number(cnt);
+    if (hasDateFilter && row.frequency) {
+      // Frequency is already in the SQL result (jsonb from daily_freq CTE)
+      const freq = typeof row.frequency === 'string' ? JSON.parse(row.frequency) : row.frequency;
+      for (const [day, cnt] of Object.entries(freq)) {
+        mergedFreq[day] = Number(cnt);
+      }
+    } else {
+      // Merge frequency data from contributor_profiles
+      for (const [email, freq] of emailFrequencies) {
+        const mappedName = emailToName[email] || emailToName[email.toLowerCase()];
+        if (mappedName === displayName || email === primaryEmail) {
+          allEmails.add(email);
+          for (const [day, cnt] of Object.entries(freq)) {
+            mergedFreq[day] = (mergedFreq[day] || 0) + Number(cnt);
+          }
         }
       }
     }

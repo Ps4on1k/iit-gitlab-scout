@@ -5,6 +5,7 @@ from dagster_project.assets.gitlab_assets import (
     gitlab_activity, gitlab_dependencies,
     gitlab_issues, gitlab_deployments, clickhouse_sync,
     gitlab_dependency_audit, gitlab_contributor_sync,
+    backfill_gitlab_user_id,
 )
 from dagster_project.assets.dbt_assets import dbt_staging, dbt_marts
 from dagster_project.assets.lineage_assets import lineage_update
@@ -15,7 +16,7 @@ from dagster_project.resources.gitlab import GitLabResource
 # Wave 1: commits + contributors (source of truth)
 commits_job = define_asset_job(
     name="commits_collection",
-    selection=AssetSelection.assets("gitlab_commits", "gitlab_contributors"),
+    selection=AssetSelection.assets("gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors"),
 )
 
 # Wave 2: DORA / pipelines + activity
@@ -52,7 +53,7 @@ post_job = define_asset_job(
 all_data_job = define_asset_job(
     name="gitlab_all",
     selection=AssetSelection.keys(
-        "gitlab_commits", "gitlab_contributors",
+        "gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors",
         "gitlab_pipelines", "gitlab_deployments", "gitlab_activity",
         "gitlab_merge_requests", "gitlab_branches", "gitlab_issues",
         "gitlab_languages", "gitlab_dependencies", "gitlab_dependency_audit",
@@ -67,7 +68,7 @@ schedules = [
         job=define_asset_job(
             name="core_every_6h",
             selection=AssetSelection.assets(
-                "gitlab_commits", "gitlab_contributors",
+                "gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors",
                 "gitlab_pipelines", "gitlab_deployments", "gitlab_activity",
                 "gitlab_merge_requests", "gitlab_branches", "gitlab_issues",
             ),
@@ -106,7 +107,7 @@ schedules = [
 
 defs = Definitions(
     assets=[
-        gitlab_commits, gitlab_contributors,
+        gitlab_commits, backfill_gitlab_user_id, gitlab_contributors,
         gitlab_pipelines, gitlab_deployments, gitlab_activity,
         gitlab_merge_requests, gitlab_branches, gitlab_issues,
         gitlab_languages, gitlab_dependencies, gitlab_dependency_audit,
