@@ -312,11 +312,21 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
   // For date-filtered queries, frequency is already included in the SQL result
   const emailFrequencies = new Map<string, Record<string, number>>();
   if (!hasDateFilter) {
+    let freqQuery = "";
+    let freqParams: any[] = [];
     if (filters.project_ids && filters.project_ids.length > 0) {
-      const freqResult = await pool.query(
-        `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = ANY($1)`,
-        [filters.project_ids]
-      );
+      freqQuery = `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = ANY($1)`;
+      freqParams = [filters.project_ids];
+    } else if (filters.project_id) {
+      freqQuery = `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = $1`;
+      freqParams = [filters.project_id];
+    } else {
+      // No project filter — load all profiles
+      freqQuery = `SELECT author_email, frequency FROM contributor_profiles`;
+      freqParams = [];
+    }
+    if (freqQuery) {
+      const freqResult = await pool.query(freqQuery, freqParams);
       for (const fr of freqResult.rows) {
         const existing = emailFrequencies.get(fr.author_email) || {};
         const freq = fr.frequency as Record<string, number>;
@@ -324,14 +334,6 @@ export async function getContributors(filters: ContributorFilters): Promise<DbCo
           existing[day] = (existing[day] || 0) + Number(cnt);
         }
         emailFrequencies.set(fr.author_email, existing);
-      }
-    } else if (filters.project_id) {
-      const freqResult = await pool.query(
-        `SELECT author_email, frequency FROM contributor_profiles WHERE project_id = $1`,
-        [filters.project_id]
-      );
-      for (const fr of freqResult.rows) {
-        emailFrequencies.set(fr.author_email, fr.frequency as Record<string, number>);
       }
     }
   }
@@ -625,9 +627,18 @@ export async function getMetrics(filters: ContributorFilters): Promise<any> {
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
+  // ARCH-04: Count unique contributors by resolved display_name, not raw author_email
   const result = await pool.query(
-    `SELECT
-       COUNT(DISTINCT c.author_email) as unique_contributors,
+    `WITH dir_map AS (
+       SELECT DISTINCT ON (LOWER(email))
+         LOWER(email) as email_lower,
+         display_name
+       FROM contributor_directory,
+            unnest(emails) as email
+       ORDER BY LOWER(email), is_valid DESC
+     )
+     SELECT
+       COUNT(DISTINCT COALESCE(dm.display_name, c.author_email)) as unique_contributors,
        COUNT(*) as total_commits,
        SUM(c.additions) as total_additions,
        SUM(c.deletions) as total_deletions,
@@ -635,6 +646,7 @@ export async function getMetrics(filters: ContributorFilters): Promise<any> {
        MIN(c.committed_date) as period_start,
        MAX(c.committed_date) as period_end
      FROM commits c
+     LEFT JOIN dir_map dm ON dm.email_lower = LOWER(c.author_email)
      ${where}`,
     params
   );
