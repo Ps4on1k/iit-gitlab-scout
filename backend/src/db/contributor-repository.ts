@@ -482,7 +482,7 @@ export async function getHeatmapData(projectIds?: number[], dateFrom?: string, d
      JOIN canonical_names cn ON cn.author_email = c.author_email
      LEFT JOIN dir_emails de ON de.email_lower = LOWER(c.author_email)
      ${where}
-     GROUP BY p.path, p.base_url, p.label, c.author_email, de.primary_email, cn.author_name, cn.display_name, day
+      GROUP BY p.path, p.base_url, p.label, c.author_email, de.primary_email, cn.author_name, day
      ORDER BY day`,
     params
   );
