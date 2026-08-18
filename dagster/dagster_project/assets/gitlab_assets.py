@@ -152,11 +152,25 @@ def gitlab_merge_requests(context: AssetExecutionContext) -> None:
                         "changes_count": changes_count,
                     })
 
-                # For merged MRs, fetch approvals if reviewers list is empty
-                # This is needed because GitLab list API doesn't always return reviewers
+                # For MRs without reviewers, fetch detail + approvals from individual endpoint
+                # GitLab list API doesn't reliably return reviewers field
                 for item in mr_data:
                     mr = item["mr"]
-                    if mr.get("state") == "merged" and not item["reviewers"]:
+                    if not item["reviewers"]:
+                        try:
+                            detail = gitlab_request(
+                                f"/projects/{encoded_path}/merge_requests/{mr.get('iid')}",
+                                token, base_url
+                            )
+                            if detail and isinstance(detail, dict):
+                                revs = detail.get("reviewers", [])
+                                if revs:
+                                    item["reviewers"] = [r.get("username", "") or r.get("name", "") for r in revs if r]
+                        except Exception:
+                            pass
+
+                    # Fallback: try approvals endpoint (GitLab Premium only)
+                    if not item["reviewers"] and mr.get("state") == "merged":
                         try:
                             approval_data = gitlab_request(
                                 f"/projects/{encoded_path}/merge_requests/{mr.get('iid')}/approvals",
@@ -883,6 +897,92 @@ def parse_dependency_file(file_name, content):
         pass
 
     return deps
+
+
+@asset(deps=["gitlab_merge_requests"], compute_kind="aggregate")
+def backfill_mr_reviewers(context: AssetExecutionContext) -> None:
+    """Backfill reviewers on MRs that don't have them, using GitLab detail endpoint."""
+    from dagster_project.utils.helpers import get_gitlab_client
+
+    client = get_gitlab_client()
+    conn = get_pg_connection()
+
+    try:
+        cursor = conn.cursor()
+
+        # Only backfill merged MRs from last 90 days (most relevant for analytics)
+        cursor.execute("""
+            SELECT pmr.id, pmr.project_id, pmr.gitlab_iid, p.path, p.token_encrypted, p.base_url
+            FROM project_merge_requests pmr
+            JOIN projects p ON p.id = pmr.project_id
+            WHERE pmr.reviewers = '{}'::text[]
+              AND pmr.state = 'merged'
+              AND pmr.merged_at >= NOW() - INTERVAL '90 days'
+            ORDER BY pmr.merged_at DESC
+            LIMIT 500
+        """)
+        mrs_to_backfill = cursor.fetchall()
+        cursor.close()
+
+        if not mrs_to_backfill:
+            context.log.info("No MRs need reviewer backfill")
+            return
+
+        context.log.info(f"Backfilling reviewers for {len(mrs_to_backfill)} MRs")
+
+        updated = 0
+        for mr_id, proj_id, gitlab_iid, path, token_encrypted, base_url in mrs_to_backfill:
+            try:
+                token = get_token(token_encrypted, client["token"], conn, base_url)
+                if not token:
+                    continue
+
+                encoded_path = urllib.parse.quote(path, safe='')
+                detail = gitlab_request(
+                    f"/projects/{encoded_path}/merge_requests/{gitlab_iid}",
+                    token, base_url
+                )
+
+                if not detail or not isinstance(detail, dict):
+                    continue
+
+                reviewers = []
+                revs = detail.get("reviewers", [])
+                if revs:
+                    reviewers = [r.get("username", "") or r.get("name", "") for r in revs if r]
+
+                # Fallback: try approvals endpoint
+                if not reviewers:
+                    try:
+                        approval_data = gitlab_request(
+                            f"/projects/{encoded_path}/merge_requests/{gitlab_iid}/approvals",
+                            token, base_url
+                        )
+                        if approval_data and isinstance(approval_data, dict):
+                            approved_by = approval_data.get("approved_by", [])
+                            if approved_by:
+                                reviewers = [
+                                    a.get("user", {}).get("name", "") or a.get("user", {}).get("username", "")
+                                    for a in approved_by if a.get("user")
+                                ]
+                    except Exception:
+                        pass
+
+                if reviewers:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "UPDATE project_merge_requests SET reviewers = %s, approvals = %s WHERE id = %s",
+                        (reviewers, len(reviewers), mr_id)
+                    )
+                    conn.commit()
+                    cur.close()
+                    updated += 1
+            except Exception as e:
+                context.log.debug(f"Failed to backfill reviewers for MR {gitlab_iid}: {e}")
+
+        context.log.info(f"Backfilled reviewers on {updated}/{len(mrs_to_backfill)} MRs")
+    finally:
+        conn.close()
 
 
 @asset(compute_kind="gitlab")

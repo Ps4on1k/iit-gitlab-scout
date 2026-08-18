@@ -6,6 +6,7 @@ from dagster_project.assets.gitlab_assets import (
     gitlab_issues, gitlab_deployments, clickhouse_sync,
     gitlab_dependency_audit, gitlab_contributor_sync,
     backfill_gitlab_user_id,
+    backfill_mr_reviewers,
 )
 from dagster_project.assets.dbt_assets import dbt_staging, dbt_marts
 from dagster_project.assets.lineage_assets import lineage_update
@@ -16,7 +17,7 @@ from dagster_project.resources.gitlab import GitLabResource
 # Wave 1: commits + contributors (source of truth)
 commits_job = define_asset_job(
     name="commits_collection",
-    selection=AssetSelection.assets("gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors"),
+    selection=AssetSelection.assets("gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors", "backfill_mr_reviewers"),
 )
 
 # Wave 2: DORA / pipelines + activity
@@ -28,7 +29,7 @@ dora_job = define_asset_job(
 # Wave 3: MRs + branches + issues
 rest_job = define_asset_job(
     name="rest_collection",
-    selection=AssetSelection.assets("gitlab_merge_requests", "gitlab_branches", "gitlab_issues"),
+    selection=AssetSelection.assets("gitlab_merge_requests", "backfill_mr_reviewers", "gitlab_branches", "gitlab_issues"),
 )
 
 # Wave 4: Sync (contributor_directory ↔ CH)
@@ -53,7 +54,7 @@ post_job = define_asset_job(
 all_data_job = define_asset_job(
     name="gitlab_all",
     selection=AssetSelection.keys(
-        "gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors",
+        "gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors", "backfill_mr_reviewers",
         "gitlab_pipelines", "gitlab_deployments", "gitlab_activity",
         "gitlab_merge_requests", "gitlab_branches", "gitlab_issues",
         "gitlab_languages", "gitlab_dependencies", "gitlab_dependency_audit",
@@ -70,7 +71,7 @@ schedules = [
             selection=AssetSelection.assets(
                 "gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors",
                 "gitlab_pipelines", "gitlab_deployments", "gitlab_activity",
-                "gitlab_merge_requests", "gitlab_branches", "gitlab_issues",
+                "gitlab_merge_requests", "backfill_mr_reviewers", "gitlab_branches", "gitlab_issues",
             ),
         ),
         cron_schedule="0 */6 * * *",
@@ -107,7 +108,7 @@ schedules = [
 
 defs = Definitions(
     assets=[
-        gitlab_commits, backfill_gitlab_user_id, gitlab_contributors,
+        gitlab_commits, backfill_gitlab_user_id, gitlab_contributors, backfill_mr_reviewers,
         gitlab_pipelines, gitlab_deployments, gitlab_activity,
         gitlab_merge_requests, gitlab_branches, gitlab_issues,
         gitlab_languages, gitlab_dependencies, gitlab_dependency_audit,
