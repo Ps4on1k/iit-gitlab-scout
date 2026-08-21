@@ -62,12 +62,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
            WHERE state = 'merged' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as mr_merged,
           (SELECT COUNT(*)::int FROM project_merge_requests
            WHERE state = 'opened' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as mr_opened,
-          (SELECT COUNT(*)::int FROM project_pipelines
+          (SELECT COUNT(*)::int FROM project_deployments
            WHERE created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as deploy_total,
-          (SELECT COUNT(*)::int FROM project_pipelines
+          (SELECT COUNT(*)::int FROM project_deployments
            WHERE status = 'success' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as deploy_success,
-          (SELECT COUNT(*)::int FROM project_pipelines
-           WHERE status = 'failed' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as deploy_failed`,
+          (SELECT COUNT(*)::int FROM project_deployments
+           WHERE (status = 'failed' OR pipeline_status = 'failed') AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as deploy_failed`,
         hasProjectFilter ? [allowedIds, dateFrom] : [dateFrom]
       ),
       pool.query(
