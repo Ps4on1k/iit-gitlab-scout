@@ -55,7 +55,7 @@ export function ContributorDirectoryPanel() {
 
     try {
       if (editingId) {
-        const res = await updateContributorDirectoryEntry(editingId, { display_name: values.display_name, emails });
+        const res = await updateContributorDirectoryEntry(editingId, { display_name: values.display_name, emails, is_valid: values.is_valid ?? false });
         if (!res.ok) { message.error(res.error!); return; }
         message.success("Запись обновлена");
       } else {
