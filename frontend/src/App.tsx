@@ -183,14 +183,13 @@ export default function App() {
             placement="left"
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
-            width={280}
             closable={false}
             styles={{ body: { padding: 0, background: darkMode ? "#0f172a" : "#fff" }, header: { background: darkMode ? "#0f172a" : "#fff", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` } }}
             title={<span style={{ color: darkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 18 }}>Навигация</span>}
             extra={<Button type="text" icon={<CloseOutlined style={{ color: darkMode ? "#94a3b8" : "#6b7280" }} />} onClick={() => setSidebarOpen(false)} />}
             mask={false}
             getContainer={false}
-            style={{ position: "fixed", top: 48, left: 0, height: "calc(100vh - 48px)", maxWidth: "85vw" }}
+            style={{ position: "fixed", top: 48, left: 0, height: "calc(100vh - 48px)", width: "min(280px, 85vw)" }}
           >
               <nav style={{ padding: "8px 0", overflowY: "auto" }}>
                 {[{ key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" }].map((item) => (
