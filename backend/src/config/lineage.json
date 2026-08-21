@@ -1,13 +1,13 @@
 {
   "collectors": {
     "contributor-collector": {
-      "reads_from": ["GitLab API: /projects/:id/repository/commits", "GitLab API: /projects/:id/repository/commits/:sha"],
+      "reads_from": ["GitLab API: /projects/:id/repository/commits"],
       "writes_to": ["commits", "contributor_profiles"],
       "description": "Сбор коммитов и агрегация профилей контрибьюторов"
     },
     "branch-collector": {
-      "reads_from": ["GitLab API: /projects/:id/repository/branches", "GitLab API: /projects/:id/repository/commits/:sha"],
-      "writes_to": ["project_branches", "commits", "contributor_profiles"],
+      "reads_from": ["GitLab API: /projects/:id/repository/branches"],
+      "writes_to": ["project_branches", "commits"],
       "description": "Сбор веток и их метаданных"
     },
     "mr-collector": {
@@ -31,75 +31,148 @@
       "description": "Сбор информации о языках программирования"
     },
     "activity-collector": {
-      "reads_from": ["GitLab API: /projects/:id/events", "GitLab API: /projects/:id/merge_requests", "GitLab API: /projects/:id/pipelines"],
+      "reads_from": ["commits", "project_merge_requests", "project_pipelines"],
       "writes_to": ["project_activity"],
-      "description": "Сбор дневной активности (коммиты, MR, пайплайны)"
+      "description": "Агрегация дневной активности (коммиты, MR, пайплайны)"
     },
     "dependency-audit": {
-      "reads_from": ["GitLab API: /projects/:id/repository/tree", "GitLab API: /projects/:id/repository/files/:path", "npm/PyPI/Maven API"],
+      "reads_from": ["GitLab API: /projects/:id/repository/tree", "GitLab API: /projects/:id/repository/files/:path", "npm/PyPI/Maven API", "dependency_catalog"],
       "writes_to": ["project_dependencies_audit"],
       "description": "Аудит зависимостей и проверка актуальности версий"
+    },
+    "contributor-sync": {
+      "reads_from": ["commits", "contributor_profiles", "contributor_directory"],
+      "writes_to": ["contributor_directory"],
+      "description": "Автоматическое обнаружение групп контрибьюторов и синхронизация справочника"
+    },
+    "clickhouse-sync": {
+      "reads_from": ["commits", "project_merge_requests", "project_pipelines", "project_deployments", "project_branches", "contributor_profiles"],
+      "writes_to": ["ClickHouse: commits, merge_requests, pipelines, deployments, branches, contributor_profiles"],
+      "description": "Синхронизация данных из PostgreSQL в ClickHouse для OLAP-аналитики"
+    }
+  },
+  "dagster_pipeline": {
+    "description": "Ежедневный пайплайн сбора данных (daily_pipeline, 02:00 UTC)",
+    "execution_order": [
+      {
+        "step": 1,
+        "assets": ["gitlab_commits", "gitlab_merge_requests", "gitlab_pipelines", "gitlab_branches", "gitlab_issues", "gitlab_deployments"],
+        "description": "Параллельный сбор данных из GitLab API"
+      },
+      {
+        "step": 2,
+        "assets": ["backfill_gitlab_user_id", "backfill_mr_reviewers"],
+        "description": "Обогащение: привязка gitlab_user_id к коммитам, подтягивание ревьюеров MR"
+      },
+      {
+        "step": 3,
+        "assets": ["gitlab_contributors", "gitlab_activity"],
+        "description": "Агрегация профилей контрибьюторов и дневной активности"
+      },
+      {
+        "step": 4,
+        "assets": ["gitlab_contributor_sync", "clickhouse_sync"],
+        "description": "Синхронизация справочника контрибьюторов и ClickHouse"
+      },
+      {
+        "step": 5,
+        "assets": ["dbt_staging"],
+        "description": "Запуск dbt staging-моделей"
+      },
+      {
+        "step": 6,
+        "assets": ["dbt_marts"],
+        "description": "Запуск dbt mart-моделей (materialized views)"
+      },
+      {
+        "step": 7,
+        "assets": ["lineage_update"],
+        "description": "Обновление метаданных потоков данных"
+      }
+    ],
+    "weekly": {
+      "schedule": "static_weekly (понедельник, 02:00 UTC)",
+      "assets": ["gitlab_languages", "gitlab_dependencies", "gitlab_dependency_audit"],
+      "description": "Еженедельный сбор языков, зависимостей и аудит версий"
+    }
+  },
+  "dbt_models": {
+    "staging": {
+      "description": "Staging-модели: нормализация и очистка сырых данных",
+      "reads_from": ["commits", "project_merge_requests", "project_pipelines"],
+      "writes_to": ["public_marts.* (staging views)"]
+    },
+    "marts": {
+      "description": "Mart-модели: агрегированные витрины для дашбордов",
+      "reads_from": ["staging models"],
+      "writes_to": ["public_marts.mart_dashboard", "public_marts.mart_activity", "public_marts.mart_contributors"],
+      "refresh": "REFRESH MATERIALIZED VIEW после dbt run"
     }
   },
   "tables": {
     "commits": {
-      "written_by": ["contributor-collector", "branch-collector"],
-      "read_by": ["dashboard", "contributor-analytics", "executive-report", "mr-analytics"],
-      "description": "Уникальные коммиты с метаданными автора, additions/deletions",
+      "written_by": ["contributor-collector", "branch-collector", "gitlab_commits (dagster)"],
+      "read_by": ["dashboard", "contributor-analytics", "executive-report", "mr-analytics", "red-flags", "benchmark", "activity", "clickhouse-sync"],
+      "description": "Уникальные коммиты с метаданными автора, additions/deletions, gitlab_user_id",
       "estimated_rows_per_project": "1000-50000"
     },
     "contributor_profiles": {
-      "written_by": ["contributor-collector", "branch-collector"],
-      "read_by": ["contributor-analytics", "benchmark"],
-      "description": "Агрегированная статистика контрибьюторов по проектам",
+      "written_by": ["contributor-collector", "gitlab_contributors (dagster)"],
+      "read_by": ["contributor-analytics", "benchmark", "clickhouse-sync"],
+      "description": "Агрегированная статистика контрибьюторов по проектам (90 дней)",
       "estimated_rows_per_project": "5-50"
     },
+    "contributor_directory": {
+      "written_by": ["admin API", "contributor-sync (dagster)", "sync-from-gitlab API"],
+      "read_by": ["все эндпоинты аналитики", "contributor-resolver"],
+      "description": "Канонический справочник: display_name → emails[], is_valid, gitlab_user_id"
+    },
     "project_branches": {
-      "written_by": ["branch-collector"],
-      "read_by": ["dashboard", "branches", "benchmark"],
-      "description": "Метаданные веток: merged, protected, last commit",
+      "written_by": ["branch-collector", "gitlab_branches (dagster)"],
+      "read_by": ["dashboard", "branches", "benchmark", "clickhouse-sync"],
+      "description": "Метаданные веток: merged, protected, last commit, additions/deletions",
       "estimated_rows_per_project": "10-500"
     },
     "project_merge_requests": {
-      "written_by": ["mr-collector"],
-      "read_by": ["dashboard", "mr-analytics", "benchmark", "contributor-analytics"],
-      "description": "Merge request'ы с авторами, рецензентами, одобрениями",
+      "written_by": ["mr-collector", "gitlab_merge_requests (dagster)"],
+      "read_by": ["dashboard", "mr-analytics", "benchmark", "contributor-analytics", "red-flags", "dora-metrics", "clickhouse-sync"],
+      "description": "Merge request'ы с авторами, рецензентами, одобрениями, changes_count",
       "estimated_rows_per_project": "50-5000"
     },
     "project_issues": {
-      "written_by": ["issue-collector"],
+      "written_by": ["issue-collector", "gitlab_issues (dagster)"],
       "read_by": ["issues"],
       "description": "Задачи с состояниями, авторами, метками",
       "estimated_rows_per_project": "10-1000"
     },
     "project_pipelines": {
-      "written_by": ["pipeline-collector"],
-      "read_by": ["dashboard", "pipelines", "dora-metrics", "contributor-analytics"],
+      "written_by": ["pipeline-collector", "gitlab_pipelines (dagster)"],
+      "read_by": ["dashboard", "pipelines", "dora-metrics", "contributor-analytics", "red-flags", "benchmark", "clickhouse-sync"],
       "description": "Пайплайны CI/CD со статусами и длительностью",
       "estimated_rows_per_project": "50-5000"
     },
     "project_deployments": {
-      "written_by": ["pipeline-collector"],
-      "read_by": ["dashboard", "dora-metrics", "executive-report"],
-      "description": "Деплои с привязкой к пайплайнам и коммитам",
+      "written_by": ["pipeline-collector", "gitlab_deployments (dagster)"],
+      "read_by": ["dashboard", "dora-metrics", "executive-report", "red-flags", "clickhouse-sync"],
+      "description": "Деплои с привязкой к пайплайнам и коммитам, raw_json",
       "estimated_rows_per_project": "10-1000"
     },
     "project_languages": {
-      "written_by": ["stack-collector"],
+      "written_by": ["stack-collector", "gitlab_languages (dagster)"],
       "read_by": ["stack"],
       "description": "Распределение языков программирования по проектам",
       "estimated_rows_per_project": "2-20"
     },
     "project_activity": {
-      "written_by": ["activity-collector"],
+      "written_by": ["activity-collector", "gitlab_activity (dagster)"],
       "read_by": ["activity", "dashboard"],
       "description": "Дневная агрегация: коммиты, MR, пайплайны",
       "estimated_rows_per_project": "30-365"
     },
     "project_dependencies_audit": {
-      "written_by": ["dependency-audit"],
+      "written_by": ["dependency-audit", "gitlab_dependency_audit (dagster)"],
       "read_by": ["dependencies"],
-      "description": "Аудит зависимостей: имя, версия, актуальность",
+      "description": "Аудит зависимостей: имя, версия, актуальность, source",
       "estimated_rows_per_project": "20-500"
     },
     "projects": {
@@ -107,26 +180,46 @@
       "read_by": ["все эндпоинты"],
       "description": "Справочник проектов GitLab с токенами и тегами"
     },
-    "contributor_directory": {
-      "written_by": ["admin API"],
-      "read_by": ["все эндпоинты аналитики"],
-      "description": "Каноническое мapping имён → email'ов"
-    },
     "scheduler_errors": {
       "written_by": ["scheduler"],
       "read_by": ["scheduler API"],
       "description": "Лог ошибок сбора данных"
+    },
+    "lineage_metadata": {
+      "written_by": ["lineage_update (dagster)"],
+      "read_by": ["data-lineage API"],
+      "description": "Метаданные потоков данных: last_sync, status по каждой таблице"
+    },
+    "personal_tokens": {
+      "written_by": ["admin API"],
+      "read_by": ["gitlab-client"],
+      "description": "Персональные токены GitLab для доступа к проектам"
+    },
+    "dependency_catalog": {
+      "written_by": ["admin API"],
+      "read_by": ["dependency-audit"],
+      "description": "Каталог ecosystems: file_names, version_check_url"
+    },
+    "public_marts.mart_dashboard": {
+      "written_by": ["dbt marts"],
+      "read_by": ["inactive-projects query"],
+      "description": "Витрина: агрегированные KPI по проектам (all-time)"
+    },
+    "public_marts.mart_activity": {
+      "written_by": ["dbt marts"],
+      "read_by": ["dashboard activity chart"],
+      "description": "Витрина: дневная активность (commits, MR, pipelines)"
     }
   },
   "api_endpoints": {
     "/api/v1/dashboard": {
-      "reads_from": ["commits", "project_branches", "project_merge_requests", "contributor_directory", "project_deployments", "project_activity"],
-      "description": "Главная панель обзора — агрегированные KPI",
-      "refresh_rate": "при каждом запросе"
+      "reads_from": ["commits", "project_branches", "project_merge_requests", "contributor_directory", "project_deployments", "public_marts.mart_activity", "public_marts.mart_dashboard"],
+      "description": "Главная панель обзора — KPI, DORA, активность, MR по проектам",
+      "refresh_rate": "при каждом запросе (period-filtered)"
     },
     "/api/v1/contributor-analytics": {
       "reads_from": ["contributor_profiles", "contributor_directory", "commits"],
-      "description": "Аналитика контрибьюторов — метрики, heatmap, скоринг",
+      "description": "Аналитика контрибьюторов — метрики, heatmap, скоринг, deploy reliability",
       "refresh_rate": "при каждом запросе"
     },
     "/api/v1/mr-analytics": {
@@ -144,6 +237,11 @@
       "description": "DORA-метрики: частота деплоев, lead time, MTTR, failure rate",
       "refresh_rate": "при каждом запросе"
     },
+    "/api/v1/red-flags": {
+      "reads_from": ["commits", "project_merge_requests", "project_pipelines", "project_deployments", "project_branches"],
+      "description": "Красные флаги: ночные коммиты, жёлтая зона, bus factor, churn, weekend activity, deploy reliability",
+      "refresh_rate": "при каждом запросе (кэш 60с)"
+    },
     "/api/v1/benchmark": {
       "reads_from": ["commits", "project_pipelines", "project_merge_requests", "project_branches", "project_deployments"],
       "description": "Бенчмарк по тегам и контрибьюторам",
@@ -152,6 +250,11 @@
     "/api/v1/branches": {
       "reads_from": ["project_branches", "projects"],
       "description": "Список веток с метриками здоровья",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/issues": {
+      "reads_from": ["project_issues", "projects"],
+      "description": "Аналитика задач (issues)",
       "refresh_rate": "при каждом запросе"
     },
     "/api/v1/stack/languages": {
@@ -164,9 +267,25 @@
       "description": "Дневная активность проектов",
       "refresh_rate": "при каждом запросе"
     },
+    "/api/v1/dependencies": {
+      "reads_from": ["project_dependencies_audit", "projects"],
+      "description": "Аудит зависимостей проектов",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/contributor-directory": {
+      "reads_from": ["contributor_directory"],
+      "writes_to": ["contributor_directory"],
+      "description": "CRUD справочника контрибьюторов, YAML import/export, sync-from-gitlab",
+      "refresh_rate": "при каждом запросе"
+    },
     "/api/v1/executive-report": {
       "reads_from": ["все таблицы"],
       "description": "Исполнительный отчёт для C-level",
+      "refresh_rate": "при каждом запросе"
+    },
+    "/api/v1/data-lineage": {
+      "reads_from": ["lineage_metadata", "все таблицы (для статистики)"],
+      "description": "Потоки данных: граф зависимостей, статистика таблиц",
       "refresh_rate": "при каждом запросе"
     }
   }
