@@ -132,7 +132,7 @@ export default function App() {
     if (!resolved) return;
     setFilters((prev) => ({ ...prev, contributors: prev.contributors.includes(resolved) ? prev.contributors : [...prev.contributors, resolved] }));
   }, []);
-  const navigateTo = (newTab: TabKey, newAnalyticsTab?: AnalyticsTab) => { setTab(newTab); if (newAnalyticsTab) setAnalyticsTab(newAnalyticsTab); };
+  const navigateTo = (newTab: TabKey, newAnalyticsTab?: AnalyticsTab) => { setTab(newTab); if (newAnalyticsTab) setAnalyticsTab(newAnalyticsTab); setSidebarOpen(false); };
 
   const themeConfig = darkMode ? darkThemeConfig : lightThemeConfig;
   const contentBg = darkMode ? "#111827" : "#F5F7FA";
