@@ -37,6 +37,9 @@ export async function dashboardRoutes(app: FastifyInstance) {
       mrByProject: [],
     };
 
+    // Pre-compute all project IDs (needed for queries without project filter)
+    const allProjectIds = allowedIds ?? (await pool.query("SELECT id FROM projects")).rows.map((r: any) => r.id);
+
     // 1) Period-filtered summary from raw tables (mart_dashboard is all-time)
     const [periodSummary, activeProjectsResult, inactiveProjectsResult, activityResult, mrRaw] = await Promise.all([
       pool.query(
@@ -131,28 +134,26 @@ export async function dashboardRoutes(app: FastifyInstance) {
          ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}`,
         hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
       ),
-      // MTTR: avg time from pipeline failure to next success on same project/ref
+      // MTTR: avg time from failed deployment to next success deployment (same approach as DORA page)
       pool.query(
-        `WITH failures AS (
-           SELECT project_id, ref, finished_at
-           FROM project_pipelines
-           WHERE status = 'failed' AND finished_at IS NOT NULL AND created_at >= $1
-           ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}
+        `WITH sorted AS (
+           SELECT status, pipeline_status, created_at,
+                  LAG(status) OVER (ORDER BY created_at) as prev_status,
+                  LAG(pipeline_status) OVER (ORDER BY created_at) as prev_pipeline_status,
+                  LAG(created_at) OVER (ORDER BY created_at) as prev_created_at
+           FROM project_deployments
+           WHERE project_id = ANY($1) AND created_at >= $2
          ),
          recoveries AS (
-           SELECT f.project_id, f.ref, f.finished_at as fail_time,
-                  MIN(p.finished_at) as recover_time
-           FROM failures f
-           JOIN project_pipelines p
-             ON p.project_id = f.project_id AND p.ref = f.ref
-            AND p.status = 'success' AND p.finished_at > f.finished_at
-           GROUP BY f.project_id, f.ref, f.finished_at
+           SELECT EXTRACT(EPOCH FROM (created_at - prev_created_at))::int as recover_sec
+           FROM sorted
+           WHERE status = 'success'
+             AND (prev_status = 'failed' OR prev_pipeline_status = 'failed')
+             AND created_at > prev_created_at
          )
-         SELECT AVG(EXTRACT(EPOCH FROM (recover_time - fail_time)))::int as avg_mttr_sec
-         FROM recoveries
-         WHERE EXTRACT(EPOCH FROM (recover_time - fail_time)) > 0
-           AND EXTRACT(EPOCH FROM (recover_time - fail_time)) < 86400`,
-        hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
+         SELECT AVG(recover_sec)::int as avg_mttr_sec FROM recoveries
+         WHERE recover_sec > 0 AND recover_sec < 86400`,
+        hasProjectFilter ? [allowedIds, dateFrom] : [allProjectIds, dateFrom]
       ),
     ]);
 
@@ -168,7 +169,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     }));
 
     // 2) Contributor analytics — parallel directory fetch + DB queries
-    const contributorProjectIds = allowedIds ?? (await pool.query("SELECT id FROM projects")).rows.map((r: any) => r.id);
+    const contributorProjectIds = allProjectIds;
 
     const [dir, contributorResult, inactiveContribResult] = await Promise.all([
       getContributorDirectory(),
