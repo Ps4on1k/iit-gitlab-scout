@@ -56,7 +56,15 @@ export const Dashboard = memo(function Dashboard({ onContributorClick }: { onCon
   const mrMergeRate = (summary.mrOpened + summary.mrMerged + summary.mrClosed) > 0
     ? Math.round(summary.mrMerged / (summary.mrOpened + summary.mrMerged + summary.mrClosed) * 100) : null;
 
-  const activityChartData = recentActivity.map((a: any) => ({ date: a.date, commits: a.commits }));
+  const activityChartData = useMemo(() => {
+    const rows: { date: string; type: string; value: number }[] = [];
+    for (const a of recentActivity) {
+      rows.push({ date: a.date, type: "Коммиты", value: a.commits || 0 });
+      rows.push({ date: a.date, type: "MR", value: a.mergeRequests || 0 });
+      rows.push({ date: a.date, type: "Пайплайны", value: a.pipelines || 0 });
+    }
+    return rows;
+  }, [recentActivity]);
 
   const activeProjectColumns = [
     { title: "Проект", dataIndex: "label", key: "label",
@@ -169,14 +177,15 @@ export const Dashboard = memo(function Dashboard({ onContributorClick }: { onCon
           <Card title={`Активность за ${period} дн.`} size="small" style={{ height: "100%" }}>
             {activityChartData.length === 0 ? <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} /> : (
               <div style={{ height: "calc(100% - 40px)" }}>
-                <Line data={activityChartData} xField="date" yField="commits"
-                  point={{ size: 2 }} style={{ lineWidth: 2, stroke: "#3A8DFF" }}
+                <Line data={activityChartData} xField="date" yField="value" seriesField="type"
+                  point={{ size: 2 }} style={{ lineWidth: 2 }}
                   axis={{
                     x: { labelAutoRotate: true, labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                     y: { labelFill: cc.axisLabel, lineStroke: cc.axisLine, gridStroke: cc.gridLine, tickStroke: cc.axisLine },
                   }}
-                  tooltip={{ title: "date", items: [{ field: "commits", name: "Коммиты" }] }}
-                  legend={false} autoFit
+                  tooltip={{ title: "date", items: [{ field: "value" }] }}
+                  legend={{ position: "top" }}
+                  color={["#3A8DFF", "#21B573", "#FFB020"]} autoFit
                 />
               </div>
             )}

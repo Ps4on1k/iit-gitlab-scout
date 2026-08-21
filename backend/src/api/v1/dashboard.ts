@@ -75,7 +75,10 @@ export async function dashboardRoutes(app: FastifyInstance) {
         projectParams
       ),
       pool.query(
-        `SELECT day, sum(commits)::int as cnt
+        `SELECT day,
+                sum(commits)::int as commits,
+                sum(merge_requests)::int as merge_requests,
+                sum(pipelines)::int as pipelines
          FROM public_marts.mart_activity
          ${hasProjectFilter ? "WHERE project_id = ANY($1)" : "WHERE TRUE"}
          AND day >= $${hasProjectFilter ? 2 : 1}
@@ -99,7 +102,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
     ]);
 
     // Fetch merged branches and closed MRs counts separately
-    const [mergedBranchesResult, mrClosedResult] = await Promise.all([
+    const [mergedBranchesResult, mrClosedResult, leadTimeResult, mttrResult] = await Promise.all([
       pool.query(
         `SELECT COUNT(*)::int as cnt FROM project_merge_requests
          WHERE state = 'merged' AND created_at >= $1
@@ -110,6 +113,37 @@ export async function dashboardRoutes(app: FastifyInstance) {
         `SELECT COUNT(*)::int as cnt FROM project_merge_requests
          WHERE state = 'closed' AND created_at >= $1
          ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}`,
+        hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
+      ),
+      // Lead time: avg seconds from MR created_at to merged_at
+      pool.query(
+        `SELECT AVG(EXTRACT(EPOCH FROM (merged_at - created_at)))::int as avg_lead_sec
+         FROM project_merge_requests
+         WHERE state = 'merged' AND merged_at IS NOT NULL AND created_at >= $1
+         ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}`,
+        hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
+      ),
+      // MTTR: avg time from pipeline failure to next success on same project/ref
+      pool.query(
+        `WITH failures AS (
+           SELECT project_id, ref, finished_at
+           FROM project_pipelines
+           WHERE status = 'failed' AND finished_at IS NOT NULL AND created_at >= $1
+           ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}
+         ),
+         recoveries AS (
+           SELECT f.project_id, f.ref, f.finished_at as fail_time,
+                  MIN(p.finished_at) as recover_time
+           FROM failures f
+           JOIN project_pipelines p
+             ON p.project_id = f.project_id AND p.ref = f.ref
+            AND p.status = 'success' AND p.finished_at > f.finished_at
+           GROUP BY f.project_id, f.ref, f.finished_at
+         )
+         SELECT AVG(EXTRACT(EPOCH FROM (recover_time - fail_time)))::int as avg_mttr_sec
+         FROM recoveries
+         WHERE EXTRACT(EPOCH FROM (recover_time - fail_time)) > 0
+           AND EXTRACT(EPOCH FROM (recover_time - fail_time)) < 86400`,
         hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
       ),
     ]);
@@ -162,7 +196,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
          GROUP BY c.author_email
          ORDER BY MAX(c.committed_date) DESC
          LIMIT 50`,
-        [allowedIds ?? [], dateFrom, new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)]
+        [contributorProjectIds, dateFrom, new Date(Date.now() - 365 * 86400000).toISOString().slice(0, 10)]
       ),
     ]);
 
@@ -197,15 +231,18 @@ export async function dashboardRoutes(app: FastifyInstance) {
     }));
 
     // 3) Daily activity from mart_activity (already fetched in parallel above)
-    const activityMap = new Map<string, number>();
-    for (const r of activityResult.rows as any[]) activityMap.set(r.day, r.cnt);
-    const fullActivity: { date: string; commits: number }[] = [];
+    const activityByDay = new Map<string, { commits: number; mergeRequests: number; pipelines: number }>();
+    for (const r of activityResult.rows as any[]) {
+      activityByDay.set(r.day, { commits: r.commits || 0, mergeRequests: r.merge_requests || 0, pipelines: r.pipelines || 0 });
+    }
+    const fullActivity: { date: string; commits: number; mergeRequests: number; pipelines: number }[] = [];
     const todayStr = new Date().toISOString().slice(0, 10);
     const startDate = new Date(dateFrom);
     const endDate = new Date(todayStr);
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const ds = d.toISOString().slice(0, 10);
-      fullActivity.push({ date: ds, commits: activityMap.get(ds) || 0 });
+      const day = activityByDay.get(ds) || { commits: 0, mergeRequests: 0, pipelines: 0 };
+      fullActivity.push({ date: ds, commits: day.commits, mergeRequests: day.mergeRequests, pipelines: day.pipelines });
     }
 
     // 4) MR by project (already fetched in parallel above)
@@ -235,9 +272,9 @@ export async function dashboardRoutes(app: FastifyInstance) {
         },
         dora: {
           deployFrequency: m.deploy_total > 0 ? Math.round((m.deploy_total / Math.max(1, Math.ceil((new Date(todayStr).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1)) * 100) / 100 : 0,
-          avgLeadTimeSec: 0,
+          avgLeadTimeSec: leadTimeResult.rows[0]?.avg_lead_sec || 0,
           failureRate: m.deploy_total > 0 ? Math.round((m.deploy_failed / m.deploy_total) * 10000) / 100 : 0,
-          avgMttrMin: 0,
+          avgMttrMin: mttrResult.rows[0]?.avg_mttr_sec ? Math.round(mttrResult.rows[0].avg_mttr_sec / 60) : 0,
         },
         topContributors,
         inactiveContributors,
