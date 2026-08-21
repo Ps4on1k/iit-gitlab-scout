@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from "react";
-import { ConfigProvider, Layout, Button, Typography, Spin, Tooltip } from "antd";
-import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, SyncOutlined, CloseOutlined, RightOutlined, UpOutlined, FilePdfOutlined, DatabaseOutlined } from "@ant-design/icons";
+import { ConfigProvider, Layout, Button, Typography, Spin, Tooltip, Drawer } from "antd";
+import { MenuOutlined, ApartmentOutlined, TeamOutlined, SettingOutlined, LogoutOutlined, DashboardOutlined, BulbOutlined, BulbFilled, BarChartOutlined, RightOutlined, UpOutlined, FilePdfOutlined, DatabaseOutlined, CloseOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { LoginPage } from "./components/LoginPage";
 import { GlobalFilterBar, type GlobalFilters } from "./components/GlobalFilterBar";
@@ -178,14 +178,21 @@ export default function App() {
 
         {/* Body: sidebar + content side by side */}
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {/* Sidebar */}
-          <div style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, height: "calc(100vh - 48px)", position: "sticky", top: 48, background: darkMode ? "#0f172a" : "#fff", transition: "all 0.25s ease", overflow: "hidden", flexShrink: 0, borderRight: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
-            <div style={{ width: 260, height: "100%", display: "flex", flexDirection: "column" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
-                  <span style={{ color: darkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 18 }}>Навигация</span>
-                  <Button type="text" icon={<CloseOutlined style={{ color: darkMode ? "#94a3b8" : "#6b7280" }} />} onClick={() => setSidebarOpen(false)} />
-                </div>
-              <nav style={{ flex: 1, padding: "8px 0", overflowY: "auto" }}>
+          {/* Sidebar as Drawer */}
+          <Drawer
+            placement="left"
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            width={280}
+            closable={false}
+            styles={{ body: { padding: 0, background: darkMode ? "#0f172a" : "#fff" }, header: { background: darkMode ? "#0f172a" : "#fff", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` } }}
+            title={<span style={{ color: darkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 18 }}>Навигация</span>}
+            extra={<Button type="text" icon={<CloseOutlined style={{ color: darkMode ? "#94a3b8" : "#6b7280" }} />} onClick={() => setSidebarOpen(false)} />}
+            mask={false}
+            getContainer={false}
+            style={{ position: "absolute" }}
+          >
+              <nav style={{ padding: "8px 0", overflowY: "auto" }}>
                 {[{ key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" }].map((item) => (
                   <div key={item.key} onClick={() => navigateTo(item.key as TabKey)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", cursor: "pointer", color: tab === item.key ? "#3A8DFF" : (darkMode ? "#94a3b8" : "#4b5563"), background: tab === item.key ? (darkMode ? "rgba(58,141,255,0.1)" : "rgba(58,141,255,0.08)") : "transparent", transition: "all 0.15s", fontSize: 14, fontWeight: tab === item.key ? 600 : 400 }}>{item.icon} {item.label}</div>
                 ))}
@@ -221,8 +228,7 @@ export default function App() {
                   <div><div style={{ color: darkMode ? "#e2e8f0" : "#1f2937", fontSize: 13, fontWeight: 500 }}>{user.username}</div><div style={{ color: darkMode ? "#64748b" : "#9ca3af", fontSize: 11 }}>{user.role}</div></div>
                 </div>
               </div>
-            </div>
-          </div>
+          </Drawer>
 
           {/* Content */}
           <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column" }}>
