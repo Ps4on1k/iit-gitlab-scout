@@ -47,6 +47,16 @@ export const Dashboard = memo(function Dashboard({ onContributorClick }: { onCon
     return m;
   }, [projects]);
 
+  const activityChartData = useMemo(() => {
+    const rows: { date: string; type: string; value: number }[] = [];
+    for (const a of data?.recentActivity || []) {
+      rows.push({ date: a.date, type: "Коммиты", value: a.commits || 0 });
+      rows.push({ date: a.date, type: "MR", value: a.mergeRequests || 0 });
+      rows.push({ date: a.date, type: "Пайплайны", value: a.pipelines || 0 });
+    }
+    return rows;
+  }, [data?.recentActivity]);
+
   if (loading) return <div style={{ textAlign: "center", padding: 80 }}><Spin size="large" /></div>;
   if (!data) return <Empty description="Ошибка загрузки" />;
 
@@ -55,16 +65,6 @@ export const Dashboard = memo(function Dashboard({ onContributorClick }: { onCon
   const deploySuccessRate = summary.deploysTotal > 0 ? Math.round(summary.deploysSuccess / summary.deploysTotal * 100) : null;
   const mrMergeRate = (summary.mrOpened + summary.mrMerged + summary.mrClosed) > 0
     ? Math.round(summary.mrMerged / (summary.mrOpened + summary.mrMerged + summary.mrClosed) * 100) : null;
-
-  const activityChartData = useMemo(() => {
-    const rows: { date: string; type: string; value: number }[] = [];
-    for (const a of recentActivity) {
-      rows.push({ date: a.date, type: "Коммиты", value: a.commits || 0 });
-      rows.push({ date: a.date, type: "MR", value: a.mergeRequests || 0 });
-      rows.push({ date: a.date, type: "Пайплайны", value: a.pipelines || 0 });
-    }
-    return rows;
-  }, [recentActivity]);
 
   const activeProjectColumns = [
     { title: "Проект", dataIndex: "label", key: "label",
