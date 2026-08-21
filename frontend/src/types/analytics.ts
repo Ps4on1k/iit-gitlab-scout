@@ -112,6 +112,8 @@ export interface ContributorRedFlag {
   churn_pct: number;
   deploy_success_rate: number;
   pipeline_coverage_rate: number;
+  weekend_commits: number;
+  weekend_ratio: number;
   flag_score: number;
 }
 

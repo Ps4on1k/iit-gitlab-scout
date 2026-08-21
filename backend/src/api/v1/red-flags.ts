@@ -31,6 +31,8 @@ interface ContributorRedFlag {
   churn_pct: number;
   deploy_success_rate: number;
   pipeline_coverage_rate: number;
+  weekend_commits: number;
+  weekend_ratio: number;
   flag_score: number;
 }
 
@@ -251,6 +253,21 @@ export async function redFlagsRoutes(app: FastifyInstance) {
       commitParams
     );
 
+    // C9: Weekend activity (Saturday=6, Sunday=0)
+    const weekendResult = await pool.query(
+      `SELECT author_email,
+        COUNT(*)::int as total_commits,
+        COUNT(*) FILTER (WHERE EXTRACT(DOW FROM committed_date) IN (0, 6))::int as weekend_commits
+      FROM commits ${commitWhere}
+      GROUP BY author_email HAVING COUNT(*) >= 3`,
+      commitParams
+    );
+
+    const weekendMap = new Map<string, { total: number; weekend: number }>();
+    for (const row of weekendResult.rows) {
+      weekendMap.set(row.author_email, { total: row.total_commits, weekend: row.weekend_commits });
+    }
+
     // Build lookup maps
     const hourMap = new Map<string, Record<string, number>>();
     for (const row of hourResult.rows) {
@@ -345,6 +362,10 @@ export async function redFlagsRoutes(app: FastifyInstance) {
       if (disappearSet.has(row.author_email)) score += 3;
       const churnPct = churnMap.get(row.author_email) || 0;
       if (churnPct > 40) score += 3; else if (churnPct > 25) score += 1;
+      // C9: Weekend activity
+      const weekend = weekendMap.get(row.author_email) || { total: 0, weekend: 0 };
+      const weekendRatio = weekend.total > 0 ? Math.round((weekend.weekend / weekend.total) * 10000) / 100 : 0;
+      if (weekendRatio > 30) score += 3; else if (weekendRatio > 15) score += 1;
       // C8: Deploy reliability
       if (deployReliability.deploy_success_rate > 0 && deployReliability.deploy_success_rate < 50) score += 3;
       else if (deployReliability.deploy_success_rate > 0 && deployReliability.deploy_success_rate < 75) score += 1;
@@ -366,6 +387,8 @@ export async function redFlagsRoutes(app: FastifyInstance) {
         churn_pct: churnPct,
         deploy_success_rate: deployReliability.deploy_success_rate,
         pipeline_coverage_rate: deployReliability.pipeline_coverage_rate,
+        weekend_commits: weekend.weekend,
+        weekend_ratio: weekendRatio,
         flag_score: score,
       };
     });

@@ -128,6 +128,13 @@ export const RedFlagsDashboard = memo(function RedFlagsDashboard({ userRole, fil
       render: (v: number) => v > 0 ? <FlagTag value={v} redThreshold={40} yellowThreshold={25} /> : <Tag>—</Tag>,
     },
     {
+      title: "📅 Выходные",
+      dataIndex: "weekend_ratio",
+      key: "weekend_ratio",
+      sorter: (a: ContributorRedFlag, b: ContributorRedFlag) => a.weekend_ratio - b.weekend_ratio,
+      render: (v: number) => <FlagTag value={v} redThreshold={30} yellowThreshold={15} />,
+    },
+    {
       title: "🚀 Деплои %",
       dataIndex: "deploy_success_rate",
       key: "deploy_success_rate",
@@ -250,6 +257,9 @@ export const RedFlagsDashboard = memo(function RedFlagsDashboard({ userRole, fil
             <Descriptions.Item label="📋 Direct commits">
               Коммиты в main/master без MR. <Tag color="red">{'>'}5</Tag> критично, <Tag color="orange">{'>'}2</Tag> внимание
             </Descriptions.Item>
+            <Descriptions.Item label="📅 Выходные">
+              Доля коммитов в субботу и воскресенье. <Tag color="red">{'>'}30%</Tag> критично (переработки), <Tag color="orange">{'>'}15%</Tag> внимание
+            </Descriptions.Item>
             <Descriptions.Item label="💀 Инactivité">
               Контрибьютор был активен в начале периода, затем исчез. Статус: <Tag color="red">исчез</Tag>
             </Descriptions.Item>
@@ -337,6 +347,12 @@ export const RedFlagsDashboard = memo(function RedFlagsDashboard({ userRole, fil
                 {detailEntry.direct_commits} в main/master
                 <Tag color={detailEntry.direct_commits > 5 ? "red" : detailEntry.direct_commits > 2 ? "orange" : "green"} style={{ marginLeft: 8 }}>
                   {detailEntry.direct_commits > 5 ? "Критично" : detailEntry.direct_commits > 2 ? "Внимание" : "OK"}
+                </Tag>
+              </Descriptions.Item>
+              <Descriptions.Item label="📅 Выходные">
+                {detailEntry.weekend_commits} / {detailEntry.total_commits} коммитов ({detailEntry.weekend_ratio}%)
+                <Tag color={detailEntry.weekend_ratio > 30 ? "red" : detailEntry.weekend_ratio > 15 ? "orange" : "green"} style={{ marginLeft: 8 }}>
+                  {detailEntry.weekend_ratio > 30 ? "Критично" : detailEntry.weekend_ratio > 15 ? "Внимание" : "OK"}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="💀 Инactivité" span={2}>
