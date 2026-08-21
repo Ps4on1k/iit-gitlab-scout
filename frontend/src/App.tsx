@@ -189,7 +189,7 @@ export default function App() {
             extra={<Button type="text" icon={<CloseOutlined style={{ color: darkMode ? "#94a3b8" : "#6b7280" }} />} onClick={() => setSidebarOpen(false)} />}
             mask={false}
             getContainer={false}
-            style={{ position: "fixed", top: 48, left: 0, height: "calc(100vh - 48px)", width: "min(280px, 85vw)" }}
+            style={{ position: "fixed", top: 48, left: 0, height: "calc(100vh - 48px)", width: "min(280px, 85vw)", boxShadow: "none" }}
           >
               <nav style={{ padding: "8px 0", overflowY: "auto" }}>
                 {[{ key: "dashboard", icon: <DashboardOutlined />, label: "Обзор" }].map((item) => (
