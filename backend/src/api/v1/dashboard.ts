@@ -139,25 +139,12 @@ export async function dashboardRoutes(app: FastifyInstance) {
          ${hasProjectFilter ? "AND project_id = ANY($2)" : ""}`,
         hasProjectFilter ? [dateFrom, allowedIds] : [dateFrom]
       ),
-      // MTTR: avg time from failed deployment to next success deployment (same approach as DORA page)
+      // MTTR: for each failed deployment, find the first subsequent success (same as DORA page)
       pool.query(
-        `WITH sorted AS (
-           SELECT status, pipeline_status, created_at,
-                  LAG(status) OVER (ORDER BY created_at) as prev_status,
-                  LAG(pipeline_status) OVER (ORDER BY created_at) as prev_pipeline_status,
-                  LAG(created_at) OVER (ORDER BY created_at) as prev_created_at
-           FROM project_deployments
-           WHERE project_id = ANY($1) AND created_at >= $2
-         ),
-         recoveries AS (
-           SELECT EXTRACT(EPOCH FROM (created_at - prev_created_at))::int as recover_sec
-           FROM sorted
-           WHERE status = 'success'
-             AND (prev_status = 'failed' OR prev_pipeline_status = 'failed')
-             AND created_at > prev_created_at
-         )
-         SELECT AVG(recover_sec)::int as avg_mttr_sec FROM recoveries
-         WHERE recover_sec > 0 AND recover_sec < 86400`,
+        `SELECT status, pipeline_status, created_at
+         FROM project_deployments
+         WHERE project_id = ANY($1) AND created_at >= $2
+         ORDER BY created_at`,
         hasProjectFilter ? [allowedIds, dateFrom] : [allProjectIds, dateFrom]
       ),
     ]);
@@ -284,12 +271,35 @@ export async function dashboardRoutes(app: FastifyInstance) {
           deploysSuccess: m.deploy_success,
           deploysFailed: m.deploy_failed,
         },
-        dora: {
-          deployFrequency: m.deploy_total > 0 ? Math.round((m.deploy_total / Math.max(1, Math.ceil((new Date(todayStr).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1)) * 100) / 100 : 0,
-          avgLeadTimeSec: leadTimeResult.rows[0]?.avg_lead_sec || 0,
-          failureRate: m.deploy_total > 0 ? Math.round((m.deploy_failed / m.deploy_total) * 10000) / 100 : 0,
-          avgMttrMin: mttrResult.rows[0]?.avg_mttr_sec ? Math.round(mttrResult.rows[0].avg_mttr_sec / 60) : 0,
-        },
+        dora: (() => {
+          // Compute MTTR: for each failed deploy, find first subsequent success (same as DORA page)
+          const deploys = mttrResult.rows;
+          let mttrMinutes = 0;
+          let mttrCount = 0;
+          for (let i = 0; i < deploys.length; i++) {
+            const d = deploys[i];
+            if (d.status === "failed" || d.pipeline_status === "failed") {
+              for (let j = i + 1; j < deploys.length; j++) {
+                const next = deploys[j];
+                if (next.status === "success") {
+                  const restoreMin = (new Date(next.created_at).getTime() - new Date(d.created_at).getTime()) / 60000;
+                  if (restoreMin > 0 && restoreMin < 24 * 60) {
+                    mttrMinutes += restoreMin;
+                    mttrCount++;
+                  }
+                  break;
+                }
+              }
+            }
+          }
+          const avgMttr = mttrCount > 0 ? Math.round(mttrMinutes / mttrCount) : 0;
+          return {
+            deployFrequency: m.deploy_total > 0 ? Math.round((m.deploy_total / Math.max(1, Math.ceil((new Date(todayStr).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1)) * 100) / 100 : 0,
+            avgLeadTimeSec: leadTimeResult.rows[0]?.avg_lead_sec || 0,
+            failureRate: m.deploy_total > 0 ? Math.round((m.deploy_failed / m.deploy_total) * 10000) / 100 : 0,
+            avgMttrMin: avgMttr,
+          };
+        })(),
         topContributors,
         inactiveContributors,
         activeProjects,
