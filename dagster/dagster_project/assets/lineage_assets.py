@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 
-@asset(compute_kind="metadata")
+@asset(deps=["dbt_marts"], compute_kind="metadata")
 def lineage_update(context: AssetExecutionContext) -> None:
     """Update lineage metadata after collection and dbt runs."""
     context.log.info("Updating lineage metadata...")

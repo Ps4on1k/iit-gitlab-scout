@@ -63,18 +63,29 @@ all_data_job = define_asset_job(
     ),
 )
 
+# --- Daily pipeline: single sequential run (core → sync → marts → lineage) ---
+# Dagster resolves execution order from asset dependencies automatically.
+daily_pipeline_job = define_asset_job(
+    name="daily_pipeline",
+    selection=AssetSelection.assets(
+        # core
+        "gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors", "backfill_mr_reviewers",
+        "gitlab_pipelines", "gitlab_deployments", "gitlab_activity",
+        "gitlab_merge_requests", "gitlab_branches", "gitlab_issues",
+        # sync
+        "gitlab_contributor_sync", "clickhouse_sync",
+        # marts
+        "dbt_staging", "dbt_marts",
+        # lineage
+        "lineage_update",
+    ),
+)
+
 # --- Schedules aligned to jobs (no redundant inline jobs) ---
 schedules = [
     ScheduleDefinition(
-        job=define_asset_job(
-            name="core_every_6h",
-            selection=AssetSelection.assets(
-                "gitlab_commits", "backfill_gitlab_user_id", "gitlab_contributors",
-                "gitlab_pipelines", "gitlab_deployments", "gitlab_activity",
-                "gitlab_merge_requests", "backfill_mr_reviewers", "gitlab_branches", "gitlab_issues",
-            ),
-        ),
-        cron_schedule="0 */6 * * *",
+        job=daily_pipeline_job,
+        cron_schedule="0 2 * * *",
     ),
     ScheduleDefinition(
         job=define_asset_job(
@@ -82,27 +93,6 @@ schedules = [
             selection=AssetSelection.assets("gitlab_languages", "gitlab_dependencies", "gitlab_dependency_audit"),
         ),
         cron_schedule="0 2 * * 1",
-    ),
-    ScheduleDefinition(
-        job=define_asset_job(
-            name="sync_daily",
-            selection=AssetSelection.assets("gitlab_contributor_sync", "clickhouse_sync"),
-        ),
-        cron_schedule="0 3 * * *",
-    ),
-    ScheduleDefinition(
-        job=define_asset_job(
-            name="marts_every_2h",
-            selection=AssetSelection.assets("dbt_staging", "dbt_marts"),
-        ),
-        cron_schedule="0 */2 * * *",
-    ),
-    ScheduleDefinition(
-        job=define_asset_job(
-            name="lineage_daily",
-            selection=AssetSelection.assets("lineage_update"),
-        ),
-        cron_schedule="0 4 * * *",
     ),
 ]
 
@@ -118,7 +108,7 @@ defs = Definitions(
     jobs=[
         commits_job, dora_job, rest_job,
         static_job, sync_job, post_job,
-        all_data_job,
+        all_data_job, daily_pipeline_job,
     ],
     schedules=schedules,
     resources={

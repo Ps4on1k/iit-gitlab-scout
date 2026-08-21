@@ -1474,7 +1474,7 @@ def _email_local_part(email):
     return email_local_part(email)
 
 
-@asset(compute_kind="sync")
+@asset(deps=["gitlab_contributors"], compute_kind="sync")
 def gitlab_contributor_sync(context: AssetExecutionContext) -> None:
     """Auto-detect contributor groups and sync contributor_directory."""
     conn = get_pg_connection()
