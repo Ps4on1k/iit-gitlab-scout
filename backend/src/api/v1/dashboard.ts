@@ -37,27 +37,35 @@ export async function dashboardRoutes(app: FastifyInstance) {
       mrByProject: [],
     };
 
-    // 1) Read summary from mart_dashboard (per-project, aggregate on the fly)
-    // For period > 90 days, merge mart with raw data; otherwise use raw data for accuracy
-    const useRawTables = periodDays > 90;
-    const [martResult, activeProjectsResult, inactiveProjectsResult, activityResult, mrRaw] = await Promise.all([
+    // 1) Period-filtered summary from raw tables (mart_dashboard is all-time)
+    const [periodSummary, activeProjectsResult, inactiveProjectsResult, activityResult, mrRaw] = await Promise.all([
       pool.query(
         `SELECT
-          count(*) as projects,
-          sum(contributors)::int as contributors,
-          sum(commits)::int as commits,
-          sum(total_branches)::int as branches,
-          sum(active_branches)::int as active_branches,
-          sum(stale_branches)::int as stale_branches,
-          sum(mr_total)::int as mr_total,
-          sum(mr_merged)::int as mr_merged,
-          sum(mr_opened)::int as mr_opened,
-          sum(deploy_total)::int as deploy_total,
-          sum(deploy_success)::int as deploy_success,
-          sum(deploy_failed)::int as deploy_failed
-         FROM public_marts.mart_dashboard
-         ${projectWhere}`,
-        projectParams
+          (SELECT COUNT(*)::int FROM projects ${projectWhere}) as projects,
+          (SELECT COUNT(DISTINCT c.author_email)::int FROM commits c
+           WHERE c.committed_date >= $${hasProjectFilter ? 2 : 1}
+           ${hasProjectFilter ? "AND c.project_id = ANY($1)" : ""}) as contributors,
+          (SELECT COUNT(*)::int FROM commits c
+           WHERE c.committed_date >= $${hasProjectFilter ? 2 : 1}
+           ${hasProjectFilter ? "AND c.project_id = ANY($1)" : ""}) as commits,
+          (SELECT COUNT(*)::int FROM project_branches ${projectWhere}) as branches,
+          (SELECT COUNT(*)::int FROM project_branches
+           ${projectWhere} ${projectWhere ? "AND" : "WHERE"} NOT merged AND last_commit_date >= NOW() - INTERVAL '90 days') as active_branches,
+          (SELECT COUNT(*)::int FROM project_branches
+           ${projectWhere} ${projectWhere ? "AND" : "WHERE"} NOT merged AND (last_commit_date < NOW() - INTERVAL '90 days' OR last_commit_date IS NULL)) as stale_branches,
+          (SELECT COUNT(*)::int FROM project_merge_requests
+           WHERE created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as mr_total,
+          (SELECT COUNT(*)::int FROM project_merge_requests
+           WHERE state = 'merged' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as mr_merged,
+          (SELECT COUNT(*)::int FROM project_merge_requests
+           WHERE state = 'opened' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as mr_opened,
+          (SELECT COUNT(*)::int FROM project_pipelines
+           WHERE created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as deploy_total,
+          (SELECT COUNT(*)::int FROM project_pipelines
+           WHERE status = 'success' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as deploy_success,
+          (SELECT COUNT(*)::int FROM project_pipelines
+           WHERE status = 'failed' AND created_at >= $${hasProjectFilter ? 2 : 1} ${hasProjectFilter ? "AND project_id = ANY($1)" : ""}) as deploy_failed`,
+        hasProjectFilter ? [allowedIds, dateFrom] : [dateFrom]
       ),
       pool.query(
         `SELECT project_id, label, tags, commits, contributors, last_commit
@@ -148,7 +156,7 @@ export async function dashboardRoutes(app: FastifyInstance) {
       ),
     ]);
 
-    const m = martResult.rows[0] || {};
+    const m = periodSummary.rows[0] || {};
     if (!m.projects) return { ok: true, data: empty };
 
     const activeProjects = activeProjectsResult.rows.map((r: any) => ({
