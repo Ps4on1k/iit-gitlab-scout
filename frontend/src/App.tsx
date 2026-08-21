@@ -184,7 +184,7 @@ export default function App() {
             open={sidebarOpen}
             onClose={() => setSidebarOpen(false)}
             closable={false}
-            styles={{ body: { padding: 0, background: darkMode ? "#0f172a" : "#fff" }, header: { background: darkMode ? "#0f172a" : "#fff", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` } }}
+            styles={{ body: { padding: 0, background: darkMode ? "#0f172a" : "#fff" }, header: { background: darkMode ? "#0f172a" : "#fff", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }, wrapper: { boxShadow: "none" }, content: { boxShadow: "none" } }}
             title={<span style={{ color: darkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 18 }}>Навигация</span>}
             extra={<Button type="text" icon={<CloseOutlined style={{ color: darkMode ? "#94a3b8" : "#6b7280" }} />} onClick={() => setSidebarOpen(false)} />}
             mask={false}
