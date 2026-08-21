@@ -105,10 +105,10 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
   // Update entry — validates no email conflicts first
   app.put<{
     Params: { id: string };
-    Body: { display_name?: string; emails?: string[] };
+    Body: { display_name?: string; emails?: string[]; is_valid?: boolean };
   }>("/api/v1/contributor-directory/:id", { preHandler: [requireAdmin] }, async (request, reply) => {
     const { id } = request.params;
-    const { display_name, emails } = request.body;
+    const { display_name, emails, is_valid } = request.body;
 
     const pool = getPool();
     const existing = await pool.query("SELECT id, display_name FROM contributor_directory WHERE id = $1", [id]);
@@ -140,6 +140,7 @@ export async function contributorDirectoryRoutes(app: FastifyInstance) {
 
     if (display_name !== undefined) { updates.push(`display_name = $${idx++}`); values.push(display_name); }
     if (emails !== undefined) { updates.push(`emails = $${idx++}`); values.push(emails); }
+    if (is_valid !== undefined) { updates.push(`is_valid = $${idx++}`); values.push(is_valid); }
 
     if (updates.length === 0) {
       return reply.status(400).send({ ok: false, error: "Nothing to update" });
