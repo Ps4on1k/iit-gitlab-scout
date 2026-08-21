@@ -155,7 +155,7 @@ export default function App() {
         <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#1e293b", height: 48, zIndex: 100, position: "sticky", top: 0 }}>
           <Button type="text" icon={<MenuOutlined style={{ color: darkMode ? "#e2e8f0" : "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.7.0</span>
+            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.8.0</span>
             <SyncIndicator />
           </div>
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#94a3b8" }}>
