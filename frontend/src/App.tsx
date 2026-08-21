@@ -155,7 +155,7 @@ export default function App() {
         <Header style={{ display: "flex", alignItems: "center", padding: "0 16px", background: darkMode ? "#141B2D" : "#1e293b", height: 48, zIndex: 100, position: "sticky", top: 0 }}>
           <Button type="text" icon={<MenuOutlined style={{ color: darkMode ? "#e2e8f0" : "#e2e8f0", fontSize: 18 }} />} onClick={() => setSidebarOpen(!sidebarOpen)} style={{ marginRight: 12 }} />
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginRight: 16 }}><Logo /><span style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>GitLab Scout</span>
-            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.6.1</span>
+            <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginLeft: 4 }}>v3.7.0</span>
             <SyncIndicator />
           </div>
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 4, fontSize: 13, color: "#94a3b8" }}>
@@ -179,7 +179,7 @@ export default function App() {
         {/* Body: sidebar + content side by side */}
         <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {/* Sidebar */}
-          <div style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, height: "100%", background: darkMode ? "#0f172a" : "#fff", transition: "all 0.25s ease", overflow: "hidden", flexShrink: 0, borderRight: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
+          <div style={{ width: sidebarOpen ? 260 : 0, minWidth: sidebarOpen ? 260 : 0, height: "calc(100vh - 48px)", position: "sticky", top: 48, background: darkMode ? "#0f172a" : "#fff", transition: "all 0.25s ease", overflow: "hidden", flexShrink: 0, borderRight: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
             <div style={{ width: 260, height: "100%", display: "flex", flexDirection: "column" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: `1px solid ${darkMode ? "#1e293b" : "#e5e7eb"}` }}>
                   <span style={{ color: darkMode ? "#fff" : "#1e293b", fontWeight: "bold", fontSize: 18 }}>Навигация</span>

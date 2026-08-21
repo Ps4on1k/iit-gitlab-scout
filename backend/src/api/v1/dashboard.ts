@@ -71,12 +71,17 @@ export async function dashboardRoutes(app: FastifyInstance) {
         hasProjectFilter ? [allowedIds, dateFrom] : [dateFrom]
       ),
       pool.query(
-        `SELECT project_id, label, tags, commits, contributors, last_commit
-         FROM public_marts.mart_dashboard
-         ${hasProjectFilter ? "WHERE project_id = ANY($1)" : "WHERE TRUE"}
-         AND commits > 0
+        `SELECT p.id as project_id, p.label, p.tags,
+                COUNT(DISTINCT c.author_email)::int as contributors,
+                COUNT(*)::int as commits,
+                MAX(c.committed_date) as last_commit
+         FROM projects p
+         LEFT JOIN commits c ON c.project_id = p.id AND c.committed_date >= $${hasProjectFilter ? 2 : 1}
+         ${hasProjectFilter ? "WHERE p.id = ANY($1)" : ""}
+         GROUP BY p.id, p.label, p.tags
+         HAVING COUNT(*) > 0
          ORDER BY commits DESC`,
-        projectParams
+        hasProjectFilter ? [allowedIds, dateFrom] : [dateFrom]
       ),
       pool.query(
         `SELECT project_id, label, tags
